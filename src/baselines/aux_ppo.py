@@ -40,11 +40,11 @@ class Args:
     """the entity (team) of wandb's project"""
     capture_video: bool = False
     """whether to capture videos of the agent performances (check out `videos` folder)"""
-    save_data: bool = False
+    save_data: bool = True
     """whether to save the data of the experiment"""
 
     # GIF
-    make_gif: bool = False
+    make_gif: bool = True
     """if toggled, will make gif """
     plotly: bool = False
     """if toggled, will use plotly instead of matplotlib"""
@@ -53,7 +53,7 @@ class Args:
     # RPO SPECIFIC
     env_id: str = "Maze-Ur"
     """the id of the environment"""
-    total_timesteps: int = 1000000
+    total_timesteps: int = 50000
     """total timesteps of the experiments"""
     learning_rate: float = 5e-4
     """the learning rate of the optimizer"""
@@ -71,7 +71,7 @@ class Args:
     """the number of mini-batches"""
     update_epochs: int = 10
     """the K epochs to update the policy"""
-    norm_adv: bool = True
+    norm_adv: bool = False
     """Toggles advantages normalization"""
     clip_coef: float = 0.2
     """the surrogate clipping coefficient"""
@@ -93,7 +93,7 @@ class Args:
     """the ratio of the intrinsic reward"""
     episodic_return: bool = True
     """if toggled, the episodic return will be used"""
-    n_rollouts: int = 2
+    n_rollouts: int = 1
     """the number of rollouts"""
     keep_extrinsic_reward: bool = False
     """if toggled, the extrinsic reward will be kept"""
@@ -406,7 +406,7 @@ if __name__ == "__main__":
         if obs_un is None:
                 obs_un = obs_reshaped[idx_un]
                 next_obs_un = obs_reshaped[idx_un+1]
-                action_un = actions_reshaped[idx_un]
+                actions_un = actions_reshaped[idx_un]
                 rewards_un = rewards_reshaped[idx_un]
                 dones_un = dones_reshaped[idx_un]
                 times_un = times_reshaped[idx_un]
@@ -419,8 +419,8 @@ if __name__ == "__main__":
         else:
             obs_un = np.concatenate([obs_un, obs_reshaped[idx_un]])
             next_obs_un = np.concatenate([next_obs_un, obs_reshaped[idx_un+1]]) 
-            action_un = np.concatenate([actions_reshaped[idx_un]])
-            rewards_un = np.concatenate([rewards_reshaped[idx_un]]) 
+            actions_un = np.concatenate([actions_un, actions_reshaped[idx_un]])
+            rewards_un = np.concatenate([rewards_un, rewards_reshaped[idx_un]])
             dones_un = np.concatenate([dones_un, dones_reshaped[idx_un]])
             times_un = np.concatenate([times_un, times_reshaped[idx_un]])   
 
@@ -524,6 +524,11 @@ if __name__ == "__main__":
         writer.add_scalar("charts/advantages_mean", mb_advantages.mean(), global_step)
         # metrics 
         writer.add_scalar("charts/coverage", env_check.get_coverage(), global_step)
+        writer.add_scalar("charts/shanon_entropy", env_check.shanon_entropy(), global_step)
+        print('coverage : ', env_check.get_coverage())
+        print('shanon : ', env_check.shanon_entropy())
+
+
 
         print("SPS:", int(global_step / (time.time() - start_time)))
         print(f"global_step={global_step}")
@@ -532,7 +537,7 @@ if __name__ == "__main__":
 
         if update % args.fig_frequency == 0  and global_step > 0:
             if args.make_gif : 
-                env_plot.gif(obs_un = None,
+                env_plot.gif(obs_un = obs_un,
                 obs_un_train = None,
                 obs=obs,
                 classifier = None,
@@ -540,7 +545,7 @@ if __name__ == "__main__":
                 z_un = None,
                 obs_rho = None)
             if args.plotly:
-                env_plot.plotly(obs_un = obs, 
+                env_plot.plotly(obs_un = obs_un, 
                                 obs_un_train = None,
                                 classifier = None,
                                 device = device,

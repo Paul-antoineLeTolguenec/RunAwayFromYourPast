@@ -6,6 +6,8 @@ from src.utils.dash_utils_3d import initialize_figure_3d, add_frame_to_figure_3d
 from envs.compatible_random_generator import CompatibleRandomGenerator
 import gymnasium
 import sys, signal
+from functools import reduce
+from operator import mul
 
 class Wenv(gym.Env):
     def __init__(self, env_id , 
@@ -39,6 +41,7 @@ class Wenv(gym.Env):
         self.episode_length = 0
         self.episode_reward = 0
         self.limits = list(render_settings.values())
+        self.transposed_limits = np.array(self.limits).transpose()
         # figure 
         if render_bool_matplot:
             # check HOSTNAME
@@ -184,6 +187,8 @@ class Wenv(gym.Env):
                 # self.ax.scatter(data[:,self.coverage_idx[0]], data[:,self.coverage_idx[1]], s=1, c=self.random_colors[i], alpha=0.5)
                 self.ax.scatter(data[:,self.coverage_idx[0]], data[:,self.coverage_idx[1]], s=1, c=self.random_colors[i], alpha=0.5)
 
+        elif obs_un is not None : 
+            self.ax.scatter(obs_un[:,self.coverage_idx[0]], obs_un[:,self.coverage_idx[1]], s=1, c='b', alpha=0.5)
 
         # Bounds
         self.ax.set_xlim([self.render_settings['x_lim'][0], self.render_settings['x_lim'][1]])
@@ -259,27 +264,30 @@ class Wenv(gym.Env):
             raise
 
     def update_coverage(self, obs, infos=None):
-        if infos is not None:
-            coords = []
-            for info in infos['position']:
-                coords.append([info['x'], info['y']])
-                self.rooms.append(info['room']) if info['room'] not in self.rooms else None
-            coords = np.array(coords)
-        if infos is None:
-            coords = obs[: , self.coverage_idx].cpu().numpy()
-        coords_mat = np.zeros_like(coords, dtype=int)
-        for j in range(coords.shape[1]):
-            coords_mat[:, j] = np.floor((coords[:, j] - self.limits[j][0]) / (self.limits[j][1] - self.limits[j][0]) * self.coverage_accuracy)
-        coords_mat = tuple(coords_mat.T)
+        # if infos is not None:
+        #     coords = []
+        #     for info in infos['position']:
+        #         coords.append([info['x'], info['y']])
+        #         self.rooms.append(info['room']) if info['room'] not in self.rooms else None
+        #     coords = np.array(coords)
+        # if infos is None:
+        coords = obs[: , self.coverage_idx].cpu().numpy()
+        coords_mat =np.floor((coords - self.transposed_limits[0])/(self.transposed_limits[1]-self.transposed_limits[0])*self.coverage_accuracy).astype(np.int32)
         # check in bounds
         coords_mat = np.clip(coords_mat, 0, self.coverage_accuracy-1)
-        self.matrix_coverage[coords_mat] = 1
+        self.matrix_coverage[tuple([coords_mat[:, i] for i in range(coords_mat.shape[1])])] += 1
        
             
                 
             
     def get_coverage(self):
-        return np.sum(self.matrix_coverage) 
+        return np.sum(self.matrix_coverage/(self.matrix_coverage+1e-6))/reduce(mul, self.matrix_coverage.shape)*100.0
+
+    def shanon_entropy(self) : 
+        probabilities = self.matrix_coverage/self.matrix_coverage.sum()
+        entropy = (-probabilities*np.log(probabilities+1e-1)).sum()
+        return entropy
+    
     def get_rooms(self):
         return len(set(self.rooms))
     

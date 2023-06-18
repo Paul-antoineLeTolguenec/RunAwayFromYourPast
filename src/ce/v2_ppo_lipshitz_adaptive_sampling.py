@@ -490,7 +490,7 @@ if __name__ == "__main__":
 
                 # METRA
                 # beta = args.beta_ratio
-                beta = 0.5  
+                beta = 0.5
                 loss =beta*discriminator.lipshitz_loss(mb_rho, 
                                                    next_mb_rho, 
                                                    mb_z_un,

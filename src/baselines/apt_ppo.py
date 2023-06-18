@@ -13,6 +13,8 @@ import tyro
 from torch.distributions.normal import Normal
 from torch.utils.tensorboard import SummaryWriter
 import torch.nn.functional as F
+from src.utils.replay_buffer import ReplayBuffer
+
 # import specific 
 from src.ce.vector_encoding import VE
 from envs.wenv import Wenv
@@ -38,6 +40,8 @@ class Args:
     """the entity (team) of wandb's project"""
     capture_video: bool = False
     """whether to capture videos of the agent performances (check out `videos` folder)"""
+    save_data: bool = True
+    """whether to save the data of the experiment"""
 
     # GIF
     make_gif: bool = True
@@ -53,7 +57,7 @@ class Args:
     """total timesteps of the experiments"""
     learning_rate: float = 5e-4
     """the learning rate of the optimizer"""
-    num_envs: int = 1
+    num_envs: int = 4
     # """the number of parallel game environments"""
     # num_steps: int = 2048
     """the number of steps to run in each environment per policy rollout"""
@@ -89,7 +93,7 @@ class Args:
     """the ratio of the intrinsic reward"""
     episodic_return: bool = True
     """if toggled, the episodic return will be used"""
-    n_rollouts: int = 2
+    n_rollouts: int = 1
     """the number of rollouts"""
     keep_extrinsic_reward: bool = False
     """if toggled, the extrinsic reward will be kept"""
@@ -121,6 +125,12 @@ class Args:
     """the mini-batch size (computed in runtime)"""
     num_iterations: int = 0
     """the number of iterations (computed in runtime)"""
+
+     # dataset 
+    beta_ratio: float = 1/16
+    """the ratio of the beta"""
+    nb_max_un: int = 256
+    """the maximum number of un"""
 
 
 
@@ -226,14 +236,14 @@ class Agent(nn.Module):
     def __init__(self, envs):
         super().__init__()
         self.critic = nn.Sequential(
-            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod() + 1, 64)),
+            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 1), std=1.0),
         )
         self.actor_mean = nn.Sequential(
-            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod() + 1, 64)),
+            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
@@ -241,20 +251,32 @@ class Agent(nn.Module):
         )
         self.actor_logstd = nn.Parameter(torch.zeros(1, np.prod(envs.single_action_space.shape)))
 
-    def get_value(self, x, z):
-        x = torch.cat([x, z], dim=-1)
+    def get_value(self, x):
         return self.critic(x)
 
-    def get_action_and_value(self, x, z, action=None):
-        x_extended = torch.cat([x, z], dim=-1)
-        action_mean = self.actor_mean(x_extended)
+    def get_action_and_value(self, x, action=None):
+        action_mean = self.actor_mean(x)
         action_logstd = self.actor_logstd.expand_as(action_mean)
         action_std = torch.exp(action_logstd)
         probs = Normal(action_mean, action_std)
         if action is None:
             action = probs.sample()
-        return action, probs.log_prob(action).sum(1), probs.entropy().sum(1), self.critic(x_extended)
+        return action, probs.log_prob(action).sum(1), probs.entropy().sum(1), self.critic(x)
 
+
+def update_un(obs_un, next_obs_un, actions_un, rewards_un,  dones_un, times_un,
+              obs_reshaped, next_obs_reshaped, actions_reshaped, rewards_reshaped, dones_reshaped, times_reshaped,
+              args):
+    n_batch = int(obs_un.shape[0]*args.beta_ratio)
+    idx_un = np.random.randint(0, obs_un.shape[0], size = n_batch)
+    idx_rho = np.random.randint(0, obs_reshaped.shape[0], size = n_batch)
+    obs_un[idx_un] = obs_reshaped[idx_rho].copy()
+    next_obs_un[idx_un] = next_obs_reshaped[idx_rho].copy()
+    actions_un[idx_un] = actions_reshaped[idx_rho].copy()
+    rewards_un[idx_un] = rewards_reshaped[idx_rho].copy()
+    dones_un[idx_un] = dones_reshaped[idx_rho].copy()
+    times_un[idx_un] = times_reshaped[idx_rho].copy()
+    return obs_un, next_obs_un, actions_un, rewards_un, dones_un, times_un
 
 if __name__ == "__main__":
     args = tyro.cli(Args)
@@ -331,15 +353,19 @@ if __name__ == "__main__":
     # ALGO Logic: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
     actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
-    logprobs = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    values = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    zs = torch.arange(1,args.n_agent+1).repeat(args.num_steps, 1).to(device)
+    logprobs = torch.zeros((args.num_steps, args.num_envs) + (1,)).to(device)
+    rewards = torch.zeros((args.num_steps, args.num_envs) + (1,)).to(device)
+    dones = torch.zeros((args.num_steps, args.num_envs) + (1,)).to(device)
+    values = torch.zeros((args.num_steps, args.num_envs)+ (1,)).to(device)
+    times = torch.zeros((args.num_steps, args.num_envs)+ (1,)).to(device)
 
-    # Full Replay 
-    obs_full = None
-    z_full = None
+     # UN 
+    obs_un = None
+    next_obs_un = None
+    action_un = None
+    rewards_un = None
+    dones_un = None
+    times_un = None
     
     # TRY NOT TO MODIFY: start the game
     global_step = 0
@@ -352,44 +378,58 @@ if __name__ == "__main__":
     video_filenames = set()
     
     for update in range(1, num_updates + 1):
+        if args.episodic_return:
+            next_obs, infos = envs.reset(seed=args.seed)
+            next_obs = torch.Tensor(next_obs).to(device)
+            next_done = torch.zeros(args.num_envs).to(device)
+            num_updates = args.total_timesteps // args.batch_size
+            times[0] = torch.tensor(np.array([infos["l"]])).transpose(0,1).to(device)
+        
+        # PLAYING IN ENV
         for step in range(0, args.num_steps):
-            # coverage 
+            # coverage assessment 
             env_check.update_coverage(next_obs)
-            # step 
+            # ppo
             global_step += 1 * args.num_envs
             obs[step] = next_obs
-            dones[step] = next_done
+            dones[step] = next_done.unsqueeze(-1)
 
-            # if terminated, reset the env
             # ALGO LOGIC: action logic
             with torch.no_grad():
-                action, logprob, _, value = agent.get_action_and_value(next_obs, z)
-                values[step] = value.flatten()
+                action, logprob, _, value = agent.get_action_and_value(next_obs, action = None)
+                # values[step] = value.flatten()
+                values[step] = value
+
             actions[step] = action
-            logprobs[step] = logprob
+            logprobs[step] = logprob.unsqueeze(-1)
 
             # TRY NOT TO MODIFY: execute the game and log data.
-            next_obs, reward, terminated, truncated, infos = envs.step(action.cpu().numpy())
-            if obs_full is not None:
+            next_obs, reward, terminations, truncations, infos = envs.step(action.cpu().numpy())
+            if obs_un is not None:
                 with torch.no_grad():
                     # intrinsic reward
-                    idx_sample_s = np.random.randint(0, obs_full.shape[0], args.encoder_batch_size)
-                    sample_s = torch.Tensor(obs_full[idx_sample_s]).to(device)
+                    idx_sample_s = np.random.randint(0, obs_un.shape[0], args.encoder_batch_size)
+                    sample_s = torch.Tensor(obs_un[idx_sample_s]).to(device)
                     obs_reward = torch.Tensor(next_obs).to(device)
                     intrinsinc_reward = encoder.get_knn_sum(obs_reward, sample_s, args.knn).detach().cpu().unsqueeze(0).numpy()
                     reward = reward*args.coef_extrinsic + intrinsinc_reward*args.coef_intrinsic if args.keep_extrinsic_reward else intrinsinc_reward*args.coef_intrinsic
-            done = np.logical_or(terminated, truncated)
-            rewards[step] = torch.tensor(reward).to(device).view(-1)*args.ratio_reward
+            times[step] = torch.tensor(np.array([infos["l"]])).transpose(0,1).to(device)
+            done = np.logical_or(terminations, truncations)
+            rewards[step] = torch.tensor(reward).to(device).unsqueeze(-1)
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)
-            # Only print when at least 1 env is done
-            if "final_info" not in infos:
-                continue
+            if "final_info" in infos:
+                for info in infos["final_info"]:
+                    if info and "episode" in info:
+                        # print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
+                        writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
+                        writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+   
 
         ########################### ENCODER TRAINING ###############################
-        if obs_full is not None:
+        if obs_un is not None:
             for _ in range(args.encoder_epochs):
-                idx = torch.randint(0, obs_full.shape[0], (args.encoder_batch_size,))
-                b_obs = torch.Tensor(obs_full[idx]).to(device)
+                idx = torch.randint(0, obs_un.shape[0], (args.encoder_batch_size,))
+                b_obs = torch.Tensor(obs_un[idx]).to(device)
                 sk = encoder(b_obs)
                 sv = encoder.data_augmentation(sk)
                 optimizer_encoder.zero_grad()
@@ -397,32 +437,62 @@ if __name__ == "__main__":
                 loss.backward()
                 optimizer_encoder.step()
 
-        ########################### STORE UN ###############################
-        obs_full = np.concatenate((obs_full, obs.cpu().numpy().reshape(-1,obs.shape[-1])) , axis = 0) if obs_full is not None else obs.cpu().numpy().reshape(-1,obs.shape[-1])
-        z_full = np.concatenate((z_full, zs.cpu().numpy().reshape((-1,) + z.shape[-1:])) , axis = 0) if z_full is not None else zs.cpu().numpy().reshape((-1,) + z.shape[-1:])
+        ########################### UPDATE UN ###############################
+        # permute
+        obs_permute = obs.permute(1,0,2)
+        times_permute = times.permute(1,0,2)
+        actions_permute = actions.permute(1,0,2)
+        rewards_permute = rewards.permute(1,0,2)
+        dones_permute = dones.permute(1,0,2)
+        # reshape
+        obs_reshaped = obs.reshape(-1, obs_permute.shape[-1]).cpu().numpy()
+        actions_reshaped = actions_permute.reshape(-1, actions.shape[-1]).cpu().numpy()
+        rewards_reshaped = rewards_permute.reshape(-1).cpu().numpy()
+        dones_reshaped = dones_permute.reshape(-1).cpu().numpy()
+        times_reshaped = times_permute.reshape(-1).cpu().numpy()
+        # update un
+        idx_un = np.random.randint(0, obs_reshaped.shape[0]-1, int(args.beta_ratio*obs_reshaped.shape[0]))
+        if obs_un is None:
+                obs_un = obs_reshaped[idx_un]
+                next_obs_un = obs_reshaped[idx_un+1]
+                actions_un = actions_reshaped[idx_un]
+                rewards_un = rewards_reshaped[idx_un]
+                dones_un = dones_reshaped[idx_un]
+                times_un = times_reshaped[idx_un]
+
+        elif obs_un.shape[0] >= args.num_steps*args.num_envs*args.nb_max_un:
+            obs_un, next_obs_un, actions_un, rewards_un, dones_un, times_un = update_un(obs_un, next_obs_un, actions_un, rewards_un, dones_un, times_un,
+                                                    obs_reshaped[:-1], obs_reshaped[1:], actions_reshaped[:-1], rewards_reshaped[:-1], dones_reshaped[:-1], times_reshaped[:-1], 
+                                                    args)
+            
+        else:
+            obs_un = np.concatenate([obs_un, obs_reshaped[idx_un]])
+            next_obs_un = np.concatenate([next_obs_un, obs_reshaped[idx_un+1]]) 
+            actions_un = np.concatenate([actions_un, actions_reshaped[idx_un]])
+            rewards_un = np.concatenate([rewards_un, rewards_reshaped[idx_un]])
+            dones_un = np.concatenate([dones_un, dones_reshaped[idx_un]])
+            times_un = np.concatenate([times_un, times_reshaped[idx_un]])  
 
 
         ########################### PPO UPDATE ###############################
         # bootstrap value if not done
         with torch.no_grad():
-            next_value = agent.get_value(next_obs, z).reshape(1, -1)
+            next_value = agent.get_value(next_obs)
             advantages = torch.zeros_like(rewards).to(device)
             lastgaelam = 0
-            for t in reversed(range(args.num_steps)):
-                if t == args.num_steps - 1:
-                    nextnonterminal = 1.0 - next_done
+            for t in reversed(range(obs.shape[0])):
+                if t == obs.shape[0] - 1:
+                    nextnonterminal = 1.0 - next_done.unsqueeze(-1)
                     nextvalues = next_value
                 else:
                     nextnonterminal = 1.0 - dones[t + 1]
                     nextvalues = values[t + 1]
                 delta = rewards[t] + args.gamma * nextvalues * nextnonterminal - values[t]
-                # delta = rewards[t] + args.gamma * nextvalues * nextnonterminal 
                 advantages[t] = lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
             returns = advantages + values
 
         # flatten the batch
         b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
-        b_zs = zs.reshape((-1,) + z.shape[-1:])
         b_logprobs = logprobs.reshape(-1)
         b_actions = actions.reshape((-1,) + envs.single_action_space.shape)
         b_advantages = advantages.reshape(-1)
@@ -438,7 +508,7 @@ if __name__ == "__main__":
                 end = start + args.minibatch_size
                 mb_inds = b_inds[start:end]
 
-                _, newlogprob, entropy, newvalue = agent.get_action_and_value(b_obs[mb_inds], b_zs[mb_inds] ,b_actions[mb_inds])
+                _, newlogprob, entropy, newvalue = agent.get_action_and_value(b_obs[mb_inds], b_actions[mb_inds])
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()
 

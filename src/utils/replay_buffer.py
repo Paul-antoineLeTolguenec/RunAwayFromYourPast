@@ -3,6 +3,7 @@ import random
 import torch
 import numpy as np
 import socket, subprocess
+import os 
 
 class SampleBatch:
     def __init__(self, observations, actions, next_observations, rewards, dones, times):
@@ -105,7 +106,7 @@ class ReplayBuffer:
         )
     
 
-    def save(self, run_id, obs, actions, next_obs, rewards, dones, infos):
+    def save(self, run_id, obs, actions, next_obs, rewards, dones,  times):
         # check HOSTNAME
         if 'bubo' in socket.gethostname():
             path_data = 'dataset/'
@@ -114,7 +115,9 @@ class ReplayBuffer:
         elif 'olympe' in socket.gethostname():
             path_data = '/tmpdir/'+subprocess.run(['whoami'], stdout=subprocess.PIPE, text=True).stdout.strip()+'/dataset/'
         # save the dataset
-        np.savez(path_data+'dataset_'+str(run_id)+'.npz', obs=obs, actions=actions, next_obs=next_obs, rewards=rewards, dones=dones, infos=infos)
+        if not os.path.exists(path_data):
+            os.makedirs(path_data)
+        np.savez(path_data+'dataset_'+str(run_id)+'.npz', obs=obs, actions=actions, next_obs=next_obs, rewards=rewards, dones=dones,  times=times)
 
 
     def load(self, algo, env, seed) : 
@@ -127,4 +130,4 @@ class ReplayBuffer:
             path_data = '/tmpdir/'+subprocess.run(['whoami'], stdout=subprocess.PIPE, text=True).stdout.strip()+'/dataset/'
         # load the dataset
         data = np.load(path_data+'dataset_'+env+'__'+algo+'__'+str(seed)+'.npz')
-        return data['obs'], data['actions'], data['next_obs'], data['rewards'], data['dones'], data['infos']
+        return data['obs'], data['actions'], data['next_obs'], data['rewards'], data['dones'], data['times']

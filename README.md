@@ -1,6 +1,7 @@
 # contrastive_exploration
 
-
+TODO : 
+1/ wandb only with metric and matrix for each epoch + dataset + gif 
 
 # XP 
 3 XP : 
