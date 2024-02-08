@@ -1,3 +1,6 @@
 # folder 
 /fig
 /runs
+/__pycache__
+# files
+__init__.py
