@@ -272,7 +272,7 @@ if __name__ == "__main__":
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
                 # rewards produced by classifier
                 rewards = classifier(data.observations).detach()
-                next_q_value = rewards.flatten() + (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
+                next_q_value = rewards+ (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
 
             qf1_a_values = qf1(data.observations, data.actions).view(-1)
             qf2_a_values = qf2(data.observations, data.actions).view(-1)
