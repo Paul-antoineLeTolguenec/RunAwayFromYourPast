@@ -7,7 +7,7 @@ import matplotlib.animation as animation
 import copy
 
 class Maze(gym.Env):
-        def __init__(self, fig = False, name = None, target = [1,1]):
+        def __init__(self, fig = False, name = None, target = [1,0]):
             self.x=0
             self.y=0
             self.dx=0
@@ -19,7 +19,7 @@ class Maze(gym.Env):
             self.min_y=-1
             self.observation_space=Box(low=-1, high=1, shape=(2,), dtype=np.float32)
             self.action_space=Box(low=-1, high=1, shape=(2,), dtype=np.float32)
-            self.max_steps = 100
+            self.max_steps = 200
             self.walls = [(-1,-1,-1,1),(-1,-1,1,-1),(-1,1,1,1),(1,-1,1,1)]
             self.dangerous_point =[]
             self.x_init=0
@@ -30,6 +30,7 @@ class Maze(gym.Env):
             self.target = target
             self.episode_length = 0 
             self.episode_reward = 0
+            self.d = 0
             if name!=None:
                 self.x_init = Mazes[name]['x_init']
                 self.y_init = Mazes[name]['y_init']
@@ -49,10 +50,13 @@ class Maze(gym.Env):
                 plt.xlabel('X')
                 plt.ylabel('Y')
                 plt.grid(True)
-                plt.legend()
+                # plt.legend()
             
         def reward(self):
-            # return -np.sqrt((self.x-self.target[0])**2+(self.y-self.target[1])**2)
+            d_next = np.sqrt((self.x-self.target[0])**2+(self.y-self.target[1])**2)
+            r = self.d-d_next
+            self.d = d_next.copy()
+            # return r*10.0
             return 0.0
 
         def reset(self):
@@ -62,6 +66,7 @@ class Maze(gym.Env):
             self.dy=self.dy_init
             self.episode_length = 0
             self.episode_reward = 0
+            self.d = np.sqrt((self.x-self.target[0])**2+(self.y-self.target[1])**2).copy()
             return np.array([self.x,self.y], dtype=np.float32),{'pos' :copy.deepcopy(np.array([self.x,self.y], dtype=np.float32)), 'target' : self.target}
         
         def step(self,v):

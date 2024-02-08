@@ -15,6 +15,12 @@ from src.utils.replay_buffer import ReplayBuffer
 from src.ce.classifier import Classifier
 from envs.continuous_maze import Maze
 from torch.utils.tensorboard import SummaryWriter
+# animation 
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+import numpy as np
+import imageio
+
 
 
 def parse_args():
@@ -39,7 +45,8 @@ def parse_args():
     parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="whether to capture videos of the agent performances (check out `videos` folder)")
     parser.add_argument("--do_fig", type=bool, default=True)
-    parser.add_argument("--fig_frequency", type=int, default=1e3)
+    parser.add_argument("--fig_frequency", type=int, default=50)
+    parser.add_argument("--make-gif", type=bool, default=True)
 
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="Maze-Easy-v0",
@@ -56,7 +63,7 @@ def parse_args():
         help="the batch size of sample from the reply memory")
     parser.add_argument("--learning-starts", type=int, default=2e3,
         help="timestep to start learning")
-    parser.add_argument("--policy-lr", type=float, default=3e-4,
+    parser.add_argument("--policy-lr", type=float, default=5e-4,
         help="the learning rate of the policy network optimizer")
     parser.add_argument("--q-lr", type=float, default=1e-3,
         help="the learning rate of the Q network network optimizer")
@@ -66,12 +73,12 @@ def parse_args():
         help="the frequency of updates for the target nerworks")
     parser.add_argument("--noise-clip", type=float, default=0.5,
         help="noise clip parameter of the Target Policy Smoothing Regularization")
-    parser.add_argument("--alpha", type=float, default=0.2,
+    parser.add_argument("--alpha", type=float, default=0.02,
             help="Entropy regularization coefficient.")
-    parser.add_argument("--autotune", type=lambda x:bool(strtobool(x)), default=True, nargs="?", const=True,
+    parser.add_argument("--autotune", type=lambda x:bool(strtobool(x)), default=False, nargs="?", const=True,
         help="automatic tuning of the entropy coefficient")
     parser.add_argument("--classifier-lr", type=float, default=1e-3)
-    parser.add_argument("--classifier-treshold", type=int, default=1e3)
+    parser.add_argument("--classifier-treshold", type=int, default=3e2)
     args = parser.parse_args()
     # fmt: on
     return args
@@ -182,6 +189,10 @@ if __name__ == "__main__":
         env_plot = Maze(name = 'Easy', fig = True)
         # iter_plot 
         iter_plot = 0
+    if args.make_gif:
+        if not os.path.exists('gif'):
+            os.makedirs('gif')
+        writer_gif = imageio.get_writer('gif/v1.mp4', fps=10)
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
@@ -271,9 +282,9 @@ if __name__ == "__main__":
                 qf2_next_target = qf2_target(data.next_observations, next_state_actions)
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
                 # rewards produced by classifier
-                rewards = classifier(data.observations).detach()
+                rewards = classifier(data.observations).detach().flatten()*100.0
+                # rewards = data.rewards.flatten()    
                 next_q_value = rewards+ (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
-
             qf1_a_values = qf1(data.observations, data.actions).view(-1)
             qf2_a_values = qf2(data.observations, data.actions).view(-1)
             qf1_loss = F.mse_loss(qf1_a_values, next_q_value)
@@ -346,7 +357,13 @@ if __name__ == "__main__":
             env_plot.ax.scatter(rb.observations[:rb.pos,0], rb.observations[:rb.pos,1], s=1, c = m_n, cmap = 'viridis')
 
             # save fig env_plot
-            env_plot.figure.savefig(f'fig/fig_{global_step}.png')
+            env_plot.figure.canvas.draw()
+            image = np.frombuffer(env_plot.figure.canvas.tostring_rgb(), dtype='uint8')
+            image = image.reshape(env_plot.figure.canvas.get_width_height()[::-1] + (3,))
+            writer_gif.append_data(image)
+
+            # save fig env_plot
+            # env_plot.figure.savefig(f'fig/fig_{global_step}.png')
             # iter_plot
             iter_plot += 1
 
