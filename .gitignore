@@ -2,5 +2,6 @@
 /fig
 /runs
 /__pycache__
+/gif
 # files
 __init__.py
