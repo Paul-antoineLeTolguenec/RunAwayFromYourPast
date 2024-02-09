@@ -11,23 +11,24 @@ class SampleBatch:
         self.dones = dones
 
 
-class ReplayBuffer:
-    def __init__(self, capacity, observation_space, action_space, device, n_env,  handle_timeout_termination=True,):
+class ReplayBuffer_n:
+    def __init__(self, capacity, observation_space, action_space, device, n_agent, probabilities, handle_timeout_termination=True,):
         self.capacity = capacity
-        self.n_env  = n_env
+        self.n_env  = n_agent
+        self.probabilities = probabilities
         self.pos = 0
         self.full = False
         self.device = device
         observation_shape = observation_space.shape
         action_shape = action_space.shape
         # Initialisation des buffers comme arrays NumPy avec la forme appropriée
-        self.observations = np.zeros((capacity, *observation_shape), dtype=np.float32)
-        self.actions = np.zeros((capacity, *action_shape), dtype=np.float32)
-        self.rewards = np.zeros((capacity, 1), dtype=np.float32)
-        self.next_observations = np.zeros((capacity, *observation_shape), dtype=np.float32)
-        self.dones = np.zeros((capacity, 1), dtype=np.bool_)
+        self.observations = np.zeros((n_agent, capacity, *observation_shape), dtype=np.float32)
+        self.actions = np.zeros((n_agent, capacity, *action_shape), dtype=np.float32)
+        self.rewards = np.zeros((n_agent, capacity, 1), dtype=np.float32)
+        self.next_observations = np.zeros((n_agent, capacity, *observation_shape), dtype=np.float32)
+        self.dones = np.zeros((n_agent, capacity, 1), dtype=np.bool_)
 
-    def add(self, obs, next_obs, actions, rewards, dones, infos):
+    def add(self, obs, next_obs, actions, rewards, dones, infos, z_idx):
         np.copyto(self.observations[self.pos:self.pos + self.n_env], obs)
         np.copyto(self.actions[self.pos:self.pos + self.n_env], actions)
         np.copyto(self.rewards[self.pos:self.pos + self.n_env], np.expand_dims(rewards, axis=1))
