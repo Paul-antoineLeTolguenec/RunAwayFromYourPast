@@ -30,7 +30,7 @@ def parse_args():
     parser.add_argument("--env-type", type=str, default="Maze")
     parser.add_argument("--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"),
         help="the name of this experiment")
-    parser.add_argument("--seed", type=int, default=np.random.randint(0,100),
+    parser.add_argument("--seed", type=int, default=0,
         help="seed of the experiment")
     parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, `torch.backends.cudnn.deterministic=False`")
@@ -38,20 +38,20 @@ def parse_args():
         help="if toggled, cuda will be enabled by default")
     parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="if toggled, this experiment will be tracked with Weights and Biases")
-    parser.add_argument("--wandb-project-name", type=str, default="cleanRL",
+    parser.add_argument("--wandb-project-name", type=str, default="contrastive_exploration",
         help="the wandb's project name")
     parser.add_argument("--wandb-entity", type=str, default=None,
         help="the entity (team) of wandb's project")
     parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="whether to capture videos of the agent performances (check out `videos` folder)")
     parser.add_argument("--do_fig", type=bool, default=True)
-    parser.add_argument("--fig_frequency", type=int, default=50)
+    parser.add_argument("--fig_frequency", type=int, default=1000)
     parser.add_argument("--make-gif", type=bool, default=True)
 
     # Algorithm specific arguments
-    parser.add_argument("--env-id", type=str, default="Maze-Easy-v0",
+    parser.add_argument("--env-id", type=str, default="Ur",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=1000000,
+    parser.add_argument("--total-timesteps", type=int, default=100000,
         help="total timesteps of the experiments")
     parser.add_argument("--buffer-size", type=int, default=int(1e6),
         help="the replay memory buffer size")
@@ -73,12 +73,12 @@ def parse_args():
         help="the frequency of updates for the target nerworks")
     parser.add_argument("--noise-clip", type=float, default=0.5,
         help="noise clip parameter of the Target Policy Smoothing Regularization")
-    parser.add_argument("--alpha", type=float, default=0.02,
+    parser.add_argument("--alpha", type=float, default=0.2,
             help="Entropy regularization coefficient.")
     parser.add_argument("--autotune", type=lambda x:bool(strtobool(x)), default=False, nargs="?", const=True,
         help="automatic tuning of the entropy coefficient")
     parser.add_argument("--classifier-lr", type=float, default=1e-3)
-    parser.add_argument("--classifier-treshold", type=int, default=3e2)
+    parser.add_argument("--classifier-treshold", type=int, default=2e2)
     args = parser.parse_args()
     # fmt: on
     return args
@@ -86,7 +86,7 @@ def parse_args():
 
 def make_env(env_id, seed, idx, capture_video, run_name, env_type = 'gym'):
     def thunk():
-        env = gym.make(env_id) if env_type == 'gym' else Maze(name = 'Easy')
+        env = gym.make(env_id) if env_type == 'gym' else Maze(name = env_id)
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
             if idx == 0:
@@ -186,13 +186,13 @@ if __name__ == "__main__":
         if not os.path.exists('fig'):
             os.makedirs('fig')
         # env to plot 
-        env_plot = Maze(name = 'Easy', fig = True)
+        env_plot = Maze(name = args.env_id, fig = True)
         # iter_plot 
         iter_plot = 0
     if args.make_gif:
         if not os.path.exists('gif'):
             os.makedirs('gif')
-        writer_gif = imageio.get_writer('gif/v1.mp4', fps=10)
+        writer_gif = imageio.get_writer('gif/v1.mp4', fps=2)
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
@@ -201,6 +201,7 @@ if __name__ == "__main__":
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
+    print(f"using device {device}")
 
     # env setup
     envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name, args.env_type) for _ in range(args.n_env)])
@@ -238,7 +239,7 @@ if __name__ == "__main__":
         handle_timeout_termination=True,
     )
     start_time = time.time()
-
+    batch_r_mean = 0
     # TRY NOT TO MODIFY: start the game
     obs,infos = envs.reset()
     for global_step in range(args.total_timesteps):
@@ -275,6 +276,17 @@ if __name__ == "__main__":
                 obs[idx],infos[idx] = envs.envs[idx].reset()
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
+            # classifier training
+            # batch_p, batch_q = rb.sample_threshold(args.classifier_treshold*args.n_env, args.batch_size)
+            # batch_p = batch_p.observations
+            # batch_q = batch_q.observations
+            # classifier_loss = classifier.ce_loss(batch_q, batch_p)
+            batch, labels = rb.sample_w_labels(args.classifier_treshold*args.n_env, args.batch_size)
+            classifier_loss = classifier.ce_loss_w_labels(batch.observations, labels)
+            classifier_optimizer.zero_grad()
+            classifier_loss.backward()
+            classifier_optimizer.step()
+
             data = rb.sample(args.batch_size)
             with torch.no_grad():
                 next_state_actions, next_state_log_pi, _ = actor.get_action(data.next_observations)
@@ -282,7 +294,10 @@ if __name__ == "__main__":
                 qf2_next_target = qf2_target(data.next_observations, next_state_actions)
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
                 # rewards produced by classifier
-                rewards = classifier(data.observations).detach().flatten()*100.0
+                rewards = classifier(data.observations).detach().flatten() 
+                # normalize rewards
+                rewards = (rewards - torch.mean(rewards))/(torch.std(rewards) + 1e-6)
+                # rewards = (rewards - torch.min(rewards))/(torch.max(rewards) - torch.min(rewards) + 1e-6)
                 # rewards = data.rewards.flatten()    
                 next_q_value = rewards+ (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
             qf1_a_values = qf1(data.observations, data.actions).view(-1)
@@ -294,14 +309,6 @@ if __name__ == "__main__":
             q_optimizer.zero_grad()
             qf_loss.backward()
             q_optimizer.step()
-
-            # classifier training
-            batch_p, batch_q = rb.sample_threshold(rb.pos-args.classifier_treshold, args.batch_size)
-            batch_p = batch_p.observations
-            batch_q = batch_q.observations
-            classifier_loss = classifier.ce_loss(batch_q, batch_p)
-            classifier_optimizer.zero_grad()
-            classifier_loss.backward()
 
             if global_step % args.policy_frequency == 0:  # TD 3 Delayed update support
                 for _ in range(
@@ -342,7 +349,8 @@ if __name__ == "__main__":
                 writer.add_scalar("losses/qf_loss", qf_loss.item() / 2.0, global_step)
                 writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
                 writer.add_scalar("losses/alpha", alpha, global_step)
-                print("SPS:", int(global_step / (time.time() - start_time)))
+                # print("SPS:", int(global_step / (time.time() - start_time)))
+                print(f"Global step: {global_step}")
                 writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
                 if args.autotune:
                     writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
@@ -352,9 +360,15 @@ if __name__ == "__main__":
             # c_p = int(args.fig_frequency * args.n_env)
             # env_plot.ax.plot(rb.observations[iter_plot*c_p:(iter_plot+1)*c_p,0], rb.observations[iter_plot*c_p:(iter_plot+1)*c_p,1], 'bo', markersize=1)
             # Plotting measure 
-            m = classifier(torch.Tensor(rb.observations[:rb.pos]).to(device)).detach().cpu().numpy()
-            m_n = (m - np.min(m))/(np.max(m) - np.min(m))
+            m_n = classifier(torch.Tensor(rb.observations[:rb.pos]).to(device)).detach().cpu().numpy()
+            # m_n = (m - np.min(m))/(np.max(m) - np.min(m))
             env_plot.ax.scatter(rb.observations[:rb.pos,0], rb.observations[:rb.pos,1], s=1, c = m_n, cmap = 'viridis')
+            # color bar
+            veridis_c = plt.cm.ScalarMappable(cmap='viridis')
+            veridis_c.set_array(m_n)
+            # cbar = env_plot.figure.colorbar(veridis_c) if iter_plot == 0 else cbar
+            # if iter_plot == 0: cbar.set_clim(vmin=m_n.min(), vmax=m_n.max())
+            print(f"min : {m_n.min()} max : {m_n.max()}")
 
             # save fig env_plot
             env_plot.figure.canvas.draw()
