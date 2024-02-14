@@ -1,6 +1,7 @@
 # folder 
 /fig
 /runs
+/wandb
 /__pycache__
 /gif
 # files

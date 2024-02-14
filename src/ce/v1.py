@@ -53,7 +53,7 @@ def parse_args():
         help="the id of the environment")
     parser.add_argument("--total-timesteps", type=int, default=100000,
         help="total timesteps of the experiments")
-    parser.add_argument("--buffer-size", type=int, default=int(1e6),
+    parser.add_argument("--buffer-size", type=int, default=int(1e4),
         help="the replay memory buffer size")
     parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma")
@@ -61,13 +61,15 @@ def parse_args():
         help="target smoothing coefficient (default: 0.005)")
     parser.add_argument("--batch-size", type=int, default=256,
         help="the batch size of sample from the reply memory")
-    parser.add_argument("--learning-starts", type=int, default=2e3,
+    parser.add_argument("--learning-starts", type=int, default=1e3,
         help="timestep to start learning")
     parser.add_argument("--policy-lr", type=float, default=5e-4,
         help="the learning rate of the policy network optimizer")
     parser.add_argument("--q-lr", type=float, default=1e-3,
         help="the learning rate of the Q network network optimizer")
-    parser.add_argument("--policy-frequency", type=int, default=2,
+    parser.add_argument("--q-frequency", type=int, default=2,
+        help="the frequency of training Q network")
+    parser.add_argument("--policy-frequency", type=int, default=4,
         help="the frequency of training policy (delayed)")
     parser.add_argument("--target-network-frequency", type=int, default=1, # Denis Yarats' implementation delays this by 2.
         help="the frequency of updates for the target nerworks")
@@ -78,7 +80,7 @@ def parse_args():
     parser.add_argument("--autotune", type=lambda x:bool(strtobool(x)), default=False, nargs="?", const=True,
         help="automatic tuning of the entropy coefficient")
     parser.add_argument("--classifier-lr", type=float, default=1e-3)
-    parser.add_argument("--classifier-treshold", type=int, default=2e2)
+    parser.add_argument("--classifier-treshold", type=int, default=1e3)
     args = parser.parse_args()
     # fmt: on
     return args
@@ -236,6 +238,7 @@ if __name__ == "__main__":
         envs.single_action_space,
         device,
         args.n_env,
+        window_t=args.classifier_treshold,
         handle_timeout_termination=True,
     )
     start_time = time.time()
@@ -286,29 +289,31 @@ if __name__ == "__main__":
             classifier_optimizer.zero_grad()
             classifier_loss.backward()
             classifier_optimizer.step()
+            # q network training
+            if global_step % args.q_frequency == 0:
+                for _ in range(args.q_frequency):
+                    data = rb.sample(args.batch_size)
+                    with torch.no_grad():
+                        next_state_actions, next_state_log_pi, _ = actor.get_action(data.next_observations)
+                        qf1_next_target = qf1_target(data.next_observations, next_state_actions)
+                        qf2_next_target = qf2_target(data.next_observations, next_state_actions)
+                        min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
+                        # rewards produced by classifier
+                        rewards = classifier(data.observations).detach().flatten() 
+                        # normalize rewards
+                        rewards = (rewards - torch.mean(rewards))/(torch.std(rewards) + 1e-6)
+                        # rewards = (rewards - torch.min(rewards))/(torch.max(rewards) - torch.min(rewards) + 1e-6)
+                        # rewards = data.rewards.flatten()    
+                        next_q_value = rewards+ (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
+                    qf1_a_values = qf1(data.observations, data.actions).view(-1)
+                    qf2_a_values = qf2(data.observations, data.actions).view(-1)
+                    qf1_loss = F.mse_loss(qf1_a_values, next_q_value)
+                    qf2_loss = F.mse_loss(qf2_a_values, next_q_value)
+                    qf_loss = qf1_loss + qf2_loss
 
-            data = rb.sample(args.batch_size)
-            with torch.no_grad():
-                next_state_actions, next_state_log_pi, _ = actor.get_action(data.next_observations)
-                qf1_next_target = qf1_target(data.next_observations, next_state_actions)
-                qf2_next_target = qf2_target(data.next_observations, next_state_actions)
-                min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
-                # rewards produced by classifier
-                rewards = classifier(data.observations).detach().flatten() 
-                # normalize rewards
-                rewards = (rewards - torch.mean(rewards))/(torch.std(rewards) + 1e-6)
-                # rewards = (rewards - torch.min(rewards))/(torch.max(rewards) - torch.min(rewards) + 1e-6)
-                # rewards = data.rewards.flatten()    
-                next_q_value = rewards+ (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
-            qf1_a_values = qf1(data.observations, data.actions).view(-1)
-            qf2_a_values = qf2(data.observations, data.actions).view(-1)
-            qf1_loss = F.mse_loss(qf1_a_values, next_q_value)
-            qf2_loss = F.mse_loss(qf2_a_values, next_q_value)
-            qf_loss = qf1_loss + qf2_loss
-
-            q_optimizer.zero_grad()
-            qf_loss.backward()
-            q_optimizer.step()
+                    q_optimizer.zero_grad()
+                    qf_loss.backward()
+                    q_optimizer.step()
 
             if global_step % args.policy_frequency == 0:  # TD 3 Delayed update support
                 for _ in range(
@@ -349,6 +354,8 @@ if __name__ == "__main__":
                 writer.add_scalar("losses/qf_loss", qf_loss.item() / 2.0, global_step)
                 writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
                 writer.add_scalar("losses/alpha", alpha, global_step)
+                writer.add_scalar("losses/rewards", rewards.mean().item(), global_step)
+                writer.add_scalar("losses/classifier_loss", classifier_loss.item(), global_step)
                 # print("SPS:", int(global_step / (time.time() - start_time)))
                 print(f"Global step: {global_step}")
                 writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)

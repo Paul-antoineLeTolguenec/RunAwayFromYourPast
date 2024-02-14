@@ -11,8 +11,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 # from stable_baselines3.common.buffers import ReplayBuffer
-from src.utils.replay_buffer import ReplayBuffer
-from src.ce.classifier import Classifier
+from src.utils.replay_buffer_n import ReplayBuffer_n
+from src.ce.vector_encoding import VE
+from src.ce.classifier import Classifier_n as Classifier
 from envs.continuous_maze import Maze
 from torch.utils.tensorboard import SummaryWriter
 # animation 
@@ -35,7 +36,7 @@ def parse_args():
         help="if toggled, `torch.backends.cudnn.deterministic=False`")
     parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, cuda will be enabled by default")
-    parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+    parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, this experiment will be tracked with Weights and Biases")
     parser.add_argument("--wandb-project-name", type=str, default="contrastive_exploration",
         help="the wandb's project name")
@@ -58,9 +59,9 @@ def parse_args():
         help="the discount factor gamma")
     parser.add_argument("--tau", type=float, default=0.005,
         help="target smoothing coefficient (default: 0.005)")
-    parser.add_argument("--batch-size", type=int, default=256,
+    parser.add_argument("--batch-size", type=int, default=512,
         help="the batch size of sample from the reply memory")
-    parser.add_argument("--learning-starts", type=int, default=2e3,
+    parser.add_argument("--learning-starts", type=int, default=1e3,
         help="timestep to start learning")
     parser.add_argument("--policy-lr", type=float, default=5e-4,
         help="the learning rate of the policy network optimizer")
@@ -77,7 +78,8 @@ def parse_args():
     parser.add_argument("--autotune", type=lambda x:bool(strtobool(x)), default=False, nargs="?", const=True,
         help="automatic tuning of the entropy coefficient")
     parser.add_argument("--classifier-lr", type=float, default=1e-3)
-    parser.add_argument("--classifier-treshold", type=int, default=6e2)
+    parser.add_argument("--classifier-treshold", type=int, default=1e3)
+    parser.add_argument("--lambda-im", type=float, default=1.0)
     parser.add_argument("--n-agent", type=int, default=5)
     args = parser.parse_args()
     # fmt: on
@@ -101,14 +103,14 @@ def make_env(env_id, seed, idx, capture_video, run_name, env_type = 'gym'):
 
 # ALGO LOGIC: initialize agent here:
 class SoftQNetwork(nn.Module):
-    def __init__(self, env):
+    def __init__(self, env, n_agent):
         super().__init__()
-        self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod() + np.prod(env.single_action_space.shape), 256)
+        self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod() + np.prod(env.single_action_space.shape) + 1, 256)
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, 1)
 
-    def forward(self, x, a):
-        x = torch.cat([x, a], 1)
+    def forward(self, x, a, z):
+        x = torch.cat([x, a, z], 1)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
@@ -120,9 +122,9 @@ LOG_STD_MIN = -5
 
 
 class Actor(nn.Module):
-    def __init__(self, env):
+    def __init__(self, env, n_agent):
         super().__init__()
-        self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod(), 256)
+        self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod() + 1, 256)
         self.fc2 = nn.Linear(256, 256)
         self.fc_mean = nn.Linear(256, np.prod(env.single_action_space.shape))
         self.fc_logstd = nn.Linear(256, np.prod(env.single_action_space.shape))
@@ -134,7 +136,8 @@ class Actor(nn.Module):
             "action_bias", torch.tensor((env.envs[0].action_space.high + env.envs[0].action_space.low) / 2.0, dtype=torch.float32)
         )
 
-    def forward(self, x):
+    def forward(self, x, z):
+        x = torch.cat([x, z], 1)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         mean = self.fc_mean(x)
@@ -144,8 +147,8 @@ class Actor(nn.Module):
 
         return mean, log_std
 
-    def get_action(self, x):
-        mean, log_std = self(x)
+    def get_action(self, x, z):
+        mean, log_std = self(x,z)
         std = log_std.exp()
         normal = torch.distributions.Normal(mean, std)
         x_t = normal.rsample()  # for reparameterization trick (mean + std * N(0,1))
@@ -209,17 +212,21 @@ if __name__ == "__main__":
 
     max_action = float(envs.single_action_space.high[0])
 
-    actor = Actor(envs).to(device)
-    qf1 = SoftQNetwork(envs).to(device)
-    qf2 = SoftQNetwork(envs).to(device)
-    qf1_target = SoftQNetwork(envs).to(device)
-    qf2_target = SoftQNetwork(envs).to(device)
+    actor = Actor(envs,args.n_agent).to(device)
+    qf1 = SoftQNetwork(envs,args.n_agent).to(device)
+    qf2 = SoftQNetwork(envs,args.n_agent).to(device)
+    qf1_target = SoftQNetwork(envs,args.n_agent).to(device)
+    qf2_target = SoftQNetwork(envs,args.n_agent).to(device)
     qf1_target.load_state_dict(qf1.state_dict())
     qf2_target.load_state_dict(qf2.state_dict())
-    classifier = Classifier(envs.single_observation_space,device)
+    classifier = Classifier(envs.single_observation_space,device, args.n_agent).to(device)
     q_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()), lr=args.q_lr)
     actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.policy_lr)
     classifier_optimizer = optim.Adam(list(classifier.parameters()), lr=args.classifier_lr)
+    # VE 
+    ve = VE(args.n_agent, device, torch.ones(args.n_agent)/args.n_agent)
+    # generate n_agent different colors for matplotlib
+    colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
     # Automatic entropy tuning
     if args.autotune:
         target_entropy = -torch.prod(torch.Tensor(envs.single_action_space.shape).to(device)).item()
@@ -230,25 +237,32 @@ if __name__ == "__main__":
         alpha = args.alpha
 
     envs.single_observation_space.dtype = np.float32
-    rb = ReplayBuffer(
+    rb = ReplayBuffer_n(
         args.buffer_size,
         envs.single_observation_space,
         envs.single_action_space,
         device,
         args.n_agent,
+        torch.ones(args.n_agent)/args.n_agent,
+        args.classifier_treshold,
         handle_timeout_termination=True,
     )
     start_time = time.time()
     batch_r_mean = 0
+    iter_plot = rb.pos.copy()
     # TRY NOT TO MODIFY: start the game
     obs,infos = envs.reset()
+    # sample z 
+    z_idx = torch.arange(1,args.n_agent+1)
+    add_pos, increment_i = rb.incr_add_pos(z_idx)
     for global_step in range(args.total_timesteps):
         # ALGO LOGIC: put action logic here
         if global_step < args.learning_starts:
             actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
         else:
-            actions, _, _ = actor.get_action(torch.Tensor(obs).to(device))
-            actions = actions.detach().cpu().numpy()
+            with torch.no_grad():
+                actions, _, _ = actor.get_action(torch.Tensor(obs).to(device), z_idx.unsqueeze(1).to(device))
+                actions = actions.detach().cpu().numpy()
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, dones, truncated, infos = envs.step(actions)
@@ -267,41 +281,73 @@ if __name__ == "__main__":
         # for idx, d in enumerate(dones):
         #     if d:
         #         real_next_obs[idx] = infos[idx]["terminal_observation"]
-        rb.add(obs, real_next_obs, actions, rewards, dones, infos)
+        rb.add(obs, real_next_obs, actions, rewards, dones, infos, z_idx, increment_i, add_pos)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
-        for idx, done in enumerate(dones):
-            if done:
-                obs[idx],infos[idx] = envs.envs[idx].reset()
+        if True in dones:
+            for idx, done in enumerate(dones):
+                if done:
+                    obs[idx],infos[idx] = envs.envs[idx].reset()
+            #         z_idx[idx] = ve.sample(1)
+            # add_pos, increment_i = rb.incr_add_pos(z_idx[idx])
         # ALGO LOGIC: training.
-        if global_step > args.learning_starts:
+        # training if each element of rb.pos is greater than args.learning_starts
+        if np.all(rb.pos > args.learning_starts):
             # classifier training
-            batch_p, batch_q = rb.sample_threshold(args.classifier_treshold, args.batch_size)
-            batch_p = batch_p.observations
-            batch_q = batch_q.observations
-            classifier_loss = classifier.ce_loss(batch_q, batch_p)
+            batch_p, batch_q = rb.sample_threshold(args.classifier_treshold, args.batch_size, ve)
+            # print('batch_q_obs : ', batch_q.observations[:5])
+            # print('batch_p_z : ', batch_p.z[:5])
+            # print('batch_q_obs : ', batch_q.observations[:5])
+            # print('batch_q_z : ', batch_q.z[:5])
+            classifier_loss, loss_discriminator = classifier.loss(batch_q.observations, batch_q.z, batch_p.observations, batch_p.z)
             # batch, labels = rb.sample_w_labels(args.classifier_treshold*args.n_agent, args.batch_size)
             # classifier_loss = classifier.ce_loss_w_labels(batch.observations, labels)
             classifier_optimizer.zero_grad()
             classifier_loss.backward()
             classifier_optimizer.step()
 
-            data = rb.sample(args.batch_size)
+            data = rb.sample(args.batch_size, ve)
             with torch.no_grad():
-                next_state_actions, next_state_log_pi, _ = actor.get_action(data.next_observations)
-                qf1_next_target = qf1_target(data.next_observations, next_state_actions)
-                qf2_next_target = qf2_target(data.next_observations, next_state_actions)
+                # log(p(z|s)) argmax_z p(z|s)
+                full_z = torch.arange(1,args.n_agent+1).unsqueeze(1).to(device).repeat(1,args.batch_size)
+                p_full_z = torch.cat([classifier(data.observations, full_z[i].unsqueeze(1)) for i in range(args.n_agent)],1).detach()
+                # normalize min-max
+                # p_full_z = (p_full_z - torch.min(p_full_z,1).values.unsqueeze(1))/(torch.max(p_full_z,1).values.unsqueeze(1) - torch.min(p_full_z,1).values.unsqueeze(1))
+                # normalize mean std
+                p_full_z = (p_full_z - torch.mean(p_full_z,1).unsqueeze(1))/(torch.std(p_full_z,1).unsqueeze(1) + 1e-6)
+                # torch.exp
+                p_full_z = torch.exp(p_full_z)
+                # print('p_full : ',p_full_z[:5])
+                # estimated_z = torch.argmax(p_full_z,1).unsqueeze(1)+1
+                # print('estimated_z : ', estimated_z[:10])
+                true_z = data.z
+                # true_z = torch.argmax(p_full_z,1).unsqueeze(1)+1
+                # true_z = torch.argmax(classifier.forward_z(data.observations),1).unsqueeze(1)+1
+                # print('true_z : ', true_z[:10])
+                # print('true_z-estimated_z : ', (true_z-estimated_z)[:10])
+            with torch.no_grad():
+                next_state_actions, next_state_log_pi, _ = actor.get_action(data.next_observations, true_z)
+                qf1_next_target = qf1_target(data.next_observations, next_state_actions, true_z)
+                qf2_next_target = qf2_target(data.next_observations, next_state_actions, true_z)
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
                 # rewards produced by classifier
-                rewards = classifier(data.observations).detach().flatten() 
+                # log(rho_{n+1}(s|z)/un(s))
+                log_h = classifier(data.observations, true_z).flatten() 
+                # log_h = (log_h - torch.mean(log_h))/(torch.std(log_h) + 1e-6)
+                # im 
+                log_im = torch.sum(p_full_z,1)*torch.log( args.n_agent*torch.gather(p_full_z, 1, true_z.type(torch.int64)-1).squeeze(-1) / torch.sum(p_full_z,1))
+                # log_im = (log_im - torch.mean(log_im))/(torch.std(log_im) + 1e-6)
+                # classifier_z 
+                # log_p_z = torch.log(torch.gather(classifier.softmax(classifier.forward_z(data.observations)), 1, true_z.type(torch.int64)-1)).flatten()
+                # print('log_p_z_shape : ', log_p_z.shape)
+                # rewards
+                rewards =log_h + args.lambda_im*log_im
                 # normalize rewards
-                # rewards = (rewards - torch.mean(rewards))/(torch.std(rewards) + 1e-6)
-                # rewards = (rewards - torch.min(rewards))/(torch.max(rewards) - torch.min(rewards) + 1e-6)
-                # rewards = data.rewards.flatten()    
+                rewards = (rewards - torch.mean(rewards))/(torch.std(rewards) + 1e-6)
                 next_q_value = rewards+ (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
-            qf1_a_values = qf1(data.observations, data.actions).view(-1)
-            qf2_a_values = qf2(data.observations, data.actions).view(-1)
+            qf1_a_values = qf1(data.observations, data.actions, true_z).view(-1)
+            qf2_a_values = qf2(data.observations, data.actions, true_z).view(-1)
             qf1_loss = F.mse_loss(qf1_a_values, next_q_value)
             qf2_loss = F.mse_loss(qf2_a_values, next_q_value)
             qf_loss = qf1_loss + qf2_loss
@@ -314,9 +360,9 @@ if __name__ == "__main__":
                 for _ in range(
                     args.policy_frequency
                 ):  # compensate for the delay by doing 'actor_update_interval' instead of 1
-                    pi, log_pi, _ = actor.get_action(data.observations)
-                    qf1_pi = qf1(data.observations, pi)
-                    qf2_pi = qf2(data.observations, pi)
+                    pi, log_pi, _ = actor.get_action(data.observations, true_z)
+                    qf1_pi = qf1(data.observations, pi, true_z)
+                    qf2_pi = qf2(data.observations, pi, true_z)
                     min_qf_pi = torch.min(qf1_pi, qf2_pi).view(-1)
                     actor_loss = ((alpha * log_pi) - min_qf_pi).mean()
 
@@ -326,7 +372,7 @@ if __name__ == "__main__":
 
                     if args.autotune:
                         with torch.no_grad():
-                            _, log_pi, _ = actor.get_action(data.observations)
+                            _, log_pi, _ = actor.get_action(data.observations, data.z)
                         alpha_loss = (-log_alpha * (log_pi + target_entropy)).mean()
 
                         a_optimizer.zero_grad()
@@ -349,6 +395,12 @@ if __name__ == "__main__":
                 writer.add_scalar("losses/qf_loss", qf_loss.item() / 2.0, global_step)
                 writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
                 writer.add_scalar("losses/alpha", alpha, global_step)
+                writer.add_scalar("losses/rewards", rewards.mean().item(), global_step)
+                writer.add_scalar("losses/classifier_loss", classifier_loss.item(), global_step)
+                writer.add_scalar("losses/loss_discriminator", loss_discriminator, global_step)
+                # each mean p_z 
+                for i in range(args.n_agent):
+                    writer.add_scalar(f"p_z/mean_p_z_{i}", p_full_z[:,i].mean().item(), global_step)
                 # print("SPS:", int(global_step / (time.time() - start_time)))
                 print(f"Global step: {global_step}")
                 writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
@@ -356,24 +408,20 @@ if __name__ == "__main__":
                     writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
 
         if global_step % args.fig_frequency == 0 and args.do_fig and global_step > 0:
-            # Plotting states
-            # c_p = int(args.fig_frequency * args.n_agent)
-            # env_plot.ax.plot(rb.observations[iter_plot*c_p:(iter_plot+1)*c_p,0], rb.observations[iter_plot*c_p:(iter_plot+1)*c_p,1], 'bo', markersize=1)
-            # Plotting measure 
-            m = classifier(torch.Tensor(rb.observations[:rb.pos]).to(device)).detach().cpu().numpy()
-            m_n = (m - np.min(m))/(np.max(m) - np.min(m))
-            env_plot.ax.scatter(rb.observations[:rb.pos,0], rb.observations[:rb.pos,1], s=1, c = m_n, cmap = 'viridis')
-
+            for z in ve.z:
+                idx_plot = z.cpu().numpy()-1
+                if rb.pos[idx_plot] > 0:
+                    x = rb.observations[idx_plot, iter_plot[idx_plot]:rb.pos[idx_plot],0]
+                    y = rb.observations[idx_plot, iter_plot[idx_plot]:rb.pos[idx_plot],1]
+                    env_plot.ax.scatter(x, y, c=colors[idx_plot], label=f'z={z}',s=1, alpha=0.5)
+    
             # save fig env_plot
             env_plot.figure.canvas.draw()
             image = np.frombuffer(env_plot.figure.canvas.tostring_rgb(), dtype='uint8')
             image = image.reshape(env_plot.figure.canvas.get_width_height()[::-1] + (3,))
             writer_gif.append_data(image)
-
-            # save fig env_plot
-            # env_plot.figure.savefig(f'fig/fig_{global_step}.png')
-            # iter_plot
-            iter_plot += 1
+            # update iter_plot
+            iter_plot = rb.pos.copy()
 
     envs.close()
     writer.close()
