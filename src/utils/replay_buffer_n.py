@@ -28,6 +28,7 @@ class ReplayBuffer_n:
         self.rewards = np.zeros((n_agent, capacity, 1), dtype=np.float32)
         self.next_observations = np.zeros((n_agent, capacity, *observation_shape), dtype=np.float32)
         self.dones = np.zeros((n_agent, capacity, 1), dtype=np.bool_)
+        self.window_t = window_t
 
     def add(self, obs, next_obs, actions, rewards, dones, infos, z_idx, increment,add_pos):
         z_idx = z_idx.cpu().numpy()
@@ -43,8 +44,9 @@ class ReplayBuffer_n:
 
     def sample(self, batch_size, ve):
         z_idx = ve.sample(batch_size, sort = False).cpu().numpy()
-        # z_idx_random = ve.sample(batch_size, sort = False).cpu().numpy()
         s_idx = np.random.randint(0, self.pos[z_idx-1])
+        # sample from the last window_t
+        # s_idx = np.random.randint(self.pos[z_idx-1]-np.ones(batch_size)*self.window_t, self.pos[z_idx-1])
         indices = (z_idx-1, s_idx)
         return self._get_samples(indices,z_idx)
 
@@ -72,11 +74,13 @@ class ReplayBuffer_n:
     
     def sample_w_labels(self, t, batch_size,ve):
         z_idx = ve.sample(batch_size, sort = False).cpu().numpy()
+        z_idx_random = ve.sample(batch_size, sort = False).cpu().numpy()
         s_idx = np.random.randint(0, self.pos[z_idx-1])
         batch = self._get_samples((z_idx-1, s_idx), z_idx)
-        # labels == 1 if self.pos-t<indices else 0 without for loop
-        labels = np.where((self.pos-t) < s_idx, 1, 0)
-        return batch, torch.tensor(labels, dtype=torch.float32, device=self.device)
+        # labels == 1 if self.pos-t<indices and z_idx == z_idx_random
+        labels = np.where(((self.pos[z_idx-1]-t) < s_idx ) & (z_idx == z_idx_random), 1, 0)
+        # print('labels : ', labels)
+        return batch, torch.tensor(labels, dtype=torch.int32, device=self.device)
 
     def _get_samples(self, indices, z):
         # Utilise l'indexation avancée pour extraire les données et les convertit en tenseurs PyTorch

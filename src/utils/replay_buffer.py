@@ -41,6 +41,8 @@ class ReplayBuffer:
 
     def sample(self, batch_size):
         indices = np.random.randint(0, self.capacity if self.full else self.pos, size=batch_size)
+        # sample from the last window_t
+        # indices = np.random.randint(max(0,self.pos-self.window_t), self.pos, size=batch_size)
         return self._get_samples(indices)
 
     def sample_threshold(self, t, batch_size):
@@ -49,9 +51,10 @@ class ReplayBuffer:
         max_index = self.capacity if self.full else self.pos
         # assert batch_size <= t and batch_size <= (max_index - t), "Batch size too large for the specified threshold."
 
-        # indices_before_t = np.random.randint(0, max_index-t, size=batch_size)
-        indices_before_t = np.random.randint(0, max_index, size=batch_size)
-        indices_after_t = np.random.randint(max_index-t, max_index, size=batch_size)
+        indices_before_t = np.random.randint(0, max_index-t, size=batch_size)
+        # indices_after_t = np.random.randint(max_index-t, max_index, size=batch_size)
+        indices_after_t = np.random.randint(0, max_index, size=batch_size)
+
 
         samples_before_t = self._get_samples(indices_before_t)
         samples_after_t = self._get_samples(indices_after_t)

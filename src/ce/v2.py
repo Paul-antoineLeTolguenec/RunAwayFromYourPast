@@ -36,7 +36,7 @@ def parse_args():
         help="if toggled, `torch.backends.cudnn.deterministic=False`")
     parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, cuda will be enabled by default")
-    parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+    parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="if toggled, this experiment will be tracked with Weights and Biases")
     parser.add_argument("--wandb-project-name", type=str, default="contrastive_exploration",
         help="the wandb's project name")
@@ -59,7 +59,7 @@ def parse_args():
         help="the discount factor gamma")
     parser.add_argument("--tau", type=float, default=0.005,
         help="target smoothing coefficient (default: 0.005)")
-    parser.add_argument("--batch-size", type=int, default=512,
+    parser.add_argument("--batch-size", type=int, default=256,
         help="the batch size of sample from the reply memory")
     parser.add_argument("--learning-starts", type=int, default=1e3,
         help="timestep to start learning")
@@ -73,13 +73,13 @@ def parse_args():
         help="the frequency of updates for the target nerworks")
     parser.add_argument("--noise-clip", type=float, default=0.5,
         help="noise clip parameter of the Target Policy Smoothing Regularization")
-    parser.add_argument("--alpha", type=float, default=0.2,
+    parser.add_argument("--alpha", type=float, default=0.5,
             help="Entropy regularization coefficient.")
     parser.add_argument("--autotune", type=lambda x:bool(strtobool(x)), default=False, nargs="?", const=True,
         help="automatic tuning of the entropy coefficient")
     parser.add_argument("--classifier-lr", type=float, default=1e-3)
     parser.add_argument("--classifier-treshold", type=int, default=1e3)
-    parser.add_argument("--lambda-im", type=float, default=1.0)
+    parser.add_argument("--lambda-im", type=float, default=0.5)
     parser.add_argument("--n-agent", type=int, default=5)
     args = parser.parse_args()
     # fmt: on
@@ -295,14 +295,10 @@ if __name__ == "__main__":
         # training if each element of rb.pos is greater than args.learning_starts
         if np.all(rb.pos > args.learning_starts):
             # classifier training
-            batch_p, batch_q = rb.sample_threshold(args.classifier_treshold, args.batch_size, ve)
-            # print('batch_q_obs : ', batch_q.observations[:5])
-            # print('batch_p_z : ', batch_p.z[:5])
-            # print('batch_q_obs : ', batch_q.observations[:5])
-            # print('batch_q_z : ', batch_q.z[:5])
-            classifier_loss, loss_discriminator = classifier.loss(batch_q.observations, batch_q.z, batch_p.observations, batch_p.z)
-            # batch, labels = rb.sample_w_labels(args.classifier_treshold*args.n_agent, args.batch_size)
-            # classifier_loss = classifier.ce_loss_w_labels(batch.observations, labels)
+            # batch_p, batch_q = rb.sample_threshold(args.classifier_treshold, args.batch_size, ve)
+            # classifier_loss, loss_discriminator = classifier.loss(batch_q.observations, batch_q.z, batch_p.observations, batch_p.z)
+            batch, labels = rb.sample_w_labels(args.classifier_treshold, args.batch_size, ve)
+            classifier_loss = classifier.ce_loss_w_labels(batch.observations, batch.z, labels)
             classifier_optimizer.zero_grad()
             classifier_loss.backward()
             classifier_optimizer.step()
@@ -333,18 +329,20 @@ if __name__ == "__main__":
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
                 # rewards produced by classifier
                 # log(rho_{n+1}(s|z)/un(s))
-                log_h = classifier(data.observations, true_z).flatten() 
+                log_h = torch.log(torch.gather(p_full_z, 1, true_z.type(torch.int64)-1).squeeze(-1))
+                # log_h  = torch.log(torch.sum(p_full_z,1)/args.n_agent)
                 # log_h = (log_h - torch.mean(log_h))/(torch.std(log_h) + 1e-6)
                 # im 
-                log_im = torch.sum(p_full_z,1)*torch.log( args.n_agent*torch.gather(p_full_z, 1, true_z.type(torch.int64)-1).squeeze(-1) / torch.sum(p_full_z,1))
+                log_im = torch.sum(p_full_z,1)*torch.log( args.n_agent*torch.gather(p_full_z, 1, true_z.type(torch.int64)-1).squeeze(-1) / torch.sum(p_full_z,1)) #importance sampling 
+                # log_im = torch.log( args.n_agent*torch.gather(p_full_z, 1, true_z.type(torch.int64)-1).squeeze(-1) / torch.sum(p_full_z,1))
                 # log_im = (log_im - torch.mean(log_im))/(torch.std(log_im) + 1e-6)
                 # classifier_z 
                 # log_p_z = torch.log(torch.gather(classifier.softmax(classifier.forward_z(data.observations)), 1, true_z.type(torch.int64)-1)).flatten()
                 # print('log_p_z_shape : ', log_p_z.shape)
                 # rewards
-                rewards =log_h + args.lambda_im*log_im
+                rewards = (log_h + args.lambda_im*log_im)*10.0
                 # normalize rewards
-                rewards = (rewards - torch.mean(rewards))/(torch.std(rewards) + 1e-6)
+                # rewards = (rewards - torch.mean(rewards))/(torch.std(rewards) + 1e-6)
                 next_q_value = rewards+ (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
             qf1_a_values = qf1(data.observations, data.actions, true_z).view(-1)
             qf2_a_values = qf2(data.observations, data.actions, true_z).view(-1)
@@ -397,7 +395,7 @@ if __name__ == "__main__":
                 writer.add_scalar("losses/alpha", alpha, global_step)
                 writer.add_scalar("losses/rewards", rewards.mean().item(), global_step)
                 writer.add_scalar("losses/classifier_loss", classifier_loss.item(), global_step)
-                writer.add_scalar("losses/loss_discriminator", loss_discriminator, global_step)
+                # writer.add_scalar("losses/loss_discriminator", loss_discriminator, global_step)
                 # each mean p_z 
                 for i in range(args.n_agent):
                     writer.add_scalar(f"p_z/mean_p_z_{i}", p_full_z[:,i].mean().item(), global_step)

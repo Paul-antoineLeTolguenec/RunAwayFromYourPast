@@ -51,9 +51,9 @@ def parse_args():
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="Ur",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=100000,
+    parser.add_argument("--total-timesteps", type=int, default=int(1e6),
         help="total timesteps of the experiments")
-    parser.add_argument("--buffer-size", type=int, default=int(1e4),
+    parser.add_argument("--buffer-size", type=int, default=int(1e6),
         help="the replay memory buffer size")
     parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma")
@@ -75,12 +75,13 @@ def parse_args():
         help="the frequency of updates for the target nerworks")
     parser.add_argument("--noise-clip", type=float, default=0.5,
         help="noise clip parameter of the Target Policy Smoothing Regularization")
-    parser.add_argument("--alpha", type=float, default=0.2,
+    parser.add_argument("--alpha", type=float, default=1.0,
             help="Entropy regularization coefficient.")
     parser.add_argument("--autotune", type=lambda x:bool(strtobool(x)), default=False, nargs="?", const=True,
         help="automatic tuning of the entropy coefficient")
     parser.add_argument("--classifier-lr", type=float, default=1e-3)
     parser.add_argument("--classifier-treshold", type=int, default=1e3)
+    parser.add_argument("--ratio-reward", type=float, default=10.0)
     args = parser.parse_args()
     # fmt: on
     return args
@@ -301,8 +302,8 @@ if __name__ == "__main__":
                         # rewards produced by classifier
                         rewards = classifier(data.observations).detach().flatten() 
                         # normalize rewards
-                        rewards = (rewards - torch.mean(rewards))/(torch.std(rewards) + 1e-6)
-                        # rewards = (rewards - torch.min(rewards))/(torch.max(rewards) - torch.min(rewards) + 1e-6)
+                        rewards = (rewards - torch.mean(rewards))/(torch.std(rewards) + 1e-6) * args.ratio_reward   
+                        # rewards = (rewards - torch.min(rewards))/(torch.max(rewards) - torch.min(rewards) + 1e-6) * args.ratio_reward
                         # rewards = data.rewards.flatten()    
                         next_q_value = rewards+ (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
                     qf1_a_values = qf1(data.observations, data.actions).view(-1)
