@@ -5,7 +5,7 @@ import numpy as np
 import torch    
 
 class Classifier(torch.nn.Module):
-    def __init__(self, observation_space,device):
+    def __init__(self, observation_space,device, tau = 1.0):
         super(Classifier, self).__init__()
         # spectral normalization
         self.fc1 = spectral_norm(torch.nn.Linear(observation_space.shape[0], 128,device=device))
@@ -13,7 +13,7 @@ class Classifier(torch.nn.Module):
         self.fc3 =  spectral_norm(torch.nn.Linear(64, 1, device=device))
         self.relu = torch.nn.ReLU()
         # temperture sigmoid
-        self.tau = 1.0
+        self.tau = tau
         self.sigmoid = torch.nn.Sigmoid()
         
     def forward(self, x):

@@ -36,7 +36,7 @@ def parse_args():
         help="if toggled, `torch.backends.cudnn.deterministic=False`")
     parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, cuda will be enabled by default")
-    parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+    parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, this experiment will be tracked with Weights and Biases")
     parser.add_argument("--wandb-project-name", type=str, default="contrastive_exploration",
         help="the wandb's project name")
@@ -75,13 +75,13 @@ def parse_args():
         help="the frequency of updates for the target nerworks")
     parser.add_argument("--noise-clip", type=float, default=0.5,
         help="noise clip parameter of the Target Policy Smoothing Regularization")
-    parser.add_argument("--alpha", type=float, default=1.0,
+    parser.add_argument("--alpha", type=float, default=0.5,
             help="Entropy regularization coefficient.")
     parser.add_argument("--autotune", type=lambda x:bool(strtobool(x)), default=False, nargs="?", const=True,
         help="automatic tuning of the entropy coefficient")
-    parser.add_argument("--classifier-lr", type=float, default=1e-3)
+    parser.add_argument("--classifier-lr", type=float, default=5e-4)
     parser.add_argument("--classifier-treshold", type=int, default=1e3)
-    parser.add_argument("--ratio-reward", type=float, default=10.0)
+    parser.add_argument("--ratio-reward", type=float, default=5.0)
     args = parser.parse_args()
     # fmt: on
     return args
@@ -324,6 +324,10 @@ if __name__ == "__main__":
                     qf1_pi = qf1(data.observations, pi)
                     qf2_pi = qf2(data.observations, pi)
                     min_qf_pi = torch.min(qf1_pi, qf2_pi).view(-1)
+                    # normalize min_qf_pi
+                    # min_qf_pi = (min_qf_pi - torch.mean(min_qf_pi).detach())/(torch.std(min_qf_pi).detach() + 1e-6) 
+                    # normalize log_pi
+                    # log_pi = (log_pi - torch.mean(log_pi).detach())/(torch.std(log_pi).detach() + 1e-6) 
                     actor_loss = ((alpha * log_pi) - min_qf_pi).mean()
 
                     actor_optimizer.zero_grad()
@@ -356,6 +360,8 @@ if __name__ == "__main__":
                 writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
                 writer.add_scalar("losses/alpha", alpha, global_step)
                 writer.add_scalar("losses/rewards", rewards.mean().item(), global_step)
+                writer.add_scalar("losses/min_reward", rewards.min().item(), global_step)
+                writer.add_scalar("losses/max_reward", rewards.max().item(), global_step)
                 writer.add_scalar("losses/classifier_loss", classifier_loss.item(), global_step)
                 # print("SPS:", int(global_step / (time.time() - start_time)))
                 print(f"Global step: {global_step}")

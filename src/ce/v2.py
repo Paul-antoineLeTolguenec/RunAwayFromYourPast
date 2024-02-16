@@ -36,7 +36,7 @@ def parse_args():
         help="if toggled, `torch.backends.cudnn.deterministic=False`")
     parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, cuda will be enabled by default")
-    parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+    parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, this experiment will be tracked with Weights and Biases")
     parser.add_argument("--wandb-project-name", type=str, default="contrastive_exploration",
         help="the wandb's project name")
@@ -77,10 +77,11 @@ def parse_args():
             help="Entropy regularization coefficient.")
     parser.add_argument("--autotune", type=lambda x:bool(strtobool(x)), default=False, nargs="?", const=True,
         help="automatic tuning of the entropy coefficient")
-    parser.add_argument("--classifier-lr", type=float, default=1e-3)
+    parser.add_argument("--classifier-lr", type=float, default=5e-4)
     parser.add_argument("--classifier-treshold", type=int, default=1e3)
     parser.add_argument("--lambda-im", type=float, default=0.5)
     parser.add_argument("--n-agent", type=int, default=5)
+    parser.add_argument("--ratio-reward", type= float, default=10.0)
     args = parser.parse_args()
     # fmt: on
     return args
@@ -333,14 +334,15 @@ if __name__ == "__main__":
                 # log_h  = torch.log(torch.sum(p_full_z,1)/args.n_agent)
                 # log_h = (log_h - torch.mean(log_h))/(torch.std(log_h) + 1e-6)
                 # im 
-                log_im = torch.sum(p_full_z,1)*torch.log( args.n_agent*torch.gather(p_full_z, 1, true_z.type(torch.int64)-1).squeeze(-1) / torch.sum(p_full_z,1)) #importance sampling 
+                log_im = torch.sum(p_full_z,1)/args.n_agent*torch.log( args.n_agent*torch.gather(p_full_z, 1, true_z.type(torch.int64)-1).squeeze(-1) / torch.sum(p_full_z,1)) #importance sampling 
                 # log_im = torch.log( args.n_agent*torch.gather(p_full_z, 1, true_z.type(torch.int64)-1).squeeze(-1) / torch.sum(p_full_z,1))
                 # log_im = (log_im - torch.mean(log_im))/(torch.std(log_im) + 1e-6)
                 # classifier_z 
                 # log_p_z = torch.log(torch.gather(classifier.softmax(classifier.forward_z(data.observations)), 1, true_z.type(torch.int64)-1)).flatten()
                 # print('log_p_z_shape : ', log_p_z.shape)
                 # rewards
-                rewards = (log_h + args.lambda_im*log_im)*10.0
+                rewards = (log_h + args.lambda_im*log_im)*args.ratio_reward
+
                 # normalize rewards
                 # rewards = (rewards - torch.mean(rewards))/(torch.std(rewards) + 1e-6)
                 next_q_value = rewards+ (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
@@ -394,6 +396,8 @@ if __name__ == "__main__":
                 writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
                 writer.add_scalar("losses/alpha", alpha, global_step)
                 writer.add_scalar("losses/rewards", rewards.mean().item(), global_step)
+                writer.add_scalar("losses/log_h", log_h.mean().item(), global_step)
+                writer.add_scalar("losses/log_im", log_im.mean().item(), global_step)
                 writer.add_scalar("losses/classifier_loss", classifier_loss.item(), global_step)
                 # writer.add_scalar("losses/loss_discriminator", loss_discriminator, global_step)
                 # each mean p_z 
