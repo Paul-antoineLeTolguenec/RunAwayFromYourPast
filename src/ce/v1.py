@@ -57,13 +57,13 @@ def parse_args():
         help="the replay memory buffer size")
     parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma")
-    parser.add_argument("--tau", type=float, default=0.005,
+    parser.add_argument("--tau", type=float, default=0.01,
         help="target smoothing coefficient (default: 0.005)")
     parser.add_argument("--batch-size", type=int, default=256,
         help="the batch size of sample from the reply memory")
     parser.add_argument("--learning-starts", type=int, default=1e3,
         help="timestep to start learning")
-    parser.add_argument("--policy-lr", type=float, default=5e-4,
+    parser.add_argument("--policy-lr", type=float, default=1e-3,
         help="the learning rate of the policy network optimizer")
     parser.add_argument("--q-lr", type=float, default=1e-3,
         help="the learning rate of the Q network network optimizer")
@@ -82,6 +82,7 @@ def parse_args():
     parser.add_argument("--classifier-lr", type=float, default=5e-4)
     parser.add_argument("--classifier-treshold", type=int, default=1e3)
     parser.add_argument("--ratio-reward", type=float, default=5.0)
+    parser.add_argument("--polyak-p", type=float, default=0.005)
     args = parser.parse_args()
     # fmt: on
     return args
@@ -244,6 +245,7 @@ if __name__ == "__main__":
     )
     start_time = time.time()
     batch_r_mean = 0
+    running_mean_p = 0
     # TRY NOT TO MODIFY: start the game
     obs,infos = envs.reset()
     for global_step in range(args.total_timesteps):
@@ -281,12 +283,12 @@ if __name__ == "__main__":
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
             # classifier training
-            # batch_p, batch_q = rb.sample_threshold(args.classifier_treshold*args.n_env, args.batch_size)
-            # batch_p = batch_p.observations
-            # batch_q = batch_q.observations
-            # classifier_loss = classifier.ce_loss(batch_q, batch_p)
-            batch, labels = rb.sample_w_labels(args.classifier_treshold*args.n_env, args.batch_size)
-            classifier_loss = classifier.ce_loss_w_labels(batch.observations, labels)
+            batch_p, batch_q = rb.sample_threshold(args.classifier_treshold*args.n_env, args.batch_size)
+            batch_p = batch_p.observations
+            batch_q = batch_q.observations
+            classifier_loss = classifier.ce_loss(batch_q, batch_p)
+            # batch, labels = rb.sample_w_labels(args.classifier_treshold*args.n_env, args.batch_size)
+            # classifier_loss = classifier.ce_loss_w_labels(batch.observations, labels)
             classifier_optimizer.zero_grad()
             classifier_loss.backward()
             classifier_optimizer.step()

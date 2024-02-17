@@ -63,7 +63,7 @@ def parse_args():
         help="the batch size of sample from the reply memory")
     parser.add_argument("--learning-starts", type=int, default=1e3,
         help="timestep to start learning")
-    parser.add_argument("--policy-lr", type=float, default=5e-4,
+    parser.add_argument("--policy-lr", type=float, default=1e-3,
         help="the learning rate of the policy network optimizer")
     parser.add_argument("--q-lr", type=float, default=1e-3,
         help="the learning rate of the Q network network optimizer")
