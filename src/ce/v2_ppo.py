@@ -97,7 +97,7 @@ def parse_args():
     parser.add_argument("--un-n-past", type=int, default=16)
     # n agent
     parser.add_argument("--n-agent", type=int, default=5)
-    parser.add_argument("--lamda-im", type=float, default=1.0)
+    parser.add_argument("--lamda-im", type=float, default=0.5)
     parser.add_argument("--ratio-reward", type=float, default=1.0)
     args = parser.parse_args()
     args.num_envs = args.n_agent
@@ -270,7 +270,6 @@ if __name__ == "__main__":
 
             # if terminated, reset the env
 
-
             # ALGO LOGIC: action logic
             with torch.no_grad():
                 action, logprob, _, value = agent.get_action_and_value(next_obs, z.unsqueeze(-1))
@@ -313,18 +312,30 @@ if __name__ == "__main__":
                 batch_rho_n_ext = obs[idx_step_rho, :]
                 batch_rho_n_times_ext = times[idx_step_rho, :]    
                 # sample from un
+                # print('obs un shape',obs_un.shape)
                 idx_z_un = np.random.randint(0, args.n_agent, args.classifier_batch_size)
-                idx_ep_un = np.random.randint(0, update*args.num_rollouts, args.classifier_batch_size)
+                idx_ep_un = np.random.randint(max(0,(update-args.un_n_past)*args.num_rollouts), update*args.num_rollouts, args.classifier_batch_size)
                 idx_step_un = np.random.randint(0, max_steps, args.classifier_batch_size)
                 batch_un = torch.Tensor(obs_un[idx_z_un, idx_ep_un, idx_step_un]).to(device)
                 batch_un_ext = batch_un.unsqueeze(1).repeat(1,args.n_agent,1)
                 batch_un_z_ext = ve.z.unsqueeze(0).repeat(args.classifier_batch_size,1).unsqueeze(-1)
                 # train the classifier
-                classifier_optimizer.zero_grad()
-                classifier_loss = classifier.ce_loss_ppo(batch_rho_n_ext, batch_rho_n_z_ext, batch_rho_n_times_ext, batch_un_ext, batch_un_z_ext)
-                classifier_loss.backward()
-                classifier_optimizer.step()
-                writer.add_scalar("losses/classifier_loss", classifier_loss.item(), global_step)
+                big_batch_rho_n_ext = batch_rho_n_ext.reshape(args.classifier_batch_size*args.n_agent, *envs.single_observation_space.shape)
+                big_batch_rho_n_z_ext = batch_rho_n_z_ext.reshape(args.classifier_batch_size*args.n_agent, 1)
+                big_batch_rho_n_times_ext = batch_rho_n_times_ext.reshape(args.classifier_batch_size*args.n_agent, 1)
+                big_batch_un_ext = batch_un_ext.reshape(args.classifier_batch_size*args.n_agent, *envs.single_observation_space.shape)
+                big_batch_un_z_ext = batch_un_z_ext.reshape(args.classifier_batch_size*args.n_agent, 1)
+                big_b_ind = np.arange(args.classifier_batch_size*args.n_agent)
+                np.random.shuffle(big_b_ind)
+                for start in range(0, args.classifier_batch_size*args.n_agent, args.classifier_batch_size):
+                    end = start + args.classifier_batch_size
+                    mb_ind = big_b_ind[start:end]
+                    # train the classifier
+                    classifier_optimizer.zero_grad()
+                    classifier_loss = classifier.ce_loss_ppo(big_batch_rho_n_ext[mb_ind], big_batch_rho_n_z_ext[mb_ind], big_batch_rho_n_times_ext[mb_ind], big_batch_un_ext[mb_ind], big_batch_un_z_ext[mb_ind])
+                    classifier_loss.backward()
+                    classifier_optimizer.step()
+                    writer.add_scalar("losses/classifier_loss", classifier_loss.item(), global_step)
 
         # update reward
         with torch.no_grad():
