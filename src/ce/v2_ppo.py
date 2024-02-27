@@ -55,7 +55,7 @@ def parse_args():
         help="total timesteps of the experiments")
     parser.add_argument("--n-capacity", type=int, default=10**5,
         help="the capacity of the replay buffer in terms of episodes")
-    parser.add_argument("--learning-rate", type=float, default=5e-4,
+    parser.add_argument("--learning-rate", type=float, default=7e-4,
         help="the learning rate of the optimizer")
     parser.add_argument("--num-envs", type=int, default=1,
         help="the number of parallel game environments")
@@ -71,6 +71,8 @@ def parse_args():
         help="the lambda for the general advantage estimation")
     parser.add_argument("--num-minibatches", type=int, default=64,
         help="the number of mini-batches")
+    parser.add_argument("--minibatch-size", type=int, default=64,
+                        help="the size of the mini-batch")
     parser.add_argument("--update-epochs", type=int, default=16,
         help="the K epochs to update the policy")
     parser.add_argument("--norm-adv", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
@@ -88,14 +90,14 @@ def parse_args():
     parser.add_argument("--target-kl", type=float, default=None,
         help="the target KL divergence threshold")
     # classifier
-    parser.add_argument("--classifier-lr", type=float, default=1e-3)
+    parser.add_argument("--classifier-lr", type=float, default=2e-3)
     parser.add_argument("--classifier-batch-size", type=int, default=128)
     parser.add_argument("--classifier-frequency", type=int, default=1)
     parser.add_argument("--classifier-epochs", type=int, default=32)
     parser.add_argument("--un-n-past", type=int, default=16)
     # n agent
     parser.add_argument("--n-agent", type=int, default=5)
-    parser.add_argument("--lamda-im", type=float, default=10.0)
+    parser.add_argument("--lamda-im", type=float, default=1.0)
     parser.add_argument("--ratio-reward", type=float, default=1.0)
     args = parser.parse_args()
     args.num_envs = args.n_agent
@@ -212,10 +214,14 @@ if __name__ == "__main__":
         max_steps = envs.envs[0].max_steps
         args.num_steps = max_steps * args.num_rollouts
         # classifier epoch 
-        args.classifier_epochs = (args.num_steps * args.num_envs) // args.classifier_batch_size
+        # args.classifier_epochs = (args.num_steps * args.num_envs) // args.classifier_batch_size
     # update batch size and minibatch size
     args.batch_size = int(args.num_envs * args.num_steps)
-    args.minibatch_size = int(args.batch_size // args.num_minibatches)
+    # args.minibatch_size = int(args.batch_size // args.num_minibatches)
+    args.num_minibatches = int(args.batch_size // args.minibatch_size)
+    print('mini batch size',args.minibatch_size)
+    print('num minibatches',args.num_minibatches)
+    print('batch size',args.batch_size)
     # Agent
     agent = Agent(envs, args.n_agent).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
@@ -302,22 +308,20 @@ if __name__ == "__main__":
         if update%args.classifier_frequency == 0 and update > 1:
             for epoch in range(args.classifier_epochs):
                 # sample from rho_n
-                idx_z_rho = np.random.randint(0, args.n_agent, args.classifier_batch_size)
+                batch_rho_n_z_ext = ve.z.unsqueeze(0).repeat(args.classifier_batch_size,1).unsqueeze(-1)
                 idx_step_rho = np.random.randint(0, max_steps * args.num_rollouts, args.classifier_batch_size)
-                batch_rho_n = obs[idx_step_rho, idx_z_rho]
-                batch_times_rho_n = times[idx_step_rho, idx_z_rho]
-                batch_rho_z = zs[idx_step_rho, idx_z_rho]
-                
+                batch_rho_n_ext = obs[idx_step_rho, :]
+                batch_rho_n_times_ext = times[idx_step_rho, :]    
                 # sample from un
                 idx_z_un = np.random.randint(0, args.n_agent, args.classifier_batch_size)
                 idx_ep_un = np.random.randint(0, update*args.num_rollouts, args.classifier_batch_size)
                 idx_step_un = np.random.randint(0, max_steps, args.classifier_batch_size)
                 batch_un = torch.Tensor(obs_un[idx_z_un, idx_ep_un, idx_step_un]).to(device)
-                # z for un sample over all
-                batch_un_z = ve.sample(args.classifier_batch_size, sort=False).to(device).unsqueeze(-1)
+                batch_un_ext = batch_un.unsqueeze(1).repeat(1,args.n_agent,1)
+                batch_un_z_ext = ve.z.unsqueeze(0).repeat(args.classifier_batch_size,1).unsqueeze(-1)
                 # train the classifier
                 classifier_optimizer.zero_grad()
-                classifier_loss = classifier.ce_loss_ppo(batch_rho_n, batch_rho_z, batch_times_rho_n, batch_un, batch_un_z)
+                classifier_loss = classifier.ce_loss_ppo(batch_rho_n_ext, batch_rho_n_z_ext, batch_rho_n_times_ext, batch_un_ext, batch_un_z_ext)
                 classifier_loss.backward()
                 classifier_optimizer.step()
                 writer.add_scalar("losses/classifier_loss", classifier_loss.item(), global_step)
@@ -333,13 +337,13 @@ if __name__ == "__main__":
             im = torch.log(args.n_agent * p/p_tilde)
             # rewards = im
             # rewards = log_p_rho_un  
-            rewards = log_p_rho_un + args.lamda_im*im
+            rewards = log_p_rho_un/args.n_agent + args.lamda_im*im
             print('max im',torch.max(im))
             print('min im',torch.min(im))
             print('mean im',torch.mean(im))
-            print('max log_p_rho_un',torch.max(log_p_rho_un))
-            print('min log_p_rho_un',torch.min(log_p_rho_un))
-            print('mean log_p_rho_un',torch.mean(log_p_rho_un))
+            print('max log_p_rho_un',torch.max(log_p_rho_un/args.n_agent))
+            print('min log_p_rho_un',torch.min(log_p_rho_un/args.n_agent))
+            print('mean log_p_rho_un',torch.mean(log_p_rho_un/args.n_agent))
         # add to buffer
         
         obs_un[:, args.num_rollouts * (update-1):args.num_rollouts * update] = obs.permute(1,0,2).reshape(args.num_envs, args.num_rollouts, max_steps, *envs.single_observation_space.shape).cpu().numpy()
@@ -438,6 +442,7 @@ if __name__ == "__main__":
         writer.add_scalar("losses/clipfrac", np.mean(clipfracs), global_step)
         writer.add_scalar("losses/explained_variance", explained_var, global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
+        print(f"global_step={global_step}")
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
         if args.track and args.capture_video:

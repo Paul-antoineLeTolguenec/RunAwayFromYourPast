@@ -110,7 +110,7 @@ class Classifier_n(torch.nn.Module):
         return -torch.mean(torch.log(p_z_i))
 
 
-    def relabeling(self, t, max_steps, tau=5.0):
+    def relabeling(self, t, max_steps, tau=3.0):
         """ exp(T)=1 
             tau in ]0,10] """
         return torch.exp((t-max_steps)/tau)
@@ -131,7 +131,7 @@ class Classifier_n(torch.nn.Module):
         if relabeling : 
             mask_q = (s_q <= self.treshold_old).float()
             label_q = torch.ones_like(s_q) - (1-self.w_old)*mask_q
-            # label_q = self.relabeling(times_q, self.env_max_steps) * label_q
+            label_q = self.relabeling(times_q, self.env_max_steps) * label_q
             return -torch.mean(label_q*torch.log(s_q) + torch.log(1 - s_p))
         else :
             return -torch.mean(torch.log(s_q) + torch.log(1 - s_p))

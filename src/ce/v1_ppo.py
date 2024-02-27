@@ -28,7 +28,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"),
         help="the name of this experiment")
-    parser.add_argument("--seed", type=int, default=1,
+    parser.add_argument("--seed", type=int, default=0,
         help="seed of the experiment")
     parser.add_argument("--env-type", type=str, default="Maze")
     parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
@@ -70,6 +70,8 @@ def parse_args():
         help="the lambda for the general advantage estimation")
     parser.add_argument("--num-minibatches", type=int, default=32,
         help="the number of mini-batches")
+    parser.add_argument("--minibatch-size", type=int, default=50,
+                        help="the size of the mini-batch")
     parser.add_argument("--update-epochs", type=int, default=16,
         help="the K epochs to update the policy")
     parser.add_argument("--norm-adv", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
@@ -206,7 +208,12 @@ if __name__ == "__main__":
         # args.classifier_epochs = args.num_steps // args.classifier_batch_size
     # update batch size and minibatch size
     args.batch_size = int(args.num_envs * args.num_steps)
-    args.minibatch_size = int(args.batch_size // args.num_minibatches)
+    # print('batch_size',args.batch_size)
+    # args.minibatch_size = int(args.batch_size // args.num_minibatches)
+    args.num_mini_batch = args.batch_size // args.minibatch_size
+    print('batch_size',args.batch_size)
+    print('minibatch_size',args.minibatch_size)
+    print('num mini batch',args.num_minibatches)
     # Agent
     agent = Agent(envs).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
@@ -265,13 +272,13 @@ if __name__ == "__main__":
             if "final_info" not in infos:
                 continue
             # print('step',step)
-            for info in infos["final_info"]:
-                # Skip the envs that are not done
-                if info is None:
-                    continue
-                print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-                writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+            # for info in infos["final_info"]:
+            #     # Skip the envs that are not done
+            #     if info is None:
+            #         continue
+            #     print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
+            #     writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
+            #     writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
            
        
         # add to buffer
@@ -299,6 +306,8 @@ if __name__ == "__main__":
 
         # update reward
         rewards = classifier(obs).detach().squeeze(-1)
+        # normalize rewards
+        # rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-8)
 
         # add to buffer
         obs_un[args.num_rollouts*(update-1):args.num_rollouts*update] = obs_rho_n
@@ -397,6 +406,7 @@ if __name__ == "__main__":
         writer.add_scalar("losses/clipfrac", np.mean(clipfracs), global_step)
         writer.add_scalar("losses/explained_variance", explained_var, global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
+        print(f"global_step={global_step}")
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
         if args.track and args.capture_video:
