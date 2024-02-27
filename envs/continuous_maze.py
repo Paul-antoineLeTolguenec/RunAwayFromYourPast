@@ -7,12 +7,12 @@ import matplotlib.animation as animation
 import copy
 
 class Maze(gym.Env):
-        def __init__(self, fig = False, name = None, target = [1,0]):
+        def __init__(self, fig = False, name = None, target = [0.0,-0.5]):
             self.x=0
             self.y=0
             self.dx=0
             self.dy=0
-            self.dt=2e-2
+            self.dt=1e-2
             self.max_x=1
             self.max_y=1
             self.min_x=-1
@@ -40,18 +40,24 @@ class Maze(gym.Env):
                 self.figure, self.ax = plt.subplots()
                 self.ax.set_xlim([-self.max_x, self.max_x])
                 self.ax.set_ylim([-self.max_y, self.max_y])
-                # Draw the agent
-                # self.agent_dot, = self.ax.plot(self.x, self.y, 'bo', label='Agent')  # 'bo' means blue color, circle marker
-                # Draw walls
-                for wall in self.walls:
-                    x1, y1, x2, y2 = wall
-                    self.ax.plot([x1, x2], [y1, y2], color='black')
-                plt.title('Maze Environment')
-                plt.xlabel('X')
-                plt.ylabel('Y')
-                plt.grid(True)
-                # plt.legend()
+                self.reset_lim_fig()
             
+        def reset_lim_fig(self):
+            self.ax.set_xlim([-self.max_x, self.max_x])
+            self.ax.set_ylim([-self.max_y, self.max_y])
+            # Draw the agent
+            # self.agent_dot, = self.ax.plot(self.x, self.y, 'bo', label='Agent')  # 'bo' means blue color, circle marker
+            # Draw walls
+            for wall in self.walls:
+                x1, y1, x2, y2 = wall
+                self.ax.plot([x1, x2], [y1, y2], color='black')
+            plt.title('Maze Environment')
+            plt.xlabel('X')
+            plt.ylabel('Y')
+            plt.grid(True)
+            # plt.legend()
+            # plt.show()
+
         def reward(self):
             d_next = np.sqrt((self.x-self.target[0])**2+(self.y-self.target[1])**2)
             r = self.d-d_next
@@ -59,7 +65,7 @@ class Maze(gym.Env):
             # return r*10.0
             return 0.0
 
-        def reset(self):
+        def reset(self, seed =0):
             self.x=self.x_init
             self.y=self.y_init
             self.dx=self.dx_init
@@ -67,11 +73,14 @@ class Maze(gym.Env):
             self.episode_length = 0
             self.episode_reward = 0
             self.d = np.sqrt((self.x-self.target[0])**2+(self.y-self.target[1])**2).copy()
-            return np.array([self.x,self.y], dtype=np.float32),{'pos' :copy.deepcopy(np.array([self.x,self.y], dtype=np.float32)), 'target' : self.target}
+            return np.array([self.x,self.y], dtype=np.float32).copy(),{'pos' :copy.deepcopy(np.array([self.x,self.y], dtype=np.float32)), 'target' : self.target, 'l' : 0}
         
         def step(self,v):
             self.dx=v[0]
             self.dy=v[1]
+            # clip the velocity
+            self.dx = np.clip(self.dx, -1, 1)
+            self.dy = np.clip(self.dy, -1, 1)
             # walls 
             self.x, self.y = self.new_position(self.x,self.y,self.dx,self.dy)
             self.x = np.clip(self.x, -self.max_x, self.max_x)
@@ -80,11 +89,11 @@ class Maze(gym.Env):
             reward = self.reward()
             self.episode_reward += reward
             if self.episode_length >= self.max_steps : 
-                return np.array([self.x,self.y], dtype=np.float32), reward, True, False, {'pos' : copy.deepcopy(np.array([self.x,self.y], dtype=np.float32)), 'episode' : {'r' : self.episode_reward, 
+                return np.array([self.x,self.y], dtype=np.float32).copy(), reward, True, False, {'pos' : copy.deepcopy(np.array([self.x,self.y], dtype=np.float32)), 'l' : self.episode_length, 'episode' : {'r' : self.episode_reward, 
                                                                                                                                                                            'l' : self.episode_length, 
                                                                                                                                                                            'target' : self.target}}
             else:
-                return np.array([self.x,self.y], dtype=np.float32), reward, False, False, {'pos' : copy.deepcopy(np.array([self.x,self.y], dtype=np.float32)), 'l' : self.episode_length, 'r' : self.episode_reward, 'target' : self.target}
+                return np.array([self.x,self.y], dtype=np.float32).copy(), reward, False, False, {'pos' : copy.deepcopy(np.array([self.x,self.y], dtype=np.float32)), 'l' : self.episode_length, 'r' : self.episode_reward, 'target' : self.target}
         
         def render(self, mode='human'):
             if mode == 'human':

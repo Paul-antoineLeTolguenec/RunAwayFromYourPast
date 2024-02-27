@@ -17,15 +17,13 @@ class VE :
     def set_prob(self, prob) : 
         self.prob = prob
         
-    def sample(self, batch_size, sort=True) : 
+    def sample(self, batch_size, sort=True, uniform = False) : 
         """ sample idx according to the probabilities"""
-        batch_idx_z = torch.multinomial(self.prob, batch_size, replacement=True)+1
+        batch_idx_z = torch.multinomial(self.prob, batch_size, replacement=True)+1 if not uniform else torch.randint(1, self.n+1, (batch_size,))
         # order 
         batch_idx_z, _ = torch.sort(batch_idx_z) if sort else (batch_idx_z, None)
         return batch_idx_z
-    def increm(self,z_idx): 
-        """ return the increment for the buffer"""
-        
+    
 
 
 if __name__=='__main__': 

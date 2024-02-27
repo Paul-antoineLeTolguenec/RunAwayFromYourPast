@@ -34,7 +34,7 @@ def parse_args():
         help="seed of the experiment")
     parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, `torch.backends.cudnn.deterministic=False`")
-    parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+    parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="if toggled, cuda will be enabled by default")
     parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, this experiment will be tracked with Weights and Biases")
@@ -61,28 +61,29 @@ def parse_args():
         help="target smoothing coefficient (default: 0.005)")
     parser.add_argument("--batch-size", type=int, default=256,
         help="the batch size of sample from the reply memory")
-    parser.add_argument("--learning-starts", type=int, default=1e3,
+    parser.add_argument("--learning-starts", type=int, default=2**13,
         help="timestep to start learning")
-    parser.add_argument("--policy-lr", type=float, default=1e-3,
+    parser.add_argument("--policy-lr", type=float, default=7e-4,
         help="the learning rate of the policy network optimizer")
-    parser.add_argument("--q-lr", type=float, default=1e-3,
+    parser.add_argument("--q-lr", type=float, default=2e-3,
         help="the learning rate of the Q network network optimizer")
-    parser.add_argument("--q-frequency", type=int, default=2,
+    parser.add_argument("--q-frequency", type=int, default=1,
         help="the frequency of training Q network")
-    parser.add_argument("--policy-frequency", type=int, default=4,
+    parser.add_argument("--policy-frequency", type=int, default=2,
         help="the frequency of training policy (delayed)")
     parser.add_argument("--target-network-frequency", type=int, default=1, # Denis Yarats' implementation delays this by 2.
         help="the frequency of updates for the target nerworks")
-    parser.add_argument("--noise-clip", type=float, default=0.5,
+    parser.add_argument("--noise-clip", type=float, default=0.2,
         help="noise clip parameter of the Target Policy Smoothing Regularization")
-    parser.add_argument("--alpha", type=float, default=0.5,
+    parser.add_argument("--alpha", type=float, default=0.2,
             help="Entropy regularization coefficient.")
     parser.add_argument("--autotune", type=lambda x:bool(strtobool(x)), default=False, nargs="?", const=True,
         help="automatic tuning of the entropy coefficient")
     parser.add_argument("--classifier-lr", type=float, default=5e-4)
-    parser.add_argument("--classifier-treshold", type=int, default=1e3)
-    parser.add_argument("--ratio-reward", type=float, default=5.0)
-    parser.add_argument("--polyak-p", type=float, default=0.005)
+    parser.add_argument("--classifier-treshold", type=int, default=2**12)
+    parser.add_argument("--ratio-reward", type=float, default=1.0)
+    parser.add_argument("--clip_reward", type=float, default=10.0)
+    parser.add_argument("--polyak-p", type=float, default=0.001)
     args = parser.parse_args()
     # fmt: on
     return args
@@ -142,7 +143,12 @@ class Actor(nn.Module):
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         mean = self.fc_mean(x)
+        # mean = torch.tanh(mean)  # squash mean to the range of [-1, 1]
+        # clip 
+        # mean = torch.clamp(mean, -0.9, 0.9)
         log_std = self.fc_logstd(x)
+        # clip 
+        # log_std = torch.clamp(log_std, -0.9, 0.9)
         log_std = torch.tanh(log_std)
         log_std = LOG_STD_MIN + 0.5 * (LOG_STD_MAX - LOG_STD_MIN) * (log_std + 1)  # From SpinUp / Denis Yarats
 
@@ -165,7 +171,7 @@ class Actor(nn.Module):
 
 if __name__ == "__main__":
     args = parse_args()
-    args.seed=np.random.randint(0,100)
+    # args.seed=np.random.randint(0,100)
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     if args.track:
         import wandb
@@ -220,7 +226,7 @@ if __name__ == "__main__":
     qf2_target = SoftQNetwork(envs).to(device)
     qf1_target.load_state_dict(qf1.state_dict())
     qf2_target.load_state_dict(qf2.state_dict())
-    classifier = Classifier(envs.single_observation_space,device)
+    classifier = Classifier(envs.single_observation_space, env_max_steps=envs.envs[0].max_steps,device=device)
     q_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()), lr=args.q_lr)
     actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.policy_lr)
     classifier_optimizer = optim.Adam(list(classifier.parameters()), lr=args.classifier_lr)
@@ -245,7 +251,7 @@ if __name__ == "__main__":
     )
     start_time = time.time()
     batch_r_mean = 0
-    running_mean_p = 0
+    running_mean_log_p = 0
     # TRY NOT TO MODIFY: start the game
     obs,infos = envs.reset()
     for global_step in range(args.total_timesteps):
@@ -284,8 +290,6 @@ if __name__ == "__main__":
         if global_step > args.learning_starts:
             # classifier training
             batch_p, batch_q = rb.sample_threshold(args.classifier_treshold*args.n_env, args.batch_size)
-            batch_p = batch_p.observations
-            batch_q = batch_q.observations
             classifier_loss = classifier.ce_loss(batch_q, batch_p)
             # batch, labels = rb.sample_w_labels(args.classifier_treshold*args.n_env, args.batch_size)
             # classifier_loss = classifier.ce_loss_w_labels(batch.observations, labels)
@@ -303,10 +307,16 @@ if __name__ == "__main__":
                         min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
                         # rewards produced by classifier
                         rewards = classifier(data.observations).detach().flatten() 
+                        # polyak update
+                        # running_mean_log_p = (1-args.polyak_p)*running_mean_log_p + args.polyak_p*rewards.mean()
+                        # reward 
+                        # rewards = (rewards - running_mean_log_p)
+                        # clip rewards
+                        rewards = torch.clamp(rewards, -20, 20)
+                        # rewards ratio 
+                        # rewards = rewards * args.ratio_reward
                         # normalize rewards
-                        rewards = (rewards - torch.mean(rewards))/(torch.std(rewards) + 1e-6) * args.ratio_reward   
-                        # rewards = (rewards - torch.min(rewards))/(torch.max(rewards) - torch.min(rewards) + 1e-6) * args.ratio_reward
-                        # rewards = data.rewards.flatten()    
+                        # rewards = (rewards - torch.mean(rewards))/(torch.std(rewards) + 1e-6)*args.ratio_reward
                         next_q_value = rewards+ (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
                     qf1_a_values = qf1(data.observations, data.actions).view(-1)
                     qf2_a_values = qf2(data.observations, data.actions).view(-1)
@@ -326,10 +336,6 @@ if __name__ == "__main__":
                     qf1_pi = qf1(data.observations, pi)
                     qf2_pi = qf2(data.observations, pi)
                     min_qf_pi = torch.min(qf1_pi, qf2_pi).view(-1)
-                    # normalize min_qf_pi
-                    # min_qf_pi = (min_qf_pi - torch.mean(min_qf_pi).detach())/(torch.std(min_qf_pi).detach() + 1e-6) 
-                    # normalize log_pi
-                    # log_pi = (log_pi - torch.mean(log_pi).detach())/(torch.std(log_pi).detach() + 1e-6) 
                     actor_loss = ((alpha * log_pi) - min_qf_pi).mean()
 
                     actor_optimizer.zero_grad()
@@ -376,7 +382,8 @@ if __name__ == "__main__":
             # c_p = int(args.fig_frequency * args.n_env)
             # env_plot.ax.plot(rb.observations[iter_plot*c_p:(iter_plot+1)*c_p,0], rb.observations[iter_plot*c_p:(iter_plot+1)*c_p,1], 'bo', markersize=1)
             # Plotting measure 
-            m_n = classifier(torch.Tensor(rb.observations[:rb.pos]).to(device)).detach().cpu().numpy()
+            m_n = classifier(torch.Tensor(rb.observations[:rb.pos]).to(device)).detach().cpu().numpy() 
+            # m_n = (m_n - np.mean(m_n))/(np.std(m_n) + 1e-6)
             # m_n = (m - np.min(m))/(np.max(m) - np.min(m))
             env_plot.ax.scatter(rb.observations[:rb.pos,0], rb.observations[:rb.pos,1], s=1, c = m_n, cmap = 'viridis')
             # color bar
