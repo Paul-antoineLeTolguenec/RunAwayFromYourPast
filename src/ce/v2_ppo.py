@@ -49,13 +49,13 @@ def parse_args():
     parser.add_argument("--episodic-return", type=bool, default=True)
 
     # Algorithm specific arguments
-    parser.add_argument("--env-id", type=str, default="Easy",
+    parser.add_argument("--env-id", type=str, default="Ur",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=1000000,
+    parser.add_argument("--total-timesteps", type=int, default=int(1e7),
         help="total timesteps of the experiments")
     parser.add_argument("--n-capacity", type=int, default=10**5,
         help="the capacity of the replay buffer in terms of episodes")
-    parser.add_argument("--learning-rate", type=float, default=7e-4,
+    parser.add_argument("--learning-rate", type=float, default=5e-4,
         help="the learning rate of the optimizer")
     parser.add_argument("--num-envs", type=int, default=1,
         help="the number of parallel game environments")
@@ -91,13 +91,13 @@ def parse_args():
         help="the target KL divergence threshold")
     # classifier
     parser.add_argument("--classifier-lr", type=float, default=2e-3)
-    parser.add_argument("--classifier-batch-size", type=int, default=128)
+    parser.add_argument("--classifier-batch-size", type=int, default=64)
     parser.add_argument("--classifier-frequency", type=int, default=1)
     parser.add_argument("--classifier-epochs", type=int, default=32)
     parser.add_argument("--un-n-past", type=int, default=16)
     # n agent
     parser.add_argument("--n-agent", type=int, default=5)
-    parser.add_argument("--lamda-im", type=float, default=0.5)
+    parser.add_argument("--lamda-im", type=float, default=1.0)
     parser.add_argument("--ratio-reward", type=float, default=1.0)
     args = parser.parse_args()
     args.num_envs = args.n_agent
@@ -312,19 +312,18 @@ if __name__ == "__main__":
                 batch_rho_n_ext = obs[idx_step_rho, :]
                 batch_rho_n_times_ext = times[idx_step_rho, :]    
                 # sample from un
-                # print('obs un shape',obs_un.shape)
-                idx_z_un = np.random.randint(0, args.n_agent, args.classifier_batch_size)
+                # idx_z_un = np.random.randint(0, args.n_agent, args.classifier_batch_size)
                 idx_ep_un = np.random.randint(max(0,(update-args.un_n_past)*args.num_rollouts), update*args.num_rollouts, args.classifier_batch_size)
                 idx_step_un = np.random.randint(0, max_steps, args.classifier_batch_size)
-                batch_un = torch.Tensor(obs_un[idx_z_un, idx_ep_un, idx_step_un]).to(device)
-                batch_un_ext = batch_un.unsqueeze(1).repeat(1,args.n_agent,1)
-                batch_un_z_ext = ve.z.unsqueeze(0).repeat(args.classifier_batch_size,1).unsqueeze(-1)
+                batch_un = torch.Tensor(obs_un[:, idx_ep_un, idx_step_un]).to(device)
+                batch_un_ext = batch_un.permute(1,0,2)
                 # train the classifier
                 big_batch_rho_n_ext = batch_rho_n_ext.reshape(args.classifier_batch_size*args.n_agent, *envs.single_observation_space.shape)
                 big_batch_rho_n_z_ext = batch_rho_n_z_ext.reshape(args.classifier_batch_size*args.n_agent, 1)
                 big_batch_rho_n_times_ext = batch_rho_n_times_ext.reshape(args.classifier_batch_size*args.n_agent, 1)
-                big_batch_un_ext = batch_un_ext.reshape(args.classifier_batch_size*args.n_agent, *envs.single_observation_space.shape)
-                big_batch_un_z_ext = batch_un_z_ext.reshape(args.classifier_batch_size*args.n_agent, 1)
+                big_batch_un_ext = batch_un_ext.reshape(args.classifier_batch_size*args.n_agent, *envs.single_observation_space.shape).unsqueeze(-2).repeat(1,args.n_agent,1)
+                big_batch_un_z_ext = ve.z.unsqueeze(0).repeat(args.classifier_batch_size*args.n_agent,1).unsqueeze(-1)
+                # big_batch_un_z_ext = batch_un_z_ext.reshape(args.classifier_batch_size*args.n_agent, 1)
                 big_b_ind = np.arange(args.classifier_batch_size*args.n_agent)
                 np.random.shuffle(big_b_ind)
                 for start in range(0, args.classifier_batch_size*args.n_agent, args.classifier_batch_size):
@@ -346,15 +345,19 @@ if __name__ == "__main__":
             p_tilde = torch.sum(torch.exp(log_p_rho_un_tilde), dim = -1).unsqueeze(-1).reshape(args.num_rollouts*max_steps,args.n_agent)
             p = torch.exp(log_p_rho_un)
             im = torch.log(args.n_agent * p/p_tilde)
-            # rewards = im
-            # rewards = log_p_rho_un  
-            rewards = log_p_rho_un/args.n_agent + args.lamda_im*im
+            # normalize 
+            # im = (im - torch.mean(im))/(torch.std(im) + 1e-8)
+            # log_p_rho_un = (log_p_rho_un - torch.mean(log_p_rho_un))/(torch.std(log_p_rho_un) + 1e-8)
+            # rewards 
+            rewards = log_p_rho_un + args.lamda_im*im
             print('max im',torch.max(im))
             print('min im',torch.min(im))
             print('mean im',torch.mean(im))
-            print('max log_p_rho_un',torch.max(log_p_rho_un/args.n_agent))
-            print('min log_p_rho_un',torch.min(log_p_rho_un/args.n_agent))
-            print('mean log_p_rho_un',torch.mean(log_p_rho_un/args.n_agent))
+            print('std im',torch.std(im))
+            print('max log_p_rho_un',torch.max(log_p_rho_un))
+            print('min log_p_rho_un',torch.min(log_p_rho_un))
+            print('mean log_p_rho_un',torch.mean(log_p_rho_un))
+            print('std log_p_rho_un',torch.std(log_p_rho_un))
         # add to buffer
         
         obs_un[:, args.num_rollouts * (update-1):args.num_rollouts * update] = obs.permute(1,0,2).reshape(args.num_envs, args.num_rollouts, max_steps, *envs.single_observation_space.shape).cpu().numpy()
@@ -463,9 +466,9 @@ if __name__ == "__main__":
                     video_filenames.add(filename)
         if update % args.fig_frequency == 0 and args.make_gif and global_step > 0:
             # clear the plot
-            env_plot.ax.clear()
+            # env_plot.ax.clear()
             # reset the limits
-            env_plot.reset_lim_fig()
+            # env_plot.reset_lim_fig()
             # Plotting measure 
             # m_n = classifier(torch.Tensor(obs_un[:, args.num_rollouts * (update-1) :args.num_rollouts * update]).to(device), torch.Tensor(z_un[:, args.num_rollouts * (update-1) :args.num_rollouts * update]).to(device)).detach().cpu().numpy()
             # print('m_n',m_n.shape)

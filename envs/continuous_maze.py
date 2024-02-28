@@ -7,7 +7,7 @@ import matplotlib.animation as animation
 import copy
 
 class Maze(gym.Env):
-        def __init__(self, fig = False, name = None, target = [0.0,-0.5]):
+        def __init__(self, fig = False, name = None, target = [0.0,-0.5], render = False):
             self.x=0
             self.y=0
             self.dx=0
@@ -40,13 +40,13 @@ class Maze(gym.Env):
                 self.figure, self.ax = plt.subplots()
                 self.ax.set_xlim([-self.max_x, self.max_x])
                 self.ax.set_ylim([-self.max_y, self.max_y])
-                self.reset_lim_fig()
+                self.reset_lim_fig(render=render)
             
-        def reset_lim_fig(self):
+        def reset_lim_fig(self, render = False):
             self.ax.set_xlim([-self.max_x, self.max_x])
             self.ax.set_ylim([-self.max_y, self.max_y])
             # Draw the agent
-            # self.agent_dot, = self.ax.plot(self.x, self.y, 'bo', label='Agent')  # 'bo' means blue color, circle marker
+            self.agent_dot,_ = self.ax.plot(self.x, self.y, 'bo', label='Agent')  if render else (None,None)
             # Draw walls
             for wall in self.walls:
                 x1, y1, x2, y2 = wall
@@ -184,10 +184,10 @@ Mazes = {
     }
 }
 if __name__ ==  '__main__' : 
-    env = Maze(fig=True, name ='Hard')
+    env = Maze(fig=True, name ='Hard', render=True)
     s=env.reset()
     for k in range(env.max_steps):
-        env.step([1,1])
+        env.step(np.array([-1,10]))
         env.render()
     env.close()
 

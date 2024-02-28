@@ -7,7 +7,7 @@ import torch
 class Classifier(torch.nn.Module):
     def __init__(self, observation_space,device, env_max_steps, 
                 lipshitz= False, lim_down = -10, lim_up = 10, 
-                treshold_old = -5, w_old = 0.01):
+                treshold_old = -5, w_old = 0.005):
         super(Classifier, self).__init__()
         # spectral normalization
         self.fc1 = spectral_norm(torch.nn.Linear(observation_space.shape[0], 128,device=device)) if lipshitz else torch.nn.Linear(observation_space.shape[0], 128,device=device)
@@ -49,7 +49,7 @@ class Classifier(torch.nn.Module):
             label_q = self.relabeling(times_q, self.env_max_steps) * label_q
             return -torch.mean(label_q*torch.log(s_q) + torch.log(1 - s_p))
         else :
-            return -torch.mean(torch.log(s_q) + torch.log(1 - s_p))
+            return -torch.mean(torch.log(s_q) + 16.0*torch.log(1 - s_p))
     
 
     # def ce_loss_w_labels(self, batch, labels):
@@ -61,16 +61,18 @@ class Classifier(torch.nn.Module):
     #     tau = -max_steps / np.log(1 - percentage)
     #     return (1-torch.exp(-t / tau))
     
-    def relabeling(self, t, max_steps, tau=3.0):
+    # 3.0
+    # torch.exp((t-max_steps)/(tau))
+    def relabeling(self, t, max_steps, tau=0.25):
         """ exp(T)=1 
             tau in ]0,10] """
-        return torch.exp((t-max_steps)/tau)
+        return torch.exp((t-max_steps)/(max_steps*tau))
     
 
 class Classifier_n(torch.nn.Module):
     def __init__(self, observation_space,device,n_agent,env_max_steps, 
                 lipshitz= False, lim_down = -10, lim_up = 10, 
-                treshold_old = -5, w_old = 0.05):
+                treshold_old = -5, w_old = 0.005):
         super(Classifier_n, self).__init__()
         self.n_agent = n_agent  
         # spectral normalization
@@ -110,10 +112,10 @@ class Classifier_n(torch.nn.Module):
         return -torch.mean(torch.log(p_z_i))
 
 
-    def relabeling(self, t, max_steps, tau=5.0):
+    def relabeling(self, t, max_steps, tau=0.25):
         """ exp(T)=1 
             tau in ]0,10] """
-        return torch.exp((t-max_steps)/tau)
+        return torch.exp((t-max_steps)/(max_steps*tau))
     
     # def ce_loss(self, batch_q,  batch_p):
     #     relabeling = self.relabeling(batch_q.times, self.env_max_steps)
@@ -131,9 +133,8 @@ class Classifier_n(torch.nn.Module):
         if relabeling : 
             mask_q = (s_q <= self.treshold_old).float()
             label_q = torch.ones_like(s_q) - (1-self.w_old)*mask_q
-            # label_q = self.relabeling(times_q, self.env_max_steps) * label_q
-            # return -torch.mean(label_q*torch.log(s_q) + torch.log(1 - s_p))
-            return-((label_q*torch.log(s_q)).mean() + (torch.log(1 - s_p)).mean())
+            label_q = self.relabeling(times_q, self.env_max_steps) * label_q
+            return-((label_q*torch.log(s_q)).mean() + 16.0*5.0*(torch.mean(torch.log(1 - s_p),dim=-2)).mean())
 
         else :
             return -torch.mean(torch.log(s_q) + torch.log(1 - s_p))

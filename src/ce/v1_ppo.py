@@ -306,6 +306,9 @@ if __name__ == "__main__":
 
         # update reward
         rewards = classifier(obs).detach().squeeze(-1)
+        print('reward max : ',rewards.max())
+        print('reward min : ',rewards.min())
+        print('reward mean : ',rewards.mean())
         # normalize rewards
         # rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-8)
 
