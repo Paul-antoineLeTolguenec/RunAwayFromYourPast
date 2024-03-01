@@ -14,8 +14,7 @@ import torch.optim as optim
 from torch.distributions.normal import Normal
 from torch.utils.tensorboard import SummaryWriter
 # from stable_baselines3.common.buffers import ReplayBuffer
-from src.utils.custom_sampling import exp_dec
-from src.ce.classifier import Classifier_n as Classifier
+from src.ce.classifier import Classifier
 from src.ce.vector_encoding import VE
 from envs.continuous_maze import Maze
 # animation 
@@ -62,9 +61,9 @@ def parse_args():
         help="the number of parallel game environments")
     parser.add_argument("--num-steps", type=int, default=2048,
         help="the number of steps to run in each environment per policy rollout")
-    parser.add_argument("--num_rollouts", type=int, default=4,
+    parser.add_argument("--num_rollouts", type=int, default=8,
         help="the number of rollouts ")
-    parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+    parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggle learning rate annealing for policy and value networks")
     parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma")
@@ -84,7 +83,7 @@ def parse_args():
         help="Toggles whether or not to use a clipped loss for the value function, as per the paper.")
     parser.add_argument("--ent-coef", type=float, default=0.05,
         help="coefficient of the entropy")
-    parser.add_argument("--vf-coef", type=float, default=1.0,
+    parser.add_argument("--vf-coef", type=float, default=0.5,
         help="coefficient of the value function")
     parser.add_argument("--max-grad-norm", type=float, default=0.5,
         help="the maximum norm for the gradient clipping")
@@ -95,12 +94,10 @@ def parse_args():
     parser.add_argument("--classifier-batch-size", type=int, default=128)
     parser.add_argument("--classifier-frequency", type=int, default=1)
     parser.add_argument("--classifier-epochs", type=int, default=32)
-    parser.add_argument("--un-n-past", type=int, default=8)
-    parser.add_argument("--tau-exp-rho", type=float, default=0.25)
-
+    parser.add_argument("--un-n-past", type=int, default=16)
     # n agent
     parser.add_argument("--n-agent", type=int, default=5)
-    parser.add_argument("--lamda-im", type=float, default=2.0)
+    parser.add_argument("--lamda-im", type=float, default=5.0)
     parser.add_argument("--ratio-reward", type=float, default=1.0)
     args = parser.parse_args()
     args.num_envs = args.n_agent
@@ -196,7 +193,7 @@ if __name__ == "__main__":
         iter_plot = 0
         if not os.path.exists('gif'):
             os.makedirs('gif')
-        writer_gif = imageio.get_writer('gif/v2_ppo.mp4', fps=2)
+        writer_gif = imageio.get_writer('gif/v2_ppo_beta.mp4', fps=2)
         # generate n_agent different colors for matplotlib
         colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
 
@@ -225,10 +222,11 @@ if __name__ == "__main__":
     print('mini batch size',args.minibatch_size)
     print('num minibatches',args.num_minibatches)
     print('batch size',args.batch_size)
+    print('classifier epochs',args.classifier_epochs)
     # Agent
     agent = Agent(envs, args.n_agent).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
-    classifier = Classifier(observation_space=envs.single_observation_space, device=device, n_agent = args.n_agent, env_max_steps = max_steps, n_past = args.un_n_past)
+    classifier = Classifier(observation_space=envs.single_observation_space, device=device, env_max_steps = max_steps, learn_z=True, n_agent = args.n_agent, n_past=args.un_n_past)
     classifier_optimizer = optim.Adam(classifier.parameters(), lr=args.classifier_lr, eps=1e-5)
     # vector encoding
     ve = VE(n = args.n_agent, device = device, prob = torch.ones(args.n_agent)/args.n_agent)
@@ -304,61 +302,48 @@ if __name__ == "__main__":
        
         # add to buffer
         # reshape (num_rollouts, num_envs, max_steps, obs_shape)
-        obs_rho_n = obs.reshape( max_steps, args.num_rollouts ,  args.num_envs, *envs.single_observation_space.shape)
-        times_rho_n = times.reshape( max_steps, args.num_rollouts ,  args.num_envs, 1)
-        # zs_rho_n = zs.reshape(args.num_rollouts * args.num_envs, max_steps, 1)
+        # obs_rho_n = obs.cpu().numpy().reshape(args.num_rollouts * args.num_envs, max_steps, *envs.single_observation_space.shape)
+        # times_rho_n = times.cpu().numpy().reshape(args.num_rollouts * args.num_envs, max_steps, 1)
         # train the classifier
         if update%args.classifier_frequency == 0 and update > 1:
+            batch_rho_n = obs.reshape(args.num_rollouts * args.num_envs * max_steps, *envs.single_observation_space.shape)
+            batch_rho_n_z = zs.reshape(args.num_rollouts * args.num_envs * max_steps, 1)
+            batch_rho_n_times = times.reshape(args.num_rollouts * args.num_envs * max_steps, 1)
             for epoch in range(args.classifier_epochs):
                 # sample from rho_n
-                batch_rho_n_z_ext = ve.z.unsqueeze(0).repeat(args.classifier_batch_size,1).unsqueeze(-1)
-                idx_ep_rho = np.random.randint(0, args.num_rollouts, args.classifier_batch_size)
-                idx_step_rho = (exp_dec(args.classifier_batch_size,tau = args.tau_exp_rho)*max_steps).astype(int)
-                batch_rho_n_ext = obs_rho_n[idx_step_rho, idx_ep_rho, :]
-                batch_rho_n_times_ext = times_rho_n[idx_step_rho, idx_ep_rho, :]    
+                idx_step_rho = np.random.randint(0, args.num_rollouts * args.num_envs * max_steps, args.classifier_batch_size)
+                batch_rho_n_ext = batch_rho_n[idx_step_rho]
+                batch_rho_n_z_ext = batch_rho_n_z[idx_step_rho]
+                batch_rho_n_times_ext = batch_rho_n_times[idx_step_rho]
                 # sample from un
                 # idx_z_un = np.random.randint(0, args.n_agent, args.classifier_batch_size)
                 idx_ep_un = np.random.randint(max(0,(update-args.un_n_past)*args.num_rollouts), update*args.num_rollouts, args.classifier_batch_size)
                 idx_step_un = np.random.randint(0, max_steps, args.classifier_batch_size)
                 batch_un = torch.Tensor(obs_un[:, idx_ep_un, idx_step_un]).to(device)
-                batch_un_ext = batch_un.permute(1,0,2)
+                # batch_un_ext = batch_un.permute(1,0,2)
                 # train the classifier
-                big_batch_rho_n_ext = batch_rho_n_ext.reshape(args.classifier_batch_size*args.n_agent, *envs.single_observation_space.shape)
-                big_batch_rho_n_z_ext = batch_rho_n_z_ext.reshape(args.classifier_batch_size*args.n_agent, 1)
-                big_batch_rho_n_times_ext = batch_rho_n_times_ext.reshape(args.classifier_batch_size*args.n_agent, 1)
-                big_batch_un_ext = batch_un_ext.reshape(args.classifier_batch_size*args.n_agent, *envs.single_observation_space.shape).unsqueeze(-2).repeat(1,args.n_agent,1)
-                big_batch_un_z_ext = ve.z.unsqueeze(0).repeat(args.classifier_batch_size*args.n_agent,1).unsqueeze(-1)
-                # big_batch_un_z_ext = batch_un_z_ext.reshape(args.classifier_batch_size*args.n_agent, 1)
-                big_b_ind = np.arange(args.classifier_batch_size*args.n_agent)
-                np.random.shuffle(big_b_ind)
-                for start in range(0, args.classifier_batch_size*args.n_agent, args.classifier_batch_size):
-                    end = start + args.classifier_batch_size
-                    mb_ind = big_b_ind[start:end]
-                    # train the classifier
-                    classifier_optimizer.zero_grad()
-                    classifier_loss = classifier.ce_loss_ppo(big_batch_rho_n_ext[mb_ind], big_batch_rho_n_z_ext[mb_ind], big_batch_rho_n_times_ext[mb_ind], big_batch_un_ext[mb_ind], big_batch_un_z_ext[mb_ind])
-                    classifier_loss.backward()
-                    classifier_optimizer.step()
-                    writer.add_scalar("losses/classifier_loss", classifier_loss.item(), global_step)
+                classifier_optimizer.zero_grad()
+                classifier_loss = classifier.ce_loss_ppo(batch_rho_n_ext, batch_rho_n_times_ext, batch_un, batch_rho_n_z_ext)
+                classifier_loss.backward()
+                classifier_optimizer.step()
+                writer.add_scalar("losses/classifier_loss", classifier_loss.item(), global_step)
 
         # update reward
         with torch.no_grad():
-            log_p_rho_un = classifier(obs,zs).detach().squeeze(-1)
-            obs_tilde = obs.reshape(args.num_envs*args.num_rollouts*max_steps, *envs.single_observation_space.shape).unsqueeze(-2).repeat(1,args.n_agent,1)
-            z_tilde = ve.z.unsqueeze(0).repeat(args.num_envs*args.num_rollouts*max_steps,1).unsqueeze(-1)
-            log_p_rho_un_tilde = classifier(obs_tilde,z_tilde).detach().squeeze(-1)
-            p_tilde = torch.sum(torch.exp(log_p_rho_un_tilde), dim = -1).unsqueeze(-1).reshape(args.num_rollouts*max_steps,args.n_agent)
+            log_p_rho_un = classifier(obs).detach().squeeze(-1)
+            # compute p(z|s)
+            p_s_z = torch.gather(torch.softmax(classifier.forward_z(obs),dim=-1), -1, (zs-1).type(torch.int64)).squeeze(-1)
+            log_p_s_z = torch.log(p_s_z + 1e-8)
             p = torch.exp(log_p_rho_un)
-            im = torch.log(args.n_agent * p/p_tilde)
             # normalize 
             # im = (im - torch.mean(im))/(torch.std(im) + 1e-8)
             # log_p_rho_un = (log_p_rho_un - torch.mean(log_p_rho_un))/(torch.std(log_p_rho_un) + 1e-8)
             # rewards 
-            rewards = log_p_rho_un + args.lamda_im*im
-            print('max im',torch.max(im))
-            print('min im',torch.min(im))
-            print('mean im',torch.mean(im))
-            print('std im',torch.std(im))
+            # rewards = log_p_rho_un + args.lamda_im*im
+            rewards = log_p_rho_un + args.lamda_im*log_p_s_z
+            print('max log_p_s_z',torch.max(log_p_s_z))
+            print('min log_p_s_z',torch.min(log_p_s_z))
+            print('mean log_p_s_z',torch.mean(log_p_s_z))
             print('max log_p_rho_un',torch.max(log_p_rho_un))
             print('min log_p_rho_un',torch.min(log_p_rho_un))
             print('mean log_p_rho_un',torch.mean(log_p_rho_un))

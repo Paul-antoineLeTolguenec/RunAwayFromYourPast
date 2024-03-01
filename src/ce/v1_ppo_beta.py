@@ -12,11 +12,10 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.distributions.normal import Normal
+from src.utils.custom_sampling import exp_dec
 from torch.utils.tensorboard import SummaryWriter
 # from stable_baselines3.common.buffers import ReplayBuffer
-from src.utils.custom_sampling import exp_dec
-from src.ce.classifier import Classifier_n as Classifier
-from src.ce.vector_encoding import VE
+from src.ce.classifier import Classifier
 from envs.continuous_maze import Maze
 # animation 
 import matplotlib.pyplot as plt
@@ -52,7 +51,7 @@ def parse_args():
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="Ur",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=int(1e7),
+    parser.add_argument("--total-timesteps", type=int, default=1000000,
         help="total timesteps of the experiments")
     parser.add_argument("--n-capacity", type=int, default=10**5,
         help="the capacity of the replay buffer in terms of episodes")
@@ -64,15 +63,15 @@ def parse_args():
         help="the number of steps to run in each environment per policy rollout")
     parser.add_argument("--num_rollouts", type=int, default=4,
         help="the number of rollouts ")
-    parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+    parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggle learning rate annealing for policy and value networks")
     parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma")
     parser.add_argument("--gae-lambda", type=float, default=0.95,
         help="the lambda for the general advantage estimation")
-    parser.add_argument("--num-minibatches", type=int, default=64,
+    parser.add_argument("--num-minibatches", type=int, default=32,
         help="the number of mini-batches")
-    parser.add_argument("--minibatch-size", type=int, default=64,
+    parser.add_argument("--minibatch-size", type=int, default=50,
                         help="the size of the mini-batch")
     parser.add_argument("--update-epochs", type=int, default=16,
         help="the K epochs to update the policy")
@@ -84,26 +83,20 @@ def parse_args():
         help="Toggles whether or not to use a clipped loss for the value function, as per the paper.")
     parser.add_argument("--ent-coef", type=float, default=0.05,
         help="coefficient of the entropy")
-    parser.add_argument("--vf-coef", type=float, default=1.0,
+    parser.add_argument("--vf-coef", type=float, default=0.5,
         help="coefficient of the value function")
     parser.add_argument("--max-grad-norm", type=float, default=0.5,
         help="the maximum norm for the gradient clipping")
     parser.add_argument("--target-kl", type=float, default=None,
         help="the target KL divergence threshold")
-    # classifier
     parser.add_argument("--classifier-lr", type=float, default=2e-3)
     parser.add_argument("--classifier-batch-size", type=int, default=128)
     parser.add_argument("--classifier-frequency", type=int, default=1)
     parser.add_argument("--classifier-epochs", type=int, default=32)
-    parser.add_argument("--un-n-past", type=int, default=8)
-    parser.add_argument("--tau-exp-rho", type=float, default=0.25)
-
-    # n agent
-    parser.add_argument("--n-agent", type=int, default=5)
-    parser.add_argument("--lamda-im", type=float, default=2.0)
+    parser.add_argument("--tau-exp-rho", type=float, default=0.5)
+    parser.add_argument("--un-n-past", type=int, default=16)
     parser.add_argument("--ratio-reward", type=float, default=1.0)
     args = parser.parse_args()
-    args.num_envs = args.n_agent
     # args.num_steps = args.num_steps // args.num_envs
     # fmt: on
     return args
@@ -137,17 +130,17 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
 
 
 class Agent(nn.Module):
-    def __init__(self, envs, n_agent):
+    def __init__(self, envs):
         super().__init__()
         self.critic = nn.Sequential(
-            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod()+1, 64)),
+            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 1), std=1.0),
         )
         self.actor_mean = nn.Sequential(
-            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod()+1, 64)),
+            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
@@ -155,11 +148,10 @@ class Agent(nn.Module):
         )
         self.actor_logstd = nn.Parameter(torch.zeros(1, np.prod(envs.single_action_space.shape)))
 
-    def get_value(self, x, z):
-        return self.critic(torch.cat((x,z),-1))
+    def get_value(self, x):
+        return self.critic(x)
 
-    def get_action_and_value(self, x, z, action=None):
-        x = torch.cat((x,z),-1)
+    def get_action_and_value(self, x, action=None):
         action_mean = self.actor_mean(x)
         action_logstd = self.actor_logstd.expand_as(action_mean)
         action_std = torch.exp(action_logstd)
@@ -196,9 +188,7 @@ if __name__ == "__main__":
         iter_plot = 0
         if not os.path.exists('gif'):
             os.makedirs('gif')
-        writer_gif = imageio.get_writer('gif/v2_ppo.mp4', fps=2)
-        # generate n_agent different colors for matplotlib
-        colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
+        writer_gif = imageio.get_writer('gif/v1_ppo_beta.mp4', fps=2)
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
@@ -217,24 +207,22 @@ if __name__ == "__main__":
         max_steps = envs.envs[0].max_steps
         args.num_steps = max_steps * args.num_rollouts
         # classifier epoch 
-        args.classifier_epochs = (args.num_steps * args.num_envs) // args.classifier_batch_size
+        # args.classifier_epochs = args.num_steps // args.classifier_batch_size
     # update batch size and minibatch size
     args.batch_size = int(args.num_envs * args.num_steps)
+    # print('batch_size',args.batch_size)
     # args.minibatch_size = int(args.batch_size // args.num_minibatches)
-    args.num_minibatches = int(args.batch_size // args.minibatch_size)
-    print('mini batch size',args.minibatch_size)
-    print('num minibatches',args.num_minibatches)
-    print('batch size',args.batch_size)
+    args.num_mini_batch = args.batch_size // args.minibatch_size
+    print('batch_size',args.batch_size)
+    print('minibatch_size',args.minibatch_size)
+    print('num mini batch',args.num_minibatches)
     # Agent
-    agent = Agent(envs, args.n_agent).to(device)
+    agent = Agent(envs).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
-    classifier = Classifier(observation_space=envs.single_observation_space, device=device, n_agent = args.n_agent, env_max_steps = max_steps, n_past = args.un_n_past)
+    classifier = Classifier(envs.single_observation_space, env_max_steps=envs.envs[0].max_steps,device=device, n_agent=1, n_past = args.un_n_past)
     classifier_optimizer = optim.Adam(classifier.parameters(), lr=args.classifier_lr, eps=1e-5)
-    # vector encoding
-    ve = VE(n = args.n_agent, device = device, prob = torch.ones(args.n_agent)/args.n_agent)
     # ALGO Logic: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
-    zs = torch.zeros((args.num_steps, args.num_envs) + (1,)).to(device)
     actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
     times = torch.zeros((args.num_steps, args.num_envs) + (1,)).to(device)
     logprobs = torch.zeros((args.num_steps, args.num_envs)).to(device)
@@ -242,22 +230,18 @@ if __name__ == "__main__":
     dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)).to(device)
     # full replay buffer
-    obs_un = np.zeros((args.num_envs,args.n_capacity,max_steps) + envs.single_observation_space.shape)
-    z_un = np.zeros((args.num_envs, args.n_capacity, max_steps) + (1,))
+    obs_un = np.zeros((args.n_capacity,max_steps) + envs.single_observation_space.shape)
     # times_full = np.zeros((args.n_capacity,max_steps)+(1,))
-    # sample n z 
-    z = ve.z
-
     # TRY NOT TO MODIFY: start the game
     global_step = 0
     start_time = time.time()
     next_obs, infos = envs.reset(seed=args.seed)
-    times[0] = torch.tensor(np.array([infos["l"]])).transpose(0,1).to(device)
+    times[0] = torch.tensor(np.array([infos["l"]])).to(device)
     next_obs = torch.Tensor(next_obs).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
     num_updates = args.total_timesteps // args.batch_size
     video_filenames = set()
-    
+
     for update in range(1, num_updates + 1):
         # Annealing the rate if instructed to do so.
         if args.anneal_lr:
@@ -269,29 +253,26 @@ if __name__ == "__main__":
             global_step += 1 * args.num_envs
             obs[step] = next_obs
             dones[step] = next_done
-            zs[step] = z.unsqueeze(-1)
 
             # if terminated, reset the env
 
+
             # ALGO LOGIC: action logic
             with torch.no_grad():
-                action, logprob, _, value = agent.get_action_and_value(next_obs, z.unsqueeze(-1))
+                action, logprob, _, value = agent.get_action_and_value(next_obs)
                 values[step] = value.flatten()
             actions[step] = action
             logprobs[step] = logprob
 
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, terminated, truncated, infos = envs.step(action.cpu().numpy())
-            times[step] = torch.tensor(np.array([infos["l"]])).transpose(0,1).to(device)
+            times[step] = torch.tensor(np.array([infos["l"]])).to(device)
             done = np.logical_or(terminated, truncated)
             rewards[step] = torch.tensor(reward).to(device).view(-1)*args.ratio_reward
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)
             # Only print when at least 1 env is done
             if "final_info" not in infos:
                 continue
-            if True in done:
-                # reset z 
-                z = ve.z
             # print('step',step)
             # for info in infos["final_info"]:
             #     # Skip the envs that are not done
@@ -304,74 +285,43 @@ if __name__ == "__main__":
        
         # add to buffer
         # reshape (num_rollouts, num_envs, max_steps, obs_shape)
-        obs_rho_n = obs.reshape( max_steps, args.num_rollouts ,  args.num_envs, *envs.single_observation_space.shape)
-        times_rho_n = times.reshape( max_steps, args.num_rollouts ,  args.num_envs, 1)
-        # zs_rho_n = zs.reshape(args.num_rollouts * args.num_envs, max_steps, 1)
+        obs_rho_n = obs.cpu().numpy().reshape(args.num_rollouts * args.num_envs, max_steps, *envs.single_observation_space.shape)
+        times_rho_n = times.cpu().numpy().reshape(args.num_rollouts * args.num_envs, max_steps, 1)
         # train the classifier
         if update%args.classifier_frequency == 0 and update > 1:
             for epoch in range(args.classifier_epochs):
                 # sample from rho_n
-                batch_rho_n_z_ext = ve.z.unsqueeze(0).repeat(args.classifier_batch_size,1).unsqueeze(-1)
-                idx_ep_rho = np.random.randint(0, args.num_rollouts, args.classifier_batch_size)
-                idx_step_rho = (exp_dec(args.classifier_batch_size,tau = args.tau_exp_rho)*max_steps).astype(int)
-                batch_rho_n_ext = obs_rho_n[idx_step_rho, idx_ep_rho, :]
-                batch_rho_n_times_ext = times_rho_n[idx_step_rho, idx_ep_rho, :]    
+                idx_ep = np.random.randint(0, args.num_rollouts * args.num_envs, args.classifier_batch_size)
+                idx_step = (exp_dec(args.classifier_batch_size,tau = args.tau_exp_rho)*max_steps).astype(int)
+                batch_rho_n = torch.Tensor(obs_rho_n[idx_ep, idx_step]).to(device)
+                batch_times_rho_n = torch.Tensor(times_rho_n[idx_ep, idx_step]).to(device)
                 # sample from un
-                # idx_z_un = np.random.randint(0, args.n_agent, args.classifier_batch_size)
-                idx_ep_un = np.random.randint(max(0,(update-args.un_n_past)*args.num_rollouts), update*args.num_rollouts, args.classifier_batch_size)
+                idx_un = np.random.randint(max(0,(update-args.un_n_past)*args.num_rollouts*args.num_envs), update*args.num_rollouts*args.num_envs, args.classifier_batch_size)
                 idx_step_un = np.random.randint(0, max_steps, args.classifier_batch_size)
-                batch_un = torch.Tensor(obs_un[:, idx_ep_un, idx_step_un]).to(device)
-                batch_un_ext = batch_un.permute(1,0,2)
+                batch_un = torch.Tensor(obs_un[idx_un, idx_step_un]).to(device)
                 # train the classifier
-                big_batch_rho_n_ext = batch_rho_n_ext.reshape(args.classifier_batch_size*args.n_agent, *envs.single_observation_space.shape)
-                big_batch_rho_n_z_ext = batch_rho_n_z_ext.reshape(args.classifier_batch_size*args.n_agent, 1)
-                big_batch_rho_n_times_ext = batch_rho_n_times_ext.reshape(args.classifier_batch_size*args.n_agent, 1)
-                big_batch_un_ext = batch_un_ext.reshape(args.classifier_batch_size*args.n_agent, *envs.single_observation_space.shape).unsqueeze(-2).repeat(1,args.n_agent,1)
-                big_batch_un_z_ext = ve.z.unsqueeze(0).repeat(args.classifier_batch_size*args.n_agent,1).unsqueeze(-1)
-                # big_batch_un_z_ext = batch_un_z_ext.reshape(args.classifier_batch_size*args.n_agent, 1)
-                big_b_ind = np.arange(args.classifier_batch_size*args.n_agent)
-                np.random.shuffle(big_b_ind)
-                for start in range(0, args.classifier_batch_size*args.n_agent, args.classifier_batch_size):
-                    end = start + args.classifier_batch_size
-                    mb_ind = big_b_ind[start:end]
-                    # train the classifier
-                    classifier_optimizer.zero_grad()
-                    classifier_loss = classifier.ce_loss_ppo(big_batch_rho_n_ext[mb_ind], big_batch_rho_n_z_ext[mb_ind], big_batch_rho_n_times_ext[mb_ind], big_batch_un_ext[mb_ind], big_batch_un_z_ext[mb_ind])
-                    classifier_loss.backward()
-                    classifier_optimizer.step()
-                    writer.add_scalar("losses/classifier_loss", classifier_loss.item(), global_step)
+                classifier_optimizer.zero_grad()
+                classifier_loss = classifier.ce_loss_ppo(batch_rho_n, batch_times_rho_n, batch_un)
+                classifier_loss.backward()
+                classifier_optimizer.step()
+                writer.add_scalar("losses/classifier_loss", classifier_loss.item(), global_step)
 
         # update reward
-        with torch.no_grad():
-            log_p_rho_un = classifier(obs,zs).detach().squeeze(-1)
-            obs_tilde = obs.reshape(args.num_envs*args.num_rollouts*max_steps, *envs.single_observation_space.shape).unsqueeze(-2).repeat(1,args.n_agent,1)
-            z_tilde = ve.z.unsqueeze(0).repeat(args.num_envs*args.num_rollouts*max_steps,1).unsqueeze(-1)
-            log_p_rho_un_tilde = classifier(obs_tilde,z_tilde).detach().squeeze(-1)
-            p_tilde = torch.sum(torch.exp(log_p_rho_un_tilde), dim = -1).unsqueeze(-1).reshape(args.num_rollouts*max_steps,args.n_agent)
-            p = torch.exp(log_p_rho_un)
-            im = torch.log(args.n_agent * p/p_tilde)
-            # normalize 
-            # im = (im - torch.mean(im))/(torch.std(im) + 1e-8)
-            # log_p_rho_un = (log_p_rho_un - torch.mean(log_p_rho_un))/(torch.std(log_p_rho_un) + 1e-8)
-            # rewards 
-            rewards = log_p_rho_un + args.lamda_im*im
-            print('max im',torch.max(im))
-            print('min im',torch.min(im))
-            print('mean im',torch.mean(im))
-            print('std im',torch.std(im))
-            print('max log_p_rho_un',torch.max(log_p_rho_un))
-            print('min log_p_rho_un',torch.min(log_p_rho_un))
-            print('mean log_p_rho_un',torch.mean(log_p_rho_un))
-            print('std log_p_rho_un',torch.std(log_p_rho_un))
+        rewards = classifier(obs).detach().squeeze(-1)
+        print('reward max : ',rewards.max())
+        print('reward min : ',rewards.min())
+        print('reward mean : ',rewards.mean())
+        # normalize rewards
+        # rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-8)
+
         # add to buffer
-        
-        obs_un[:, args.num_rollouts * (update-1):args.num_rollouts * update] = obs.permute(1,0,2).reshape(args.num_envs, args.num_rollouts, max_steps, *envs.single_observation_space.shape).cpu().numpy()
-        z_un[:, args.num_rollouts * (update-1):args.num_rollouts * update] = zs.permute(1,0,2).reshape(args.num_envs, args.num_rollouts, max_steps, 1).cpu().numpy()
+        obs_un[args.num_rollouts*(update-1):args.num_rollouts*update] = obs_rho_n
+
 
 
         # bootstrap value if not done
         with torch.no_grad():
-            next_value = agent.get_value(next_obs,z.unsqueeze(-1)).reshape(1, -1)
+            next_value = agent.get_value(next_obs).reshape(1, -1)
             advantages = torch.zeros_like(rewards).to(device)
             lastgaelam = 0
             for t in reversed(range(args.num_steps)):
@@ -387,12 +337,12 @@ if __name__ == "__main__":
 
         # flatten the batch
         b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
-        b_zs = zs.reshape((-1,) + (1,))
         b_logprobs = logprobs.reshape(-1)
         b_actions = actions.reshape((-1,) + envs.single_action_space.shape)
         b_advantages = advantages.reshape(-1)
         b_returns = returns.reshape(-1)
         b_values = values.reshape(-1)
+
         # Optimizing the policy and value network
         b_inds = np.arange(args.batch_size)
         clipfracs = []
@@ -402,7 +352,7 @@ if __name__ == "__main__":
                 end = start + args.minibatch_size
                 mb_inds = b_inds[start:end]
 
-                _, newlogprob, entropy, newvalue = agent.get_action_and_value(x = b_obs[mb_inds], z = b_zs[mb_inds], action = b_actions[mb_inds])
+                _, newlogprob, entropy, newvalue = agent.get_action_and_value(b_obs[mb_inds], b_actions[mb_inds])
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()
 
@@ -471,16 +421,17 @@ if __name__ == "__main__":
                     video_filenames.add(filename)
         if update % args.fig_frequency == 0 and args.make_gif and global_step > 0:
             # clear the plot
-            # env_plot.ax.clear()
+            env_plot.ax.clear()
             # reset the limits
-            # env_plot.reset_lim_fig()
+            env_plot.reset_lim_fig()
             # Plotting measure 
-            # m_n = classifier(torch.Tensor(obs_un[:, args.num_rollouts * (update-1) :args.num_rollouts * update]).to(device), torch.Tensor(z_un[:, args.num_rollouts * (update-1) :args.num_rollouts * update]).to(device)).detach().cpu().numpy()
-            # print('m_n',m_n.shape)
+            m_n = classifier(torch.Tensor(obs_un[:args.num_rollouts*args.num_envs*update, : ]).to(device)).detach().cpu().numpy().squeeze(-1)
+            print('min max',m_n.min(),m_n.max() )
+            # env_plot.ax.scatter(rb.observations[:rb.pos,0], rb.observations[:rb.pos,1], s=1, c = m_n, cmap = 'viridis')
             # Plotting the environment
-            data_to_plot  = obs_un[:, args.num_rollouts * (update-1) :args.num_rollouts * update].reshape(args.num_envs, args.num_rollouts* max_steps, *envs.single_observation_space.shape)
-            for z_t in range(args.n_agent):
-                env_plot.ax.scatter(data_to_plot[z_t,:,0], data_to_plot[z_t,:,1], label = f'z = {z_t}', c = colors[z_t], s=1)
+            env_plot.ax.scatter(obs_un[:args.num_rollouts*args.num_envs*update, :,0], obs_un[:args.num_rollouts*args.num_envs*update, :,1], s=1, c = m_n, cmap = 'viridis')
+            veridis_c = plt.cm.ScalarMappable(cmap='viridis')
+            veridis_c.set_array(m_n)
 
             # save fig env_plot
             env_plot.figure.canvas.draw()
