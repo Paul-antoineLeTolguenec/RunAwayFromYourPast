@@ -6,8 +6,8 @@ import torch
 
 class Classifier(torch.nn.Module):
     def __init__(self, observation_space,device, env_max_steps, 
-                lipshitz= False, lim_down = -10, lim_up = 10, 
-                treshold_old = -5, w_old = 0.001, learn_z = False, 
+                lipshitz= False, lim_down = -5, lim_up = 5, 
+                w_old = 0.0001, learn_z = False, 
                 n_agent = 1, n_past = 1):
         super(Classifier, self).__init__()
         # spectral normalization
@@ -19,7 +19,6 @@ class Classifier(torch.nn.Module):
         self.lim_down = lim_down
         self.lim_up = lim_up
         self.w_old = w_old
-        self.treshold_old = treshold_old
         self.sigmoid = torch.nn.Sigmoid()
         self.learn_z = learn_z
         self.n_past = n_past
@@ -50,28 +49,39 @@ class Classifier(torch.nn.Module):
         return -torch.mean(torch.log(p_z_i))
     
 
-    def ce_loss_ppo(self, batch_q, times_q, batch_p, batch_q_z = None, relabeling = True):
-        s_q = self.sigmoid(self(batch_q))
-        s_p = self.sigmoid(self(batch_p))
-        # mask s_q s_q inf or equal to trehold_old 
-        if relabeling : 
-            mask_q = (s_q <= self.treshold_old).float()
-            label_q = torch.ones_like(s_q) - (1-self.w_old)*mask_q
-            label_q /= (self.n_agent*self.n_past)
-            # label_q = self.relabeling(times_q, self.env_max_steps) * label_q
-            L = -((label_q*torch.log(s_q)).mean() +(torch.log(1 - s_p)).mean())
-        else :
-            L =  -((torch.log(s_q)).mean() + (torch.log(1 - s_p)).mean())
+    def ce_loss_ppo(self, batch_q, times_q, batch_p, batch_q_z = None, batch_p_z =None, relabeling = True, ratio = 1.0, update = 0):
+        s_q = self(batch_q)
+        s_q_p = self.sigmoid(s_q)
+        s_p = self(batch_p)
+        s_p_p = self.sigmoid(s_p)
+        # mask strategy q
+        # label_q = torch.ones_like(s_q)
+        label_q = self.mask_labels_q(s_q)
+        # label_q /= (self.n_past)
+        # mask strategy p
+        label_p = self.mask_labels_p(s_p)
+        L = -((label_q*torch.log(s_q_p)).mean() +(label_p*torch.log(1 - s_p_p)).mean())
+        # L = -((label_q*torch.log(s_q_p)).mean() +(torch.log(1 - s_p_p)).mean() + (mask_q*torch.log(1 - s_q_p)).mean())
         return L if not self.learn_z else L + self.mlh_loss(batch_q, batch_q_z)
- 
     # 3.0
     # torch.exp((t-max_steps)/(tau))
-    def relabeling(self, t, max_steps, tau=0.25):
-        """ exp(T)=1 
-            tau in ]0,10] """
-        return torch.exp((t-max_steps)/(max_steps*tau))
+    # def relabeling(self, t, max_steps, tau=0.5):
+    #     """ exp(T)=1 
+    #         tau in ]0,10] """
+    #     return torch.exp((t-max_steps)/(max_steps*tau))
     
-
+    def mask_labels_q(self, s_q, tau=2.0):
+        with torch.no_grad():
+            s_q_clip = torch.clamp(s_q, self.lim_down, 0)
+            label_q = torch.exp(s_q_clip/(-self.lim_down*tau))
+            return label_q
+       
+    def mask_labels_p(self, s_p,w=0.5):
+        with torch.no_grad():
+            mask_p = (0.0 <= s_p).float()
+            label_p = torch.ones_like(s_p) + mask_p*w
+            return label_p
+        
 class Classifier_n(torch.nn.Module):
     def __init__(self, observation_space,device,n_agent, n_past,env_max_steps, 
                 lipshitz= False, lim_down = -10, lim_up = 10, 
@@ -116,7 +126,7 @@ class Classifier_n(torch.nn.Module):
         return -torch.mean(torch.log(p_z_i))
 
 
-    def relabeling(self, t, max_steps, tau=1.0):
+    def relabeling(self, t, max_steps, tau=0.5):
         """ exp(T)=1 
             tau in ]0,10] """
         return torch.exp((t-max_steps)/(max_steps*tau))

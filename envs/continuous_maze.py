@@ -12,7 +12,7 @@ class Maze(gym.Env):
             self.y=0
             self.dx=0
             self.dy=0
-            self.dt=1e-2
+            self.dt=2e-2
             self.max_x=1
             self.max_y=1
             self.min_x=-1

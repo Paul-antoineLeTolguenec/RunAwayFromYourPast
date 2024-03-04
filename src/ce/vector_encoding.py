@@ -29,3 +29,7 @@ class VE :
 if __name__=='__main__': 
     ve = VE(3, 'cpu', torch.tensor([0.1, 0.2, 0.7]))
     print(ve.sample(10))
+    print('z shape : ', ve.z.shape)
+    print('z : ', ve.z)
+    print('one hot shape : ', ve.one_hot.shape)
+    print('one hot : ', ve.one_hot)

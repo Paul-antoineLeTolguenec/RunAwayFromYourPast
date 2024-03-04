@@ -34,7 +34,7 @@ def parse_args():
     parser.add_argument("--env-type", type=str, default="Maze")
     parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, `torch.backends.cudnn.deterministic=False`")
-    parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+    parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default= False, nargs="?", const=True,
         help="if toggled, cuda will be enabled by default")
     parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="if toggled, this experiment will be tracked with Weights and Biases")
@@ -63,7 +63,7 @@ def parse_args():
         help="the number of steps to run in each environment per policy rollout")
     parser.add_argument("--num_rollouts", type=int, default=4,
         help="the number of rollouts ")
-    parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+    parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="Toggle learning rate annealing for policy and value networks")
     parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma")
@@ -71,30 +71,31 @@ def parse_args():
         help="the lambda for the general advantage estimation")
     parser.add_argument("--num-minibatches", type=int, default=32,
         help="the number of mini-batches")
-    parser.add_argument("--minibatch-size", type=int, default=50,
+    parser.add_argument("--minibatch-size", type=int, default=128,
                         help="the size of the mini-batch")
-    parser.add_argument("--update-epochs", type=int, default=16,
+    parser.add_argument("--update-epochs", type=int, default=32,
         help="the K epochs to update the policy")
     parser.add_argument("--norm-adv", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggles advantages normalization")
-    parser.add_argument("--clip-coef", type=float, default=0.2,
+    parser.add_argument("--clip-coef", type=float, default=0.4,
         help="the surrogate clipping coefficient")
     parser.add_argument("--clip-vloss", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="Toggles whether or not to use a clipped loss for the value function, as per the paper.")
     parser.add_argument("--ent-coef", type=float, default=0.05,
         help="coefficient of the entropy")
-    parser.add_argument("--vf-coef", type=float, default=0.5,
+    parser.add_argument("--vf-coef", type=float, default=1.0,
         help="coefficient of the value function")
     parser.add_argument("--max-grad-norm", type=float, default=0.5,
         help="the maximum norm for the gradient clipping")
     parser.add_argument("--target-kl", type=float, default=None,
         help="the target KL divergence threshold")
-    parser.add_argument("--classifier-lr", type=float, default=2e-3)
-    parser.add_argument("--classifier-batch-size", type=int, default=128)
+    parser.add_argument("--classifier-lr", type=float, default=1e-3)
+    parser.add_argument("--classifier-batch-size", type=int, default=256)
     parser.add_argument("--classifier-frequency", type=int, default=1)
-    parser.add_argument("--classifier-epochs", type=int, default=32)
-    parser.add_argument("--tau-exp-rho", type=float, default=0.5)
-    parser.add_argument("--un-n-past", type=int, default=16)
+    parser.add_argument("--classifier-epochs", type=int, default=1)
+    parser.add_argument("--tau-exp-rho", type=float, default=0.25) # 1.0
+    parser.add_argument("--un-n-past", type=int, default=8)
+    parser.add_argument("--boring-n", type=int, default=16)
     parser.add_argument("--ratio-reward", type=float, default=1.0)
     args = parser.parse_args()
     # args.num_steps = args.num_steps // args.num_envs
@@ -206,8 +207,6 @@ if __name__ == "__main__":
     if args.episodic_return:
         max_steps = envs.envs[0].max_steps
         args.num_steps = max_steps * args.num_rollouts
-        # classifier epoch 
-        # args.classifier_epochs = args.num_steps // args.classifier_batch_size
     # update batch size and minibatch size
     args.batch_size = int(args.num_envs * args.num_steps)
     # print('batch_size',args.batch_size)
@@ -285,26 +284,50 @@ if __name__ == "__main__":
        
         # add to buffer
         # reshape (num_rollouts, num_envs, max_steps, obs_shape)
-        obs_rho_n = obs.cpu().numpy().reshape(args.num_rollouts * args.num_envs, max_steps, *envs.single_observation_space.shape)
-        times_rho_n = times.cpu().numpy().reshape(args.num_rollouts * args.num_envs, max_steps, 1)
+        obs_rho_n = obs.reshape(args.num_rollouts * args.num_envs, max_steps, *envs.single_observation_space.shape)
+        times_rho_n = times.reshape(args.num_rollouts * args.num_envs, max_steps, 1)
         # train the classifier
-        if update%args.classifier_frequency == 0 and update > 1:
+        if update%args.classifier_frequency == 0 and update > args.boring_n:
+            # sliding obs un 
+            sliding_obs_un = torch.Tensor(obs_un[max(0,(update-args.un_n_past-args.boring_n)*args.num_rollouts*args.num_envs): (update-args.boring_n)*args.num_rollouts*args.num_envs].reshape(-1, *envs.single_observation_space.shape)).to(device)
+            classifier_n_update = sliding_obs_un.shape[0] // args.classifier_batch_size
+            b_idx_un = np.arange(sliding_obs_un.shape[0])
+            # rho_n 
+            b_idx_step_rho = (exp_dec(sliding_obs_un.shape[0],tau = args.tau_exp_rho)*max_steps).astype(int)
+            b_idx_ep_rho = np.random.randint(0, args.num_rollouts * args.num_envs, sliding_obs_un.shape[0])
             for epoch in range(args.classifier_epochs):
-                # sample from rho_n
-                idx_ep = np.random.randint(0, args.num_rollouts * args.num_envs, args.classifier_batch_size)
-                idx_step = (exp_dec(args.classifier_batch_size,tau = args.tau_exp_rho)*max_steps).astype(int)
-                batch_rho_n = torch.Tensor(obs_rho_n[idx_ep, idx_step]).to(device)
-                batch_times_rho_n = torch.Tensor(times_rho_n[idx_ep, idx_step]).to(device)
-                # sample from un
-                idx_un = np.random.randint(max(0,(update-args.un_n_past)*args.num_rollouts*args.num_envs), update*args.num_rollouts*args.num_envs, args.classifier_batch_size)
-                idx_step_un = np.random.randint(0, max_steps, args.classifier_batch_size)
-                batch_un = torch.Tensor(obs_un[idx_un, idx_step_un]).to(device)
-                # train the classifier
-                classifier_optimizer.zero_grad()
-                classifier_loss = classifier.ce_loss_ppo(batch_rho_n, batch_times_rho_n, batch_un)
-                classifier_loss.backward()
-                classifier_optimizer.step()
-                writer.add_scalar("losses/classifier_loss", classifier_loss.item(), global_step)
+                np.random.shuffle(b_idx_un)
+                np.random.shuffle(b_idx_step_rho)
+                np.random.shuffle(b_idx_ep_rho)
+                for start in range(0, sliding_obs_un.shape[0], args.classifier_batch_size):
+                    end = start + args.classifier_batch_size
+                    mb_idx_un = b_idx_un[start:end]
+                    mb_idx_ep_rho = b_idx_ep_rho[start:end]
+                    mb_idx_step_rho = b_idx_step_rho[start:end]
+                    classifier_optimizer.zero_grad()
+                    classifier_loss = classifier.ce_loss_ppo(batch_q=obs_rho_n[mb_idx_ep_rho,mb_idx_step_rho], times_q=times_rho_n[mb_idx_ep_rho,mb_idx_step_rho], batch_p=sliding_obs_un[mb_idx_un])
+                    classifier_loss.backward()
+                    classifier_optimizer.step()
+                    writer.add_scalar("losses/classifier_loss", classifier_loss.item(), global_step)
+        # # train the classifier
+        # if update%args.classifier_frequency == 0 and update > 1:
+        #     for epoch in range(args.classifier_epochs):
+        #         # sample from rho_n
+        #         idx_ep = np.random.randint(0, args.num_rollouts * args.num_envs, args.classifier_batch_size)
+        #         # idx_step = (exp_dec(args.classifier_batch_size,tau = args.tau_exp_rho)*max_steps).astype(int)
+        #         idx_step = np.random.randint(0, max_steps, args.classifier_batch_size)
+        #         batch_rho_n = torch.Tensor(obs_rho_n[idx_ep, idx_step]).to(device)
+        #         batch_times_rho_n = torch.Tensor(times_rho_n[idx_ep, idx_step]).to(device)
+        #         # sample from un
+        #         idx_un = np.random.randint(max(0,(update-args.un_n_past)*args.num_rollouts*args.num_envs), update*args.num_rollouts*args.num_envs, args.classifier_batch_size)
+        #         idx_step_un = np.random.randint(0, max_steps, args.classifier_batch_size)
+        #         batch_un = torch.Tensor(obs_un[idx_un, idx_step_un]).to(device)
+        #         # train the classifier
+        #         classifier_optimizer.zero_grad()
+        #         classifier_loss = classifier.ce_loss_ppo(batch_rho_n, batch_times_rho_n, batch_un)
+        #         classifier_loss.backward()
+        #         classifier_optimizer.step()
+        #         writer.add_scalar("losses/classifier_loss", classifier_loss.item(), global_step)
 
         # update reward
         rewards = classifier(obs).detach().squeeze(-1)
@@ -312,10 +335,12 @@ if __name__ == "__main__":
         print('reward min : ',rewards.min())
         print('reward mean : ',rewards.mean())
         # normalize rewards
-        # rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-8)
+        # rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-8) * args.ratio_reward
+        # clip rewards 0 to max
+        # rewards = torch.clamp(rewards, 0, rewards.max())
 
         # add to buffer
-        obs_un[args.num_rollouts*(update-1):args.num_rollouts*update] = obs_rho_n
+        obs_un[args.num_rollouts*(update-1):args.num_rollouts*update] = obs_rho_n.cpu().numpy()
 
 
 
@@ -424,12 +449,25 @@ if __name__ == "__main__":
             env_plot.ax.clear()
             # reset the limits
             env_plot.reset_lim_fig()
+            # data  to plot
+            data_to_plot =torch.Tensor(obs_un[:args.num_rollouts*args.num_envs*update, : ].reshape(-1, *envs.single_observation_space.shape)).to(device)
             # Plotting measure 
-            m_n = classifier(torch.Tensor(obs_un[:args.num_rollouts*args.num_envs*update, : ]).to(device)).detach().cpu().numpy().squeeze(-1)
-            print('min max',m_n.min(),m_n.max() )
+            m_n = classifier(data_to_plot).detach().cpu().numpy().squeeze(-1)
+            # data to plot
+            data_to_plot = data_to_plot.detach().cpu().numpy()
+            color_treshold = 'r'
+            # mask
+            mask = (m_n <= -5)
+            # # if mask is not empty print the mask
+            # if mask.any():
+            #     print('m_n : ', m_n[:10])
+            # arg mask
+            arg_mask = np.argwhere(mask)
             # env_plot.ax.scatter(rb.observations[:rb.pos,0], rb.observations[:rb.pos,1], s=1, c = m_n, cmap = 'viridis')
             # Plotting the environment
-            env_plot.ax.scatter(obs_un[:args.num_rollouts*args.num_envs*update, :,0], obs_un[:args.num_rollouts*args.num_envs*update, :,1], s=1, c = m_n, cmap = 'viridis')
+            env_plot.ax.scatter(data_to_plot[:,0], data_to_plot[:,1], s=1, c = m_n, cmap = 'viridis')
+            # scatter red dot if m_n <= -5
+            env_plot.ax.scatter(data_to_plot[arg_mask,0], data_to_plot[arg_mask,1], s=1, c = color_treshold)
             veridis_c = plt.cm.ScalarMappable(cmap='viridis')
             veridis_c.set_array(m_n)
 
