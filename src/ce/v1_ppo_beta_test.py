@@ -36,7 +36,7 @@ def parse_args():
         help="if toggled, `torch.backends.cudnn.deterministic=False`")
     parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default= False, nargs="?", const=True,
         help="if toggled, cuda will be enabled by default")
-    parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+    parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="if toggled, this experiment will be tracked with Weights and Biases")
     parser.add_argument("--wandb-project-name", type=str, default="contrastive_exploration",
         help="the wandb's project name")
@@ -53,7 +53,7 @@ def parse_args():
         help="the id of the environment")
     parser.add_argument("--total-timesteps", type=int, default=1000000,
         help="total timesteps of the experiments")
-    parser.add_argument("--n-capacity", type=int, default=10**5,
+    parser.add_argument("--n-capacity", type=int, default=10**4,
         help="the capacity of the replay buffer in terms of episodes")
     parser.add_argument("--learning-rate", type=float, default=5e-4,
         help="the learning rate of the optimizer")
@@ -81,7 +81,7 @@ def parse_args():
         help="the surrogate clipping coefficient")
     parser.add_argument("--clip-vloss", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="Toggles whether or not to use a clipped loss for the value function, as per the paper.")
-    parser.add_argument("--ent-coef", type=float, default=0.2,
+    parser.add_argument("--ent-coef", type=float, default=0.1,
         help="coefficient of the entropy")
     parser.add_argument("--vf-coef", type=float, default=10.0,
         help="coefficient of the value function")
@@ -90,15 +90,16 @@ def parse_args():
     parser.add_argument("--target-kl", type=float, default=None,
         help="the target KL divergence threshold")
     parser.add_argument("--classifier-lr", type=float, default=1e-3)
-    parser.add_argument("--classifier-max-gradient-norm", type=float, default=0.5)
     parser.add_argument("--classifier-batch-size", type=int, default=128)
+    parser.add_argument("--classifier-memory", type=int, default=4000)
     parser.add_argument("--classifier-frequency", type=int, default=1)
     parser.add_argument("--classifier-epochs", type=int, default=1)
-    parser.add_argument("--tau-exp-rho", type=float, default=1.0) # 1.0
-    parser.add_argument("--un-n-past", type=int, default=16)
+    parser.add_argument("--tau-exp-rho", type=float, default=0.5) # 1.0
+    parser.add_argument("--frac-wash", type=float, default=1/4, help="fraction of the buffer to wash")
     parser.add_argument("--boring-n", type=int, default=4)
     parser.add_argument("--ratio-reward", type=float, default=1.0)
     parser.add_argument("--treshold-entropy", type=float, default=0.0)
+    parser.add_argument("--ratio-speed", type=float, default=2.0)
     args = parser.parse_args()
     # args.num_steps = args.num_steps // args.num_envs
     # fmt: on
@@ -131,23 +132,50 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     torch.nn.init.constant_(layer.bias, bias_const)
     return layer
 
-def wash(obs_train, last_sample, un_n_past, boring_n, num_rollouts, max_steps, update): 
+def wash(classifier, obs_train, prob_obs_train, obs_un_n, 
+        prob_obs_un_n, num_rollouts, max_steps, 
+        num_envs, boring_n, update,
+        classifier_memory, frac_wash, ratio_speed, device):
     """ Wash the buffer """
-    last_sample = last_sample.reshape(-1, last_sample.shape[-1])
-    if update > un_n_past+boring_n:
-        # wash the buffer
-        # indice_to_remove = np.random.choice((un_n_past)*num_rollouts*max_steps, size = num_rollouts*max_steps, replace = False)
-        indice_to_save = np.random.randint(0, (un_n_past)*num_rollouts*max_steps, size = num_rollouts*max_steps*(un_n_past-1))
-        # mask 
-        # mask = np.ones((obs_train.shape[0]),dtype=bool)
-        # mask[indice_to_remove] = False
+    # last rho_n 
+    last_obs_rho_n = obs_un_n[:(update-boring_n)*num_rollouts*num_envs][-num_rollouts*num_envs:].reshape(-1, obs_un_n.shape[-1])
+    # portion to remove
+    size_to_remove = int(frac_wash*obs_train.shape[0])
+    # big batch un 
+    idx_ep_un_n = np.random.randint(0, obs_un_n[:(update-boring_n)*num_rollouts*num_envs].shape[0], size = obs_train.shape[0])
+    idx_step_un_n = np.random.randint(0, max_steps, size = obs_train.shape[0])
+    big_batch_un_n = obs_un_n[:(update-boring_n)*num_rollouts*num_envs][idx_ep_un_n, idx_step_un_n]
+    big_batch_un_n_prob = prob_obs_un_n[:(update-boring_n)*num_rollouts*num_envs][idx_ep_un_n, idx_step_un_n]
+    if obs_un_n.shape[0]*obs_un_n.shape[1] > obs_train.shape[0]:
+        # update prob_obs_train
+        prob_obs_train = (1-torch.sigmoid(classifier(torch.Tensor(obs_train).to(device)))).detach().cpu().numpy().squeeze(-1)
+        # normalize prob_obs_train
+        prob_obs_train = prob_obs_train/prob_obs_train.sum()
+        # update prob_obs_un_n
+        prob_obs_un_n_norm = (torch.sigmoid(classifier(torch.Tensor(big_batch_un_n).to(device)))).detach().cpu().numpy().squeeze(-1)
+        # update prob_obs_un_n
+        prob_obs_un_n[idx_ep_un_n,idx_step_un_n ] = prob_obs_un_n_norm.reshape(-1,1)
+        # mask
+        mask_delta_old_new = (0 < (prob_obs_un_n_norm.reshape(-1,1)-big_batch_un_n_prob)).reshape(-1)
+        prob_obs_un_n_norm = prob_obs_un_n_norm + mask_delta_old_new*ratio_speed
+        # normalize prob_obs_un_n
+        prob_obs_un_norm = prob_obs_un_n_norm/prob_obs_un_n_norm.sum()
+        # choose the index to remove from obs_train
+        idx_to_remove = np.random.choice(obs_train.shape[0], p=prob_obs_train, size = size_to_remove + last_obs_rho_n.shape[0], replace = True)
+        # idx_to_remove = np.random.choice(obs_train.shape[0], p=prob_obs_train, size = size_to_remove, replace = True)
+        # choose the index to add from obs_un_n
+        idx_to_add = np.random.choice(big_batch_un_n.shape[0], p=prob_obs_un_norm, size = size_to_remove, replace = True)
         # update the buffer
-        # obs_train = np.concatenate((obs_train[mask],last_sample))
-        obs_train = np.concatenate((obs_train[indice_to_save],obs_train[-num_rollouts*max_steps*args.boring_n:],last_sample))
+        obs_train[idx_to_remove[:size_to_remove]] = big_batch_un_n[idx_to_add]
+        obs_train[idx_to_remove[size_to_remove:]] = last_obs_rho_n
     else:
         # update the buffer
-        obs_train[(update-1)*num_rollouts*max_steps:update*num_rollouts*max_steps] = last_sample
-    return obs_train
+        obs_train[:obs_un_n.shape[0]*obs_un_n.shape[1]] = obs_un_n.reshape(-1, obs_un_n.shape[-1])
+    # update prob_obs_train
+    prob_obs_train = (torch.sigmoid(classifier(torch.Tensor(obs_train).to(device)))).detach().cpu().numpy().squeeze(-1)
+    # # normalize prob_obs_train
+    prob_obs_train = prob_obs_train/prob_obs_train.sum()
+    return obs_train, prob_obs_train, prob_obs_un_n
 
 class Agent(nn.Module):
     def __init__(self, envs):
@@ -226,10 +254,11 @@ if __name__ == "__main__":
     if args.episodic_return:
         max_steps = envs.envs[0].max_steps
         args.num_steps = max_steps * args.num_rollouts
+        # classifier epoch 
+        args.classifier_epochs = args.classifier_memory // args.classifier_batch_size
     # update batch size and minibatch size
     args.batch_size = int(args.num_envs * args.num_steps)
     # print('batch_size',args.batch_size)
-    # args.minibatch_size = int(args.batch_size // args.num_minibatches)
     args.num_mini_batch = args.batch_size // args.minibatch_size
     print('batch_size',args.batch_size)
     print('minibatch_size',args.minibatch_size)
@@ -237,7 +266,7 @@ if __name__ == "__main__":
     # Agent
     agent = Agent(envs).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
-    classifier = Classifier(envs.single_observation_space, env_max_steps=envs.envs[0].max_steps,device=device, n_agent=1, n_past = args.un_n_past)
+    classifier = Classifier(envs.single_observation_space, env_max_steps=envs.envs[0].max_steps,device=device, n_agent=1)
     classifier_optimizer = optim.Adam(classifier.parameters(), lr=args.classifier_lr, eps=1e-5)
     # ALGO Logic: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
@@ -248,8 +277,10 @@ if __name__ == "__main__":
     dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)).to(device)
     # full replay buffer
-    obs_un = np.zeros((args.n_capacity,max_steps) + envs.single_observation_space.shape)
-    obs_un_train = np.zeros(((args.un_n_past+args.boring_n)*args.num_rollouts*max_steps,envs.single_observation_space.shape[0]))
+    obs_un =  np.zeros((args.n_capacity,max_steps) + envs.single_observation_space.shape)
+    probs_un = np.ones((args.n_capacity,max_steps,1))
+    obs_un_train = np.zeros((args.classifier_memory,envs.single_observation_space.shape[0]))
+    probs_un_train = np.zeros((args.classifier_memory,1))
     # times_full = np.zeros((args.n_capacity,max_steps)+(1,))
     # TRY NOT TO MODIFY: start the game
     global_step = 0
@@ -292,57 +323,61 @@ if __name__ == "__main__":
             # Only print when at least 1 env is done
             if "final_info" not in infos:
                 continue
-            # print('step',step)
-            # for info in infos["final_info"]:
-            #     # Skip the envs that are not done
-            #     if info is None:
-            #         continue
-            #     print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-            #     writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-            #     writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+            
            
        
-        # add to buffer
-        # reshape (num_rollouts, num_envs, max_steps, obs_shape)
-        obs_rho_n = obs.reshape(args.num_rollouts * args.num_envs, max_steps, *envs.single_observation_space.shape)
-        times_rho_n = times.reshape(args.num_rollouts * args.num_envs, max_steps, 1)
+        ########################### CLASSIFIER ############################
+        # rho_n
+        b_batch_obs_rho_n = obs.reshape(args.num_rollouts * args.num_envs, max_steps, *envs.single_observation_space.shape)
+        b_batch_times_rho_n = times.reshape(args.num_rollouts * args.num_envs, max_steps, 1)
         # train the classifier
-        if update%args.classifier_frequency == 0 and update > args.boring_n:
-            # sliding obs un 
-            sliding_obs_un = torch.Tensor(obs_un_train[:-args.boring_n*args.num_rollouts*max_steps]).to(device)
-            classifier_n_update = sliding_obs_un.shape[0] // args.classifier_batch_size
-            b_idx_un = np.arange(sliding_obs_un.shape[0])
-            # rho_n 
-            b_idx_step_rho = (exp_dec(sliding_obs_un.shape[0],tau = args.tau_exp_rho)*max_steps).astype(int)
-            b_idx_ep_rho = np.random.randint(0, args.num_rollouts * args.num_envs, sliding_obs_un.shape[0])
-            for epoch in range(args.classifier_epochs):
-                np.random.shuffle(b_idx_un)
-                np.random.shuffle(b_idx_step_rho)
-                np.random.shuffle(b_idx_ep_rho)
-                for start in range(0, sliding_obs_un.shape[0], args.classifier_batch_size):
-                    end = start + args.classifier_batch_size
-                    mb_idx_un = b_idx_un[start:end]
-                    mb_idx_ep_rho = b_idx_ep_rho[start:end]
-                    mb_idx_step_rho = b_idx_step_rho[start:end]
-                    classifier_optimizer.zero_grad()
-                    classifier_loss = classifier.ce_loss_ppo(batch_q=obs_rho_n[mb_idx_ep_rho,mb_idx_step_rho], times_q=times_rho_n[mb_idx_ep_rho,mb_idx_step_rho], batch_p=sliding_obs_un[mb_idx_un], update = update)
-                    classifier_loss.backward()
-                    # nn.utils.clip_grad_norm_(classifier.parameters(), args.classifier_max_gradient_norm)
-                    classifier_optimizer.step()
-                    writer.add_scalar("losses/classifier_loss", classifier_loss.item(), global_step)
-
+        if update%args.classifier_frequency == 0 and update > args.boring_n + int(args.classifier_memory/(args.num_rollouts*args.num_envs*max_steps)):
+            # un_n
+            b_batch_obs_un = obs_un_train
+            b_batch_probs_un = probs_un_train
+            ratio_classifier = args.classifier_memory/(args.num_rollouts*args.num_envs*max_steps)
+            # args.classifier_epochs
+            args.classifier_epochs = int(b_batch_obs_un.shape[0]/args.classifier_batch_size)*2
+            for epoch_classifier in range(args.classifier_epochs):
+                # sample rho_n
+                idx_ep_rho = np.random.randint(0, args.num_rollouts*args.num_envs, size = args.classifier_batch_size)
+                idx_step_rho = (exp_dec(args.classifier_batch_size,tau = args.tau_exp_rho)*max_steps).astype(int)
+                # sample un_n
+                idx_step_un = np.random.choice(b_batch_obs_un.shape[0], p=b_batch_probs_un, size = args.classifier_batch_size, replace=True)
+                # idx_step_un = np.random.randint(0, b_batch_obs_un.shape[0], size = args.classifier_batch_size)
+                # mini batch
+                mb_rho_n = b_batch_obs_rho_n[idx_ep_rho, idx_step_rho]
+                mb_rho_n_times = b_batch_times_rho_n[idx_ep_rho, idx_step_rho]
+                mb_un_n = torch.Tensor(b_batch_obs_un[idx_step_un]).to(device)
+                # train the classifier
+                classifier_optimizer.zero_grad()
+                loss = classifier.ce_loss_ppo(batch_q=mb_rho_n, batch_p=mb_un_n, 
+                                              update=update, ratio=ratio_classifier)
+                loss.backward()
+                classifier_optimizer.step()
+                # log the loss
+                writer.add_scalar("losses/loss_classifier", loss.item(), global_step)
+        
+        ############################ REWARD ##################################
         # update the reward
         rewards_nn = classifier(obs).detach().squeeze(-1)
         # normalize the reward
-        rewards = (rewards_nn - rewards_nn.mean()) / (rewards_nn.std() + 1e-8)
+        rewards = (rewards_nn - rewards_nn.mean()) / (rewards_nn.std() + 1e-8) 
+        # mask rewards_nn
+        mask_rewards = (0 < rewards_nn).float()
         # mask
-        mask_entropy = (args.treshold_entropy <= rewards_nn).float()
-        # add to buffer
-        obs_un[args.num_rollouts*(update-1):args.num_rollouts*update] = obs_rho_n.cpu().numpy()
-        # add to train 
-        obs_un_train = wash(obs_un_train, obs_rho_n.cpu().numpy(), args.un_n_past, args.boring_n, args.num_rollouts, max_steps, update)
+        mask_entropy = (args.treshold_entropy <= rewards).float()
 
-
+        ########################### UPDATE THE BUFFER ############################
+        # update the buffer
+        args.boring_n = args.boring_n + 1 if (update > 20) and (args.num_rollouts*max_steps/2 > mask_rewards.sum()) else max(args.boring_n-1,4) 
+        obs_un[args.num_rollouts*(update-1):args.num_rollouts*update] = b_batch_obs_rho_n.cpu().numpy()
+        obs_un_train, probs_un_train, probs_un = wash(classifier, obs_un_train, probs_un_train, 
+        obs_un, probs_un, args.num_rollouts, max_steps, args.num_envs, args.boring_n, update,
+        args.classifier_memory, args.frac_wash, args.ratio_speed, device) if (update > args.boring_n) else (obs_un_train, probs_un_train, probs_un)
+        #  and (update<20 or args.num_rollouts*max_steps/2 < mask_rewards.sum())
+        
+        ########################### PPO UPDATE ###############################
         # bootstrap value if not done
         with torch.no_grad():
             next_value = agent.get_value(next_obs).reshape(1, -1)
@@ -398,7 +433,7 @@ if __name__ == "__main__":
                 pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - args.clip_coef, 1 + args.clip_coef)
                 pg_loss = torch.max(pg_loss1, pg_loss2)
                 # mask
-                pg_loss = pg_loss*(1-mask_mb)
+                # pg_loss = pg_loss*(1-mask_mb)
                 pg_loss = pg_loss.mean()
 
                 # Value loss
@@ -419,7 +454,7 @@ if __name__ == "__main__":
                 entropy_loss = entropy
                 # mask
                 entropy_loss = entropy_loss*mask_mb
-                entropy_loss = entropy_loss.mean()
+                entropy_loss = entropy_loss.sum()/(mask_mb.sum()+1)
                 loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
 
                 optimizer.zero_grad()
@@ -452,6 +487,9 @@ if __name__ == "__main__":
         print("SPS:", int(global_step / (time.time() - start_time)))
         print(f"global_step={global_step}")
         print('update : ',update)
+        print('reward mean : ',rewards_nn.mean())
+        print('sum mask : ',mask_rewards.sum())
+        print('boring_n : ',args.boring_n)
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
         if args.track and args.capture_video:
@@ -473,18 +511,14 @@ if __name__ == "__main__":
             color_treshold = 'r'
             # mask
             mask = (m_n <= -5)
-            # # if mask is not empty print the mask
-            # if mask.any():
-            #     print('m_n : ', m_n[:10])
             # arg mask
             arg_mask = np.argwhere(mask)
-            # env_plot.ax.scatter(rb.observations[:rb.pos,0], rb.observations[:rb.pos,1], s=1, c = m_n, cmap = 'viridis')
             # Plotting the environment
             env_plot.ax.scatter(data_to_plot[:,0], data_to_plot[:,1], s=1, c = m_n, cmap = 'viridis')
             # scatter red dot if m_n <= -5
             # env_plot.ax.scatter(data_to_plot[arg_mask,0], data_to_plot[arg_mask,1], s=1, c = color_treshold)
-            veridis_c = plt.cm.ScalarMappable(cmap='viridis')
-            veridis_c.set_array(m_n)
+            # plot obs train
+            env_plot.ax.scatter(obs_un_train[:,0], obs_un_train[:,1], s=1, c = 'b')
 
             # save fig env_plot
             env_plot.figure.canvas.draw()

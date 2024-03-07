@@ -307,14 +307,6 @@ if __name__ == "__main__":
                         min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
                         # rewards produced by classifier
                         rewards = classifier(data.observations).detach().flatten() 
-                        # polyak update
-                        # running_mean_log_p = (1-args.polyak_p)*running_mean_log_p + args.polyak_p*rewards.mean()
-                        # reward 
-                        # rewards = (rewards - running_mean_log_p)
-                        # clip rewards
-                        rewards = torch.clamp(rewards, -20, 20)
-                        # rewards ratio 
-                        # rewards = rewards * args.ratio_reward
                         # normalize rewards
                         # rewards = (rewards - torch.mean(rewards))/(torch.std(rewards) + 1e-6)*args.ratio_reward
                         next_q_value = rewards+ (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)

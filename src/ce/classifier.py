@@ -8,7 +8,7 @@ class Classifier(torch.nn.Module):
     def __init__(self, observation_space,device, env_max_steps, 
                 lipshitz= False, lim_down = -5, lim_up = 5, 
                 w_old = 0.0001, learn_z = False, 
-                n_agent = 1, n_past = 1):
+                n_agent = 1):
         super(Classifier, self).__init__()
         # spectral normalization
         self.fc1 = spectral_norm(torch.nn.Linear(observation_space.shape[0], 128,device=device)) if lipshitz else torch.nn.Linear(observation_space.shape[0], 128,device=device)
@@ -21,7 +21,6 @@ class Classifier(torch.nn.Module):
         self.w_old = w_old
         self.sigmoid = torch.nn.Sigmoid()
         self.learn_z = learn_z
-        self.n_past = n_past
         self.n_agent = n_agent
         if learn_z : 
             self.fcz1 = torch.nn.Linear(observation_space.shape[0], 128,device=device)
@@ -49,7 +48,7 @@ class Classifier(torch.nn.Module):
         return -torch.mean(torch.log(p_z_i))
     
 
-    def ce_loss_ppo(self, batch_q, times_q, batch_p, batch_q_z = None, batch_p_z =None, relabeling = True, ratio = 1.0, update = 0):
+    def ce_loss_ppo(self, batch_q, batch_p, batch_q_z = None, batch_p_z =None, relabeling = True, ratio = 1.0):
         s_q = self(batch_q)
         s_q_p = self.sigmoid(s_q)
         s_p = self(batch_p)
@@ -57,26 +56,21 @@ class Classifier(torch.nn.Module):
         # mask strategy q
         # label_q = torch.ones_like(s_q)
         label_q = self.mask_labels_q(s_q)
-        # label_q /= (self.n_past)
         # mask strategy p
+        # label_p = torch.ones_like(s_p)
         label_p = self.mask_labels_p(s_p)
         L = -((label_q*torch.log(s_q_p)).mean() +(label_p*torch.log(1 - s_p_p)).mean())
         # L = -((label_q*torch.log(s_q_p)).mean() +(torch.log(1 - s_p_p)).mean() + (mask_q*torch.log(1 - s_q_p)).mean())
         return L if not self.learn_z else L + self.mlh_loss(batch_q, batch_q_z)
-    # 3.0
-    # torch.exp((t-max_steps)/(tau))
-    # def relabeling(self, t, max_steps, tau=0.5):
-    #     """ exp(T)=1 
-    #         tau in ]0,10] """
-    #     return torch.exp((t-max_steps)/(max_steps*tau))
+
     
-    def mask_labels_q(self, s_q, tau=2.0):
+    def mask_labels_q(self, s_q, tau=1.0):
         with torch.no_grad():
             s_q_clip = torch.clamp(s_q, self.lim_down, 0)
             label_q = torch.exp(s_q_clip/(-self.lim_down*tau))
             return label_q
        
-    def mask_labels_p(self, s_p,w=0.5):
+    def mask_labels_p(self, s_p,w=1.0):
         with torch.no_grad():
             mask_p = (0.0 <= s_p).float()
             label_p = torch.ones_like(s_p) + mask_p*w

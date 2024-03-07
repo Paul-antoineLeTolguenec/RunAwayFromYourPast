@@ -78,7 +78,7 @@ def parse_args():
         help="the K epochs to update the policy")
     parser.add_argument("--norm-adv", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggles advantages normalization")
-    parser.add_argument("--clip-coef", type=float, default=0.3,
+    parser.add_argument("--clip-coef", type=float, default=0.2,
         help="the surrogate clipping coefficient")
     parser.add_argument("--clip-vloss", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="Toggles whether or not to use a clipped loss for the value function, as per the paper.")
@@ -93,11 +93,14 @@ def parse_args():
     # classifier
     parser.add_argument("--classifier-lr", type=float, default=1e-3)
     parser.add_argument("--classifier-batch-size", type=int, default=256)
+    parser.add_argument("--classifier-memory", type=int, default=2000)
     parser.add_argument("--classifier-frequency", type=int, default=1)
     parser.add_argument("--classifier-epochs", type=int, default=1)
-    parser.add_argument("--tau-exp-rho", type=float, default=0.15) # 1.0
-    parser.add_argument("--un-n-past", type=int, default=4)
-    parser.add_argument("--boring-n", type=int, default=8)
+    parser.add_argument("--frac-wash", type=float, default=1/4, help="fraction of the buffer to wash")
+    parser.add_argument("--boring-n", type=int, default=4)
+    parser.add_argument("--treshold-entropy", type=float, default=0.0)
+    parser.add_argument("--ratio-speed", type=float, default=0.5)
+    parser.add_argument("--tau-exp-rho", type=float, default=0.25)
     # n agent
     parser.add_argument("--n-agent", type=int, default=5)
     parser.add_argument("--lamda-im", type=float, default=1.0)
@@ -105,10 +108,60 @@ def parse_args():
     parser.add_argument("--learning-explore-start", type=int, default=8)
     args = parser.parse_args()
     args.num_envs = args.n_agent
+    args.classifier_memory*= args.n_agent
     # args.num_steps = args.num_steps // args.num_envs
     # fmt: on
     return args
 
+
+def wash(classifier, obs_train, prob_obs_train, obs_un_n, 
+        prob_obs_un_n, num_rollouts, max_steps, 
+        num_envs, boring_n, update,
+        classifier_memory, frac_wash, ratio_speed, device):
+    """ Wash the buffer """
+    # last rho_n 
+    last_obs_rho_n = np.concatenate([obs_un_n[i, : (update-boring_n[i])*num_rollouts][-num_rollouts : ].reshape(-1, obs_un_n.shape[-1]) for i in range(num_envs)],axis=0)
+    # portion to remove
+    size_to_remove = int(frac_wash*obs_train.shape[0])
+    # big batch un 
+    size_per_agent = (classifier_memory//num_envs)
+    idx_ep_un_n = np.zeros((num_envs, size_per_agent),dtype=int)
+    idx_step_un_n = np.zeros((num_envs, size_per_agent),dtype=int)
+    idx_z_un_n = np.concatenate([np.ones((size_per_agent,1))*i for i in range(num_envs)],axis=0).astype(int)
+    for i in range(num_envs):
+        idx_ep_un_n[i] = np.random.randint(0,(update-boring_n[i])*num_rollouts, size = size_per_agent)
+        idx_step_un_n[i] = np.random.randint(0, max_steps, size = size_per_agent)
+    big_batch_un_n = np.concatenate([obs_un_n[i, : (update-boring_n[i])*num_rollouts][idx_ep_un_n[i], idx_step_un_n[i]] for i in range(num_envs)],axis=0)
+    big_batch_un_n_prob = np.concatenate([prob_obs_un_n[i, : (update-boring_n[i])*num_rollouts][idx_ep_un_n[i], idx_step_un_n[i]] for i in range(num_envs)],axis=0)
+    idx_ep_un_n = idx_ep_un_n.reshape(-1,1)
+    idx_step_un_n = idx_step_un_n.reshape(-1,1)
+    # update prob_obs_train
+    prob_obs_train = (1-torch.sigmoid(classifier(torch.Tensor(obs_train).to(device)))).detach().cpu().numpy().squeeze(-1)
+    # normalize prob_obs_train
+    prob_obs_train = prob_obs_train/prob_obs_train.sum()
+    # update prob_obs_un_n
+    prob_obs_un_n_norm = (torch.sigmoid(classifier(torch.Tensor(big_batch_un_n).to(device)))).detach().cpu().numpy()
+    # update prob_obs_un_n
+    prob_obs_un_n[ idx_z_un_n[:,0], idx_ep_un_n[:,0], idx_step_un_n[:,0]] = prob_obs_un_n_norm
+    # mask
+    mask_delta_old_new = (0 < (prob_obs_un_n_norm.reshape(-1,1)-big_batch_un_n_prob))
+    prob_obs_un_n_norm = prob_obs_un_n_norm + mask_delta_old_new*ratio_speed
+    # normalize prob_obs_un_n
+    prob_obs_un_norm = prob_obs_un_n_norm/prob_obs_un_n_norm.sum()
+    # choose the index to remove from obs_train
+    idx_to_remove = np.random.choice(obs_train.shape[0], p=prob_obs_train, size = size_to_remove + last_obs_rho_n.shape[0], replace = True)
+    # idx_to_remove = np.random.choice(obs_train.shape[0], p=prob_obs_train, size = size_to_remove, replace = True)
+    # choose the index to add from obs_un_n
+    idx_to_add = np.random.choice(big_batch_un_n.shape[0], p=prob_obs_un_norm.reshape(-1), size = size_to_remove, replace = True)
+    # update the buffer
+    obs_train[idx_to_remove[:size_to_remove]] = big_batch_un_n[idx_to_add]
+    obs_train[idx_to_remove[size_to_remove:]] = last_obs_rho_n
+
+    # update prob_obs_train
+    prob_obs_train = (torch.sigmoid(classifier(torch.Tensor(obs_train).to(device)))).detach().cpu().numpy().squeeze(-1)
+    # # normalize prob_obs_train
+    prob_obs_train = prob_obs_train/prob_obs_train.sum()
+    return obs_train, prob_obs_train, prob_obs_un_n
 
 def make_env(env_id, idx, capture_video, run_name, gamma, env_type = "gym"):
     def thunk():
@@ -227,7 +280,7 @@ if __name__ == "__main__":
     # Agent
     agent = Agent(envs, args.n_agent).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
-    classifier = Classifier(observation_space=envs.single_observation_space, device=device, env_max_steps = max_steps, learn_z=True, n_agent = args.n_agent, n_past=args.un_n_past)
+    classifier = Classifier(observation_space=envs.single_observation_space, device=device, env_max_steps = max_steps, learn_z=True, n_agent = args.n_agent)
     classifier_optimizer = optim.Adam(classifier.parameters(), lr=args.classifier_lr, eps=1e-5)
     # vector encoding
     ve = VE(n = args.n_agent, device = device, prob = torch.ones(args.n_agent)/args.n_agent)
@@ -243,9 +296,13 @@ if __name__ == "__main__":
     # full replay buffer
     obs_un = np.zeros((args.num_envs,args.n_capacity,max_steps) + envs.single_observation_space.shape)
     z_un = np.zeros((args.num_envs, args.n_capacity, max_steps) + (1,))
+    probs_un =  np.ones((args.num_envs, args.n_capacity, max_steps) + (1,))
+    obs_un_train = np.zeros((args.classifier_memory,envs.single_observation_space.shape[0]))
+    probs_un_train = np.zeros((args.classifier_memory,1))
     # times_full = np.zeros((args.n_capacity,max_steps)+(1,))
     # sample n z 
     z = ve.z
+    boring_n_agent = np.ones(args.n_agent,dtype=int)*args.boring_n
 
     # TRY NOT TO MODIFY: start the game
     global_step = 0
@@ -269,9 +326,6 @@ if __name__ == "__main__":
             obs[step] = next_obs
             dones[step] = next_done
             zs[step] = z.unsqueeze(-1)
-
-            # if terminated, reset the env
-
             # ALGO LOGIC: action logic
             with torch.no_grad():
                 action, logprob, _, value = agent.get_action_and_value(next_obs, z.unsqueeze(-1))
@@ -291,83 +345,82 @@ if __name__ == "__main__":
             if True in done:
                 # reset z 
                 z = ve.z
-            # print('step',step)
-            # for info in infos["final_info"]:
-            #     # Skip the envs that are not done
-            #     if info is None:
-            #         continue
-            #     print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-            #     writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-            #     writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
-           
-       
-        # add to buffer
-        # reshape (num_rollouts, num_envs, max_steps, obs_shape)
-        # obs_rho_n = obs.cpu().numpy().reshape(args.num_rollouts * args.num_envs, max_steps, *envs.single_observation_space.shape)
-        # times_rho_n = times.cpu().numpy().reshape(args.num_rollouts * args.num_envs, max_steps, 1)
-        # train the classifier
-        if update%args.classifier_frequency == 0 and update > args.boring_n:
-            # rho_n
-            b_batch_rho_n = obs.permute(1,0,2).reshape(args.num_envs*args.num_rollouts, max_steps, *envs.single_observation_space.shape)
-            b_batch_rho_n_times = times.permute(1,0,2).reshape(args.num_envs*args.num_rollouts, max_steps, 1)
-            b_batch_rho_n_z = zs.permute(1,0,2).reshape(args.num_envs*args.num_rollouts, max_steps, 1)
-            # un
-            b_batch_un =torch.Tensor(obs_un[:,args.num_rollouts * max(0,(update-args.un_n_past-args.boring_n)) :args.num_rollouts * (update-args.boring_n)].reshape(-1, *envs.single_observation_space.shape)).to(device)
-            b_batch_un_z = torch.Tensor(z_un[:,args.num_rollouts * max(0,(update-args.un_n_past-args.boring_n)) :args.num_rollouts * (update-args.boring_n)].reshape(-1, 1)).to(device)
-            # index
-            index_un = np.arange(b_batch_un.shape[0])
-            # index_rho_n_ep = np.arange(b_batch_rho_n.shape[0]).repeat(b_batch_un.shape[0]//b_batch_rho_n.shape[0])
-            index_rho_n_ep = np.random.randint(0,b_batch_rho_n.shape[0],b_batch_un.shape[0])
-            index_rho_n_step = (exp_dec(b_batch_un.shape[0],tau = args.tau_exp_rho)*max_steps).astype(int)
-            for epoch in range(args.classifier_epochs):
-                np.random.shuffle(index_un)
-                np.random.shuffle(index_rho_n_ep)
-                np.random.shuffle(index_rho_n_step)
-                for start in range(0, b_batch_un.shape[0], args.classifier_batch_size):
-                    end = start + args.classifier_batch_size
-                    mb_inds_un = index_un[start:end]
-                    mb_inds_rho_n_ep = index_rho_n_ep[start:end]
-                    mb_inds_rho_n_step = index_rho_n_step[start:end]
-                    # update classifier
-                    classifier_optimizer.zero_grad()
-                    loss_un = classifier.ce_loss_ppo(batch_q = b_batch_rho_n[mb_inds_rho_n_ep,mb_inds_rho_n_step], 
-                                                    times_q=b_batch_rho_n_times[mb_inds_rho_n_ep,mb_inds_rho_n_step], 
-                                                    batch_p = b_batch_un[mb_inds_un],
-                                                    batch_q_z=b_batch_rho_n_z[mb_inds_rho_n_ep,mb_inds_rho_n_step]) 
-                                                   
-                    loss_un.backward()
-                    classifier_optimizer.step()
-        # update reward
-        with torch.no_grad():
-            log_p_rho_un = classifier(obs).detach().squeeze(-1)
-            # normalize on dim 0
-            log_p_rho_un = (log_p_rho_un - torch.mean(log_p_rho_un, dim=0).unsqueeze(0))/(torch.std(log_p_rho_un, dim=0).unsqueeze(0) + 1e-8)
-            # compute p(z|s)
-            p_s_z = torch.gather(torch.softmax(classifier.forward_z(obs),dim=-1), -1, (zs-1).type(torch.int64)).squeeze(-1)
-            log_p_s_z = torch.log(p_s_z + 1e-8)
-            # normalize on dim 0
-            log_p_s_z = (log_p_s_z - torch.mean(log_p_s_z, dim=0).unsqueeze(0))/(torch.std(log_p_s_z, dim=0).unsqueeze(0) + 1e-8)
-            # p = torch.exp(log_p_rho_un)
-            # normalize 
-            # im = (im - torch.mean(im))/(torch.std(im) + 1e-8)
-            # log_p_rho_un = (log_p_rho_un - torch.mean(log_p_rho_un))/(torch.std(log_p_rho_un) + 1e-8)
-            # rewards 
-            # rewards = log_p_rho_un + args.lamda_im*log_p_s_z
-            rewards = log_p_s_z if update < args.learning_explore_start else log_p_rho_un + args.lamda_im*log_p_s_z
-            # rewards = log_p_s_z
-            print('max log_p_s_z',torch.max(log_p_s_z))
-            print('min log_p_s_z',torch.min(log_p_s_z))
-            print('mean log_p_s_z',torch.mean(log_p_s_z))
-            print('max log_p_rho_un',torch.max(log_p_rho_un))
-            print('min log_p_rho_un',torch.min(log_p_rho_un))
-            print('mean log_p_rho_un',torch.mean(log_p_rho_un))
-            print('std log_p_rho_un',torch.std(log_p_rho_un))
-        # add to buffer
+    
+        ########################### CLASSIFIER ############################
         
+        # rho_n
+        b_batch_obs_rho_n = obs.permute(1,0,2).reshape(args.num_envs*args.num_rollouts, max_steps, *envs.single_observation_space.shape)
+        b_batch_times_rho_n = times.permute(1,0,2).reshape(args.num_envs*args.num_rollouts, max_steps, 1).cpu().numpy()
+        b_batch_z_rho_n = zs.permute(1,0,2).reshape(args.num_envs*args.num_rollouts, max_steps, 1)
+        # train the classifier
+        if update%args.classifier_frequency == 0 and update > args.boring_n + int(args.classifier_memory/(args.num_rollouts*args.num_envs*max_steps)):
+            # un_n
+            b_batch_obs_un = obs_un_train
+            b_batch_probs_un = probs_un_train
+            ratio_classifier = args.classifier_memory/(args.num_rollouts*args.num_envs*max_steps)
+            # args.classifier_epochs
+            args.classifier_epochs = int(b_batch_obs_un.shape[0]/args.classifier_batch_size)*2
+            for epoch_classifier in range(args.classifier_epochs):
+                # sample rho_n
+                idx_ep_rho = np.random.randint(0, args.num_rollouts*args.num_envs, size = args.classifier_batch_size)
+                idx_step_rho = (exp_dec(args.classifier_batch_size,tau = args.tau_exp_rho)*max_steps).astype(int)
+                # sample un_n
+                idx_step_un = np.random.choice(b_batch_obs_un.shape[0], p=b_batch_probs_un, size = args.classifier_batch_size, replace=True)
+                # idx_step_un = np.random.randint(0, b_batch_obs_un.shape[0], size = args.classifier_batch_size)
+                # mini batch
+                mb_rho_n = b_batch_obs_rho_n[idx_ep_rho, idx_step_rho]
+                mb_rho_n_times = b_batch_times_rho_n[idx_ep_rho, idx_step_rho]
+                mb_rho_n_z = b_batch_z_rho_n[idx_ep_rho, idx_step_rho]
+                mb_un_n = torch.Tensor(b_batch_obs_un[idx_step_un]).to(device)
+                # train the classifier
+                classifier_optimizer.zero_grad()
+                loss = classifier.ce_loss_ppo(batch_q=mb_rho_n, batch_p=mb_un_n, batch_q_z=mb_rho_n_z)
+                loss.backward()
+                classifier_optimizer.step()
+                # log the loss
+                writer.add_scalar("losses/loss_classifier", loss.item(), global_step)
+        
+        ############################ REWARD ##################################
+        with torch.no_grad():
+            # log(rho_n/un_n)
+            log_p_rho_un_nn = classifier(obs).detach().squeeze(-1)
+            # normalize on dim 0
+            log_p_rho_un = (log_p_rho_un_nn - torch.mean(log_p_rho_un_nn, dim=0).unsqueeze(0))/(torch.std(log_p_rho_un_nn, dim=0).unsqueeze(0) + 1e-8)
+
+            # p(z|s)
+            p_s_z = torch.gather(torch.softmax(classifier.forward_z(obs),dim=-1), -1, (zs-1).type(torch.int64)).squeeze(-1)
+            log_p_s_z_nn = torch.log(p_s_z + 1e-8)
+            # normalize on dim 0
+            log_p_s_z = (log_p_s_z_nn - torch.mean(log_p_s_z_nn, dim=0).unsqueeze(0))/(torch.std(log_p_s_z_nn, dim=0).unsqueeze(0) + 1e-8)
+
+            # rewards
+            rewards = log_p_s_z if update < args.learning_explore_start else log_p_rho_un + args.lamda_im*log_p_s_z
+            # mask rewards_nn
+            mask_rewards = (0 < log_p_rho_un_nn).float()
+            # mask boring_n
+            mask_boring_n = (mask_rewards.sum(dim=0) < args.num_rollouts*max_steps/2).int()
+            # update boring_n
+            boring_n_agent = np.minimum(np.maximum((boring_n_agent+2*mask_boring_n.cpu().numpy()-1),np.ones(args.n_agent)*args.boring_n),np.ones(args.n_agent)*args.boring_n*4).astype(int)
+            # boring_n_agent = np.maximum((boring_n_agent+2*mask_boring_n.cpu().numpy()-1),np.ones(args.n_agent)*args.boring_n).astype(int)
+
+            # mask entropy
+            mask_entropy = (args.treshold_entropy <= log_p_rho_un_nn).float()
+        ########################### UPDATE THE BUFFER ############################
+        # update boring_n
+        # args.boring_n = args.boring_n + 1 if (update > 20) and (args.num_rollouts*max_steps/2 > mask_rewards.sum()) else max(args.boring_n-1,4) 
+        # update the buffer
         obs_un[:, args.num_rollouts * (update-1):args.num_rollouts * update] = obs.permute(1,0,2).reshape(args.num_envs, args.num_rollouts, max_steps, *envs.single_observation_space.shape).cpu().numpy()
         z_un[:, args.num_rollouts * (update-1):args.num_rollouts * update] = zs.permute(1,0,2).reshape(args.num_envs, args.num_rollouts, max_steps, 1).cpu().numpy()
-
-
+        # update un_train
+        obs_un_train, probs_un_train, probs_un = wash(classifier, 
+        obs_un_train, probs_un_train, 
+        obs_un, probs_un, 
+        args.num_rollouts, max_steps, 
+        args.num_envs, boring_n_agent, update,
+        args.classifier_memory, args.frac_wash, 
+        args.ratio_speed, device) if (update > args.boring_n) else (obs_un[:, :(args.classifier_memory//(max_steps*args.num_envs))].reshape(-1, envs.single_observation_space.shape[0]),probs_un_train,probs_un)
+        ########################### PPO UPDATE ###############################
+       
         # bootstrap value if not done
         with torch.no_grad():
             next_value = agent.get_value(next_obs,z.unsqueeze(-1)).reshape(1, -1)
@@ -387,6 +440,7 @@ if __name__ == "__main__":
         # flatten the batch
         b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
         b_zs = zs.reshape((-1,) + (1,))
+        b_mask = mask_entropy.reshape(-1)
         b_logprobs = logprobs.reshape(-1)
         b_actions = actions.reshape((-1,) + envs.single_action_space.shape)
         b_advantages = advantages.reshape(-1)
@@ -404,7 +458,7 @@ if __name__ == "__main__":
                 _, newlogprob, entropy, newvalue = agent.get_action_and_value(x = b_obs[mb_inds], z = b_zs[mb_inds], action = b_actions[mb_inds])
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()
-
+                mask_mb = b_mask[mb_inds]
                 with torch.no_grad():
                     # calculate approx_kl http://joschu.net/blog/kl-approx.html
                     old_approx_kl = (-logratio).mean()
@@ -435,7 +489,7 @@ if __name__ == "__main__":
                 else:
                     v_loss = 0.5 * ((newvalue - b_returns[mb_inds]) ** 2).mean()
 
-                entropy_loss = entropy.mean()
+                entropy_loss = (entropy*mask_mb).sum()/(mask_mb.sum()+1)
                 loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
 
                 optimizer.zero_grad()
@@ -459,6 +513,15 @@ if __name__ == "__main__":
         writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
         writer.add_scalar("losses/clipfrac", np.mean(clipfracs), global_step)
         writer.add_scalar("losses/explained_variance", explained_var, global_step)
+        print('max log_p_s_z',torch.max(log_p_s_z_nn))
+        print('min log_p_s_z',torch.min(log_p_s_z_nn))
+        print('mean log_p_s_z',torch.mean(log_p_s_z_nn))
+        print('max log_p_rho_un',torch.max(log_p_rho_un_nn))
+        print('min log_p_rho_un',torch.min(log_p_rho_un_nn))
+        print('mean log_p_rho_un',torch.mean(log_p_rho_un_nn))
+        print('std log_p_rho_un',torch.std(log_p_rho_un_nn))
+        print('sum mask_rewards dim 0',mask_rewards.sum(dim=0))
+        print('boring_n',boring_n_agent)
         print("SPS:", int(global_step / (time.time() - start_time)))
         print(f"global_step={global_step}")
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
@@ -488,6 +551,8 @@ if __name__ == "__main__":
                 # arg_mask = np.argwhere(mask)
                 # # scatter red dot if m_n <= -5
                 # env_plot.ax.scatter(data_to_plot[arg_mask,0], data_to_plot[arg_mask,1], s=1, c = color_treshold)
+                # plot obs_un_train 
+                env_plot.ax.scatter(obs_un_train[:,0], obs_un_train[:,1], s=1, c = 'b')
 
                 # plot per skill
                 # data_to_plot  = obs_un[:, args.num_rollouts * (update-1) :args.num_rollouts * update].reshape(args.num_envs, args.num_rollouts* max_steps, *envs.single_observation_space.shape)
