@@ -64,13 +64,13 @@ class Classifier(torch.nn.Module):
         return L if not self.learn_z else L + self.mlh_loss(batch_q, batch_q_z)
 
     
-    def mask_labels_q(self, s_q, tau=1.0):
+    def mask_labels_q(self, s_q, tau=2.0): #1.0
         with torch.no_grad():
             s_q_clip = torch.clamp(s_q, self.lim_down, 0)
             label_q = torch.exp(s_q_clip/(-self.lim_down*tau))
             return label_q
        
-    def mask_labels_p(self, s_p,w=1.0):
+    def mask_labels_p(self, s_p,w=1.0): #1.0
         with torch.no_grad():
             mask_p = (0.0 <= s_p).float()
             label_p = torch.ones_like(s_p) + mask_p*w
