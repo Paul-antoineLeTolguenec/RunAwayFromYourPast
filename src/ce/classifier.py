@@ -8,7 +8,7 @@ class Classifier(torch.nn.Module):
     def __init__(self, observation_space,device, env_max_steps, 
                 lipshitz= False, lim_down = -5, lim_up = 5, 
                 w_old = 0.0001, learn_z = False, 
-                n_agent = 1):
+                n_agent = 1, n_reconf = 0):
         super(Classifier, self).__init__()
         # spectral normalization
         self.fc1 = spectral_norm(torch.nn.Linear(observation_space.shape[0], 128,device=device)) if lipshitz else torch.nn.Linear(observation_space.shape[0], 128,device=device)
@@ -22,6 +22,7 @@ class Classifier(torch.nn.Module):
         self.sigmoid = torch.nn.Sigmoid()
         self.learn_z = learn_z
         self.n_agent = n_agent
+        self.n_reconf = n_reconf
         if learn_z : 
             self.fcz1 = torch.nn.Linear(observation_space.shape[0], 128,device=device)
             self.fcz2 = torch.nn.Linear(128, 64, device=device)
@@ -54,8 +55,8 @@ class Classifier(torch.nn.Module):
         s_p = self(batch_p)
         s_p_p = self.sigmoid(s_p)
         # mask strategy q
-        # label_q = torch.ones_like(s_q)
-        label_q = self.mask_labels_q(s_q)
+        label_q = torch.ones_like(s_q)
+        # label_q = self.mask_labels_q(s_q)
         # mask strategy p
         # label_p = torch.ones_like(s_p)
         label_p = self.mask_labels_p(s_p)
@@ -70,7 +71,7 @@ class Classifier(torch.nn.Module):
             label_q = torch.exp(s_q_clip/(-self.lim_down*tau))
             return label_q
        
-    def mask_labels_p(self, s_p,w=1.0): #1.0
+    def mask_labels_p(self, s_p,w=2.0): #1.0
         with torch.no_grad():
             mask_p = (0.0 <= s_p).float()
             label_p = torch.ones_like(s_p) + mask_p*w
