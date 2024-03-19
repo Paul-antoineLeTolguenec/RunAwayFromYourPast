@@ -51,7 +51,7 @@ def parse_args():
     parser.add_argument("--episodic-return", type=bool, default=True)
 
     # Algorithm specific arguments
-    parser.add_argument("--env-id", type=str, default="Easy",
+    parser.add_argument("--env-id", type=str, default="Ur",
         help="the id of the environment")
     parser.add_argument("--total-timesteps", type=int, default=int(1e7),
         help="total timesteps of the experiments")
@@ -81,6 +81,8 @@ def parse_args():
         help="Toggles advantages normalization")
     parser.add_argument("--clip-coef", type=float, default=0.2,
         help="the surrogate clipping coefficient")
+    parser.add_argument("--clip-coef-mask", type=float, default=0.2,
+        help="the surrogate clipping coefficient for mask")
     parser.add_argument("--clip-vloss", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="Toggles whether or not to use a clipped loss for the value function, as per the paper.")
     parser.add_argument("--ent-coef", type=float, default=0.05,
@@ -94,15 +96,15 @@ def parse_args():
     # classifier
     parser.add_argument("--classifier-lr", type=float, default=1e-3)
     parser.add_argument("--classifier-batch-size", type=int, default=256)
-    parser.add_argument("--classifier-memory", type=int, default=4000)
+    parser.add_argument("--classifier-memory", type=int, default=2000)
     parser.add_argument("--classifier-frequency", type=int, default=1)
     parser.add_argument("--classifier-epochs", type=int, default=1)
     parser.add_argument("--frac-wash", type=float, default=1/4, help="fraction of the buffer to wash")
     parser.add_argument("--boring-n", type=int, default=4)
-    parser.add_argument("--window-size", type=int, default=4)
+    parser.add_argument("--window-size", type=int, default=2)
     parser.add_argument("--treshold-entropy", type=float, default=0.0)
     parser.add_argument("--ratio-speed", type=float, default=1.0)
-    parser.add_argument("--tau-exp-rho", type=float, default=0.5)
+    parser.add_argument("--tau-exp-rho", type=float, default=0.15)
     # n agent
     parser.add_argument("--n-agent", type=int, default=5)
     parser.add_argument("--lamda-im", type=float, default=1.0)
@@ -118,6 +120,51 @@ def parse_args():
     # fmt: on
     return args
 
+def check_cut_arm(z, epoch_reconfigure_z, boring_n_agent, treshold_last_select,
+                  counts, values, total_plays):
+    # idx most played arm
+    idx_arm = np.argmax(counts)
+    # idx second most played arm
+    idx_second_arm = np.argsort(counts)[-2]
+    if counts[idx_arm] > treshold_last_select + counts[idx_second_arm]:
+    # print('value treshold : ',abs(values[idx_arm] - values[idx_second_arm])/abs(values[idx_arm] + values[idx_second_arm]+1e-3))
+    # if abs(values[idx_arm] - values[idx_second_arm])/abs(values[idx_arm] + values[idx_second_arm]+1e-3) > treshold_last_select:
+        print('epoch_reconfigure_z : ', epoch_reconfigure_z)
+        # reconfigure z
+        z[:,epoch_reconfigure_z] = idx_arm + 1
+        print('updated z : ', z)
+        # update epoch_reconfigure_z
+        epoch_reconfigure_z += 1
+        # reset counts and values
+        counts = np.ones(args.n_agent)
+        values = np.zeros(args.n_agent)
+        total_plays = 1
+        # set all the boring_n_agent to idx_arm
+        boring_n_agent_idx = boring_n_agent[idx_arm]
+        boring_n_agent = np.ones(args.n_agent,dtype=int)* 4
+        # boring_n_agent[idx_arm]= boring_n_agent_idx
+        print('boring_n_agent : ', boring_n_agent)
+    return z, epoch_reconfigure_z, counts, values, total_plays, boring_n_agent
+
+
+# def check_cut_arm(z, epoch_reconfigure_z, boring_n_agent, treshold_last_select,
+#                   counts, values, total_plays):
+#     # idx most played arm
+#     idx_arm = np.argmax(counts)
+#     # idx second most played arm
+#     idx_last_arm = np.argsort(counts)[0]
+#     if counts[idx_arm] > treshold_last_select + counts[idx_last_arm]:
+#         # set z 
+#         z[:,epoch_reconfigure_z] = torch.arange(1,args.n_agent+1)
+#         print('epoch_reconfigure_z : ', epoch_reconfigure_z)
+#         # reconfigure z
+#         z[idx_last_arm,epoch_reconfigure_z] = idx_arm + 1
+#         print('updated z : ', z)
+#         # update epoch_reconfigure_z
+#         epoch_reconfigure_z += 1
+#         # reset counts and values
+#         counts[idx_last_arm]
+#     return z, epoch_reconfigure_z, counts, values, total_plays, boring_n_agent
 
 def wash(classifier, obs_train, prob_obs_train, obs_un_n, 
         prob_obs_un_n, num_rollouts, max_steps, 
@@ -291,7 +338,7 @@ if __name__ == "__main__":
     ve = VE(n = args.n_agent, device = device, prob = torch.ones(args.n_agent)/args.n_agent, n_reconf = args.n_reconfigure)
     # discounted ucb
     ducb = DiscountedUCB(n_arms = args.n_agent, gamma= 0.90)
-    fixed_weights = np.linspace(0, 1, args.n_agent)
+    fixed_weights = np.linspace(-1, 1, args.n_agent)
     # ALGO Logic: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
     zs = torch.zeros((args.num_steps, args.num_envs) + (args.n_reconfigure,)).to(device)
@@ -334,6 +381,13 @@ if __name__ == "__main__":
     video_filenames = set()
    
     for update in range(1, num_updates + 1):
+        # Check Cut arm 
+        z, epoch_reconfigure_z , ducb.counts, ducb.values, ducb.total_plays, boring_n_agent = check_cut_arm(z, epoch_reconfigure_z, 
+                                                                                            boring_n_agent, args.treshold_last_select, 
+                                                                                                ducb.counts, ducb.values, ducb.total_plays)
+        print('update_n_agent : ', update_n_agent)
+        print('values : ', ducb.values)
+        print('counts : ', ducb.counts)
          # UCB Choice 
         for env_idx in range(args.num_envs):
             # select the arm
@@ -341,7 +395,7 @@ if __name__ == "__main__":
             # update z 
             z[env_idx,epoch_reconfigure_z] = idx_arm + 1
         # # sort z 
-        z, _ = torch.sort(z, dim = epoch_reconfigure_z)
+        # z, _ = torch.sort(z, dim = epoch_reconfigure_z)
         # Annealing the rate if instructed to do so.
         if args.anneal_lr:
             frac = 1.0 - (update - 1.0) / num_updates
@@ -376,20 +430,19 @@ if __name__ == "__main__":
         ############################ UPDATE BACKUP BUFFER ############################
         for z_i, idx in (zip(z,range(args.num_envs))):
             idx_z = z_i[epoch_reconfigure_z].cpu().numpy().astype(int)-1
-            if idx_z == idx : 
-                # batch
-                obs_backup[:,idx] = obs[:,idx]
-                zs_backup[:,idx] = zs[:,idx]
-                actions_backup[:,idx] = actions[:,idx]
-                times_backup[:,idx] = times[:,idx]
-                logprobs_backup[:,idx] = logprobs[:,idx]
-                rewards_backup[:,idx] = rewards[:,idx]
-                dones_backup[:,idx] = dones[:,idx]
-                values_backup[:,idx] = values[:,idx]
-                # next
-                next_obs_backup[idx] = next_obs[idx]
-                next_done_backup[idx] = next_done[idx]
-                z_backup[idx] = z[idx]
+            
+            obs_backup[:,idx_z] = obs[:,idx]
+            zs_backup[:,idx_z] = zs[:,idx]
+            actions_backup[:,idx_z] = actions[:,idx]
+            times_backup[:,idx_z] = times[:,idx]
+            logprobs_backup[:,idx_z] = logprobs[:,idx]
+            rewards_backup[:,idx_z] = rewards[:,idx]
+            dones_backup[:,idx_z] = dones[:,idx]
+            values_backup[:,idx_z] = values[:,idx]
+            # next
+            next_obs_backup[idx_z] = next_obs[idx]
+            next_done_backup[idx_z] = next_done[idx]
+            z_backup[idx_z] = z[idx]
         ########################### CLASSIFIER ##################################
         # rho_n
         b_batch_obs_rho_n = torch.cat([obs.permute(1,0,2).reshape(args.num_envs*args.num_rollouts, max_steps, *envs.single_observation_space.shape),
@@ -405,7 +458,7 @@ if __name__ == "__main__":
             b_batch_probs_un = probs_un_train
             ratio_classifier = args.classifier_memory/(args.num_rollouts*args.num_envs*max_steps)
             # args.classifier_epochs
-            args.classifier_epochs = int(b_batch_obs_un.shape[0]/args.classifier_batch_size)*2
+            args.classifier_epochs = int(b_batch_obs_un.shape[0]/args.classifier_batch_size)*4
             for epoch_classifier in range(args.classifier_epochs):
                 # sample rho_n
                 idx_ep_rho = np.random.randint(0, args.num_rollouts*args.num_envs *2, size = args.classifier_batch_size)
@@ -438,18 +491,20 @@ if __name__ == "__main__":
             # normalize on dim 0
             log_p_s_z = (log_p_s_z_nn - torch.mean(log_p_s_z_nn, dim=0).unsqueeze(0))/(torch.std(log_p_s_z_nn, dim=0).unsqueeze(0) + 1e-8)
             # rewards
-            rewards = log_p_s_z if update < args.learning_explore_start else log_p_rho_un + args.lamda_im*log_p_s_z
+            rewards = (log_p_s_z if update < args.learning_explore_start else log_p_rho_un + args.lamda_im*log_p_s_z)*args.ratio_reward
             # mask rewards_nn
             mask_rewards = (0 < log_p_rho_un_nn).float()
             # mask boring_n
-            mask_boring_n = (mask_rewards.sum(dim=0) < args.num_rollouts*max_steps/2).int()
+            # mask_boring_n = (mask_rewards.sum(dim=0) < args.num_rollouts*max_steps/2).int()
+            mask_boring_n =  (log_p_rho_un_nn.mean(dim=0) < 0).int()
             # update boring_n
-            z_i_c_b = np.zeros(args.n_agent,dtype=int)
-            for i in range(args.n_agent):
-                idx_z_i = z[i, epoch_reconfigure_z].cpu().numpy().astype(int)-1
-                if z_i_c_b[idx_z_i] < 1:
-                    boring_n_agent[idx_z_i] =np.minimum(np.maximum(boring_n_agent[idx_z_i] + 2*mask_boring_n[i].cpu().numpy()-1, args.boring_n),args.boring_n*args.window_size).astype(int)
-                    z_i_c_b[idx_z_i] += 1
+            if update > args.boring_n*args.window_size:
+                z_i_c_b = np.zeros(args.n_agent,dtype=int)
+                for i in range(args.n_agent):
+                    idx_z_i = z[i, epoch_reconfigure_z].cpu().numpy().astype(int)-1
+                    if z_i_c_b[idx_z_i] < 1:
+                        boring_n_agent[idx_z_i] =np.maximum(boring_n_agent[idx_z_i] + mask_boring_n[i].cpu().numpy(), args.boring_n).astype(int)
+                        z_i_c_b[idx_z_i] += 1
             # mask entropy
             mask_entropy = (args.treshold_entropy <= log_p_rho_un_nn).float()
         ########################### UPDATE THE BUFFER ############################
@@ -502,14 +557,17 @@ if __name__ == "__main__":
             z_r_epoch = np.zeros(args.n_agent)
             n_z_epoch = np.zeros(args.n_agent)
             for i in range(reward_per_arm_ext.shape[0]):
-                z_r_epoch[z_ext[i].cpu().numpy().astype(int)-1] += reward_per_arm_ext[i]
+                z_r_epoch[z_ext[i].cpu().numpy().astype(int)-1] += reward_per_arm_ext[i] - boring_n_agent[z_ext[i].cpu().numpy().astype(int)-1]/(boring_n_agent.sum()+1e-8)
                 n_z_epoch[z_ext[i].cpu().numpy().astype(int)-1] += 1
             mean_z_r = z_r_epoch/n_z_epoch
             # sort mean_r_z with numpy
             idx_sort = np.argsort(mean_z_r)
             # update the reward
             for i in range(args.n_agent):
-                ducb.update(idx_sort[i],fixed_weights[i]*0.05)
+                ducb.update(idx_sort[i],fixed_weights[i]*0.01) # *0.01
+            # update the reward
+            # for i in range(args.n_agent):
+            #     ducb.update(i,mean_z_r[i]*0.01)
         ########################### PPO UPDATE ###############################
         # bootstrap value if not done
         with torch.no_grad():
@@ -562,7 +620,11 @@ if __name__ == "__main__":
                 # Policy loss
                 pg_loss1 = -mb_advantages * ratio
                 pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - args.clip_coef, 1 + args.clip_coef)
-                pg_loss = torch.max(pg_loss1, pg_loss2).mean()
+                pg_loss3 = -mb_advantages * torch.clamp(ratio, 1 - args.clip_coef_mask, 1 + args.clip_coef_mask)
+                # pg_loss = torch.max(pg_loss1, pg_loss2).mean()
+                pg_loss = (torch.max(pg_loss1, pg_loss2)*(1-mask_mb)).mean() + (torch.max(pg_loss1, pg_loss3)*(mask_mb)).mean()
+                # pg_loss = (torch.max(pg_loss1, pg_loss2)*(1-mask_mb)).mean() + (pg_loss1*mask_mb).mean()
+
 
                 # Value loss
                 newvalue = newvalue.view(-1)
@@ -611,7 +673,7 @@ if __name__ == "__main__":
         # print('min log_p_rho_un',torch.min(log_p_rho_un_nn))
         # print('mean log_p_rho_un',torch.mean(log_p_rho_un_nn))
         # print('std log_p_rho_un',torch.std(log_p_rho_un_nn))
-        print('sum mask_rewards dim 0',mask_rewards.sum(dim=0))
+        # print('sum mask_rewards dim 0',mask_rewards.sum(dim=0))
         print('boring_n',boring_n_agent)
         print('update ',update)
         print('update_n_agent',update_n_agent)
@@ -647,12 +709,11 @@ if __name__ == "__main__":
                 # plot obs_un_train 
                 # env_plot.ax.scatter(obs_un_train[:,0], obs_un_train[:,1], s=1, c = 'b')
 
-                # print('data_to_plot',data_to_plot.shape)
                 for z_t in range(args.n_agent):
-                #     # plot per skill
+                # # #     # plot per skill
                     data_to_plot  = obs_un[z_t, (update_n_agent[z_t]-2)*args.num_rollouts : (update_n_agent[z_t]-1)*args.num_rollouts].reshape(-1, *envs.single_observation_space.shape)
                     env_plot.ax.scatter(data_to_plot[:,0], data_to_plot[:,1], label = f'z = {z_t}', c = colors[z_t], s=1)
-
+# 
                 # save fig env_plot
                 env_plot.figure.canvas.draw()
                 image = np.frombuffer(env_plot.figure.canvas.tostring_rgb(), dtype='uint8')

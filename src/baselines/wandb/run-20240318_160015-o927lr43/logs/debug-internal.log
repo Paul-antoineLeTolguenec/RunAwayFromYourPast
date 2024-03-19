@@ -1,0 +1,568 @@
+2024-03-18 16:00:15,933 INFO    StreamThr :3500612 [internal.py:wandb_internal():86] W&B internal server running at pid: 3500612, started at: 2024-03-18 16:00:15.932874
+2024-03-18 16:00:15,933 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: status
+2024-03-18 16:00:15,934 INFO    WriterThread:3500612 [datastore.py:open_for_write():85] open: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/run-o927lr43.wandb
+2024-03-18 16:00:15,935 DEBUG   SenderThread:3500612 [sender.py:send():369] send: header
+2024-03-18 16:00:15,943 DEBUG   SenderThread:3500612 [sender.py:send():369] send: run
+2024-03-18 16:00:16,359 INFO    SenderThread:3500612 [dir_watcher.py:__init__():211] watching files in: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files
+2024-03-18 16:00:16,359 INFO    SenderThread:3500612 [sender.py:_start_run_threads():1100] run started: o927lr43 with start time 1710774015.932393
+2024-03-18 16:00:16,359 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:16,359 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:16,360 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: check_version
+2024-03-18 16:00:16,360 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: check_version
+2024-03-18 16:00:16,439 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: run_start
+2024-03-18 16:00:16,441 DEBUG   HandlerThread:3500612 [system_info.py:__init__():31] System info init
+2024-03-18 16:00:16,441 DEBUG   HandlerThread:3500612 [system_info.py:__init__():46] System info init done
+2024-03-18 16:00:16,441 INFO    HandlerThread:3500612 [system_monitor.py:start():181] Starting system monitor
+2024-03-18 16:00:16,441 INFO    SystemMonitor:3500612 [system_monitor.py:_start():145] Starting system asset monitoring threads
+2024-03-18 16:00:16,441 INFO    HandlerThread:3500612 [system_monitor.py:probe():201] Collecting system info
+2024-03-18 16:00:16,442 INFO    SystemMonitor:3500612 [interfaces.py:start():190] Started cpu monitoring
+2024-03-18 16:00:16,442 INFO    SystemMonitor:3500612 [interfaces.py:start():190] Started disk monitoring
+2024-03-18 16:00:16,443 INFO    SystemMonitor:3500612 [interfaces.py:start():190] Started gpu monitoring
+2024-03-18 16:00:16,443 INFO    SystemMonitor:3500612 [interfaces.py:start():190] Started memory monitoring
+2024-03-18 16:00:16,444 INFO    SystemMonitor:3500612 [interfaces.py:start():190] Started network monitoring
+2024-03-18 16:00:16,451 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:00:16,467 DEBUG   HandlerThread:3500612 [system_info.py:probe():195] Probing system
+2024-03-18 16:00:16,470 DEBUG   HandlerThread:3500612 [system_info.py:_probe_git():180] Probing git
+2024-03-18 16:00:16,475 DEBUG   HandlerThread:3500612 [system_info.py:_probe_git():188] Probing git done
+2024-03-18 16:00:16,475 DEBUG   HandlerThread:3500612 [system_info.py:probe():240] Probing system done
+2024-03-18 16:00:16,475 DEBUG   HandlerThread:3500612 [system_monitor.py:probe():210] {'os': 'Linux-5.10.0-26-amd64-x86_64-with-glibc2.31', 'python': '3.9.2', 'heartbeatAt': '2024-03-18T15:00:16.467521', 'startedAt': '2024-03-18T15:00:15.928936', 'docker': None, 'cuda': None, 'args': (), 'state': 'running', 'program': '/home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/ngu.py', 'codePath': 'src/baselines/ngu.py', 'git': {'remote': 'https://github.com/Paul-antoineLeTolguenec/contrastive_exploration.git', 'commit': '1766be7846b54931c70ff8a89d67c36c50e2568e'}, 'email': 'paul-antoine.le_tolguenec@ensta-bretagne.org', 'root': '/home/p.le-tolguenec/Documents/contrastive_exploration', 'host': 'bubo', 'username': 'p.le-tolguenec', 'executable': '/home/p.le-tolguenec/torch-pa/bin/python3', 'cpu_count': 8, 'cpu_count_logical': 16, 'cpu_freq': {'current': 4753.108, 'min': 800.0, 'max': 5000.0}, 'cpu_freq_per_core': [{'current': 4740.742, 'min': 800.0, 'max': 5000.0}, {'current': 4741.727, 'min': 800.0, 'max': 5000.0}, {'current': 4799.149, 'min': 800.0, 'max': 5000.0}, {'current': 4736.984, 'min': 800.0, 'max': 5000.0}, {'current': 4720.666, 'min': 800.0, 'max': 5000.0}, {'current': 4736.806, 'min': 800.0, 'max': 5000.0}, {'current': 4799.179, 'min': 800.0, 'max': 5000.0}, {'current': 4726.834, 'min': 800.0, 'max': 5000.0}, {'current': 4740.886, 'min': 800.0, 'max': 5000.0}, {'current': 4739.608, 'min': 800.0, 'max': 5000.0}, {'current': 4706.334, 'min': 800.0, 'max': 5000.0}, {'current': 4723.37, 'min': 800.0, 'max': 5000.0}, {'current': 4740.012, 'min': 800.0, 'max': 5000.0}, {'current': 4795.418, 'min': 800.0, 'max': 5000.0}, {'current': 4800.074, 'min': 800.0, 'max': 5000.0}, {'current': 4801.939, 'min': 800.0, 'max': 5000.0}], 'disk': {'total': 467.8895797729492, 'used': 11.54074478149414}, 'gpu': 'NVIDIA GeForce RTX 2070', 'gpu_count': 1, 'gpu_devices': [{'name': 'NVIDIA GeForce RTX 2070', 'memory_total': 8367570944}], 'memory': {'total': 62.60514450073242}}
+2024-03-18 16:00:16,475 INFO    HandlerThread:3500612 [system_monitor.py:probe():211] Finished collecting system info
+2024-03-18 16:00:16,475 INFO    HandlerThread:3500612 [system_monitor.py:probe():214] Publishing system info
+2024-03-18 16:00:16,476 DEBUG   HandlerThread:3500612 [system_info.py:_save_pip():51] Saving list of pip packages installed into the current environment
+2024-03-18 16:00:16,476 DEBUG   HandlerThread:3500612 [system_info.py:_save_pip():67] Saving pip packages done
+2024-03-18 16:00:16,476 DEBUG   HandlerThread:3500612 [system_info.py:_save_code():89] Saving code
+2024-03-18 16:00:16,478 DEBUG   HandlerThread:3500612 [system_info.py:_save_code():110] Saving code done
+2024-03-18 16:00:16,478 DEBUG   HandlerThread:3500612 [system_info.py:_save_patches():127] Saving git patches
+2024-03-18 16:00:16,556 DEBUG   HandlerThread:3500612 [system_info.py:_save_patches():169] Saving git patches done
+2024-03-18 16:00:16,557 INFO    HandlerThread:3500612 [system_monitor.py:probe():216] Finished publishing system info
+2024-03-18 16:00:16,559 DEBUG   SenderThread:3500612 [sender.py:send():369] send: files
+2024-03-18 16:00:16,559 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-metadata.json with policy now
+2024-03-18 16:00:16,560 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file code/src/baselines/ngu.py with policy now
+2024-03-18 16:00:16,560 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file diff.patch with policy now
+2024-03-18 16:00:16,563 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: stop_status
+2024-03-18 16:00:16,564 INFO    HandlerThread:3500612 [handler.py:handle_tbrecord():759] handling tbrecord: tbrecord {
+  log_dir: "runs/Ur__ngu__0__1710774014"
+  save: true
+}
+control {
+  relay_id: "5f1d487980ca416291509edc7d26f782"
+}
+_info {
+  stream_id: "o927lr43"
+}
+
+2024-03-18 16:00:16,564 DEBUG   HandlerThread:3500612 [config_util.py:dict_from_config_file():104] no default config file found in config-defaults.yaml
+2024-03-18 16:00:16,565 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: stop_status
+2024-03-18 16:00:16,767 DEBUG   SenderThread:3500612 [sender.py:send():369] send: telemetry
+2024-03-18 16:00:16,768 DEBUG   SenderThread:3500612 [sender.py:send():369] send: tbrecord
+2024-03-18 16:00:16,768 DEBUG   SenderThread:3500612 [sender.py:send():369] send: files
+2024-03-18 16:00:16,768 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file events.out.tfevents.1710774016.bubo.3498076.0 with policy live
+2024-03-18 16:00:16,826 INFO    wandb-upload_1:3500612 [upload_job.py:push():113] Skipped uploading /tmp/tmp1ic76e3ywandb/d2zgug0m-code/src/baselines/ngu.py
+2024-03-18 16:00:17,044 INFO    wandb-upload_0:3500612 [upload_job.py:push():133] Uploaded file /tmp/tmp1ic76e3ywandb/ycsy5dx1-wandb-metadata.json
+2024-03-18 16:00:17,162 INFO    wandb-upload_2:3500612 [upload_job.py:push():133] Uploaded file /tmp/tmp1ic76e3ywandb/vwooibkg-diff.patch
+2024-03-18 16:00:17,245 INFO    wandb-upload_3:3500612 [upload_job.py:push():133] Uploaded file /tmp/tmp1ic76e3ywandb/z2a1poee-events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:17,360 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_created():272] file/dir created: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:17,360 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_created():272] file/dir created: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/code/src/baselines/ngu.py
+2024-03-18 16:00:17,360 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_created():272] file/dir created: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/requirements.txt
+2024-03-18 16:00:17,361 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_created():272] file/dir created: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/diff.patch
+2024-03-18 16:00:17,361 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_created():272] file/dir created: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-metadata.json
+2024-03-18 16:00:17,361 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_created():272] file/dir created: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:00:17,361 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_created():272] file/dir created: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:00:17,361 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_created():272] file/dir created: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/code/src
+2024-03-18 16:00:17,361 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_created():272] file/dir created: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/code
+2024-03-18 16:00:17,361 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_created():272] file/dir created: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/code/src/baselines
+2024-03-18 16:00:18,359 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:18,453 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:00:19,360 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:19,360 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:00:20,360 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:20,455 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:00:21,360 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:21,360 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:00:21,397 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: status_report
+2024-03-18 16:00:22,360 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:22,458 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:00:23,361 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:23,361 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:00:24,361 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:24,460 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:00:25,361 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:25,361 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:00:26,361 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:26,462 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:00:26,610 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:26,610 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:26,611 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: status_report
+2024-03-18 16:00:26,611 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:26,611 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:26,611 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:26,623 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:26,623 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:26,623 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:26,623 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:26,623 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:26,624 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:26,624 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:26,624 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:26,624 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:26,624 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:26,624 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:26,624 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:26,624 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:26,625 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:26,625 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:26,625 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:26,625 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:26,625 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:26,625 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:26,625 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:26,625 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:26,626 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:26,626 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:26,626 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:26,626 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:26,626 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:26,626 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:26,626 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:26,626 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:26,626 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:26,627 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:26,627 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:26,627 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:26,627 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:26,627 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:26,627 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:26,627 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:26,627 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:26,628 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:26,628 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:26,628 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:26,628 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:26,628 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:26,628 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:26,628 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:26,628 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:26,629 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:26,629 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:26,629 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:26,629 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:26,629 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:26,629 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:27,362 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:27,362 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:00:27,362 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:00:27,619 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:27,629 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:27,630 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:28,362 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:00:28,464 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:00:29,362 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:29,362 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:00:29,634 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:29,634 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:29,635 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:30,362 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:30,363 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:00:30,467 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:00:30,640 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:30,640 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:30,640 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:30,640 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:30,640 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:30,652 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:31,363 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:00:31,363 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:00:31,562 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: stop_status
+2024-03-18 16:00:31,562 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: stop_status
+2024-03-18 16:00:31,716 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: status_report
+2024-03-18 16:00:32,363 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:32,469 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:00:32,644 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:32,644 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:32,645 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:33,363 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:00:33,363 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:00:34,364 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:34,472 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:00:34,650 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:34,651 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:34,651 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:34,651 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:34,651 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:34,652 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:35,364 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:35,364 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:00:35,364 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:00:35,654 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:35,654 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:35,655 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:36,364 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:00:36,474 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:00:36,717 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: status_report
+2024-03-18 16:00:37,364 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:37,365 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:00:37,661 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:37,661 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:37,661 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:37,661 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:37,661 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:37,673 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:38,365 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:00:38,477 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:00:39,365 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:39,365 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:00:39,667 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:39,667 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:39,668 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:40,365 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:00:40,479 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:00:40,671 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:40,671 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:40,672 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:40,672 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:40,672 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:40,684 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:41,366 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:41,366 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:00:41,366 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:00:41,720 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: status_report
+2024-03-18 16:00:42,481 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:00:42,676 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:42,676 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:42,677 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:43,366 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:43,366 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:00:43,366 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:00:44,367 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:44,484 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:00:44,682 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:44,682 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:44,683 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:44,683 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:44,683 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:44,694 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:45,367 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:00:45,367 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:00:46,367 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:46,509 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:00:46,572 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: stop_status
+2024-03-18 16:00:46,572 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: stop_status
+2024-03-18 16:00:46,753 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: status_report
+2024-03-18 16:00:46,917 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:46,917 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:46,917 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:47,367 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/config.yaml
+2024-03-18 16:00:47,368 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:00:47,368 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:00:48,368 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:48,511 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:00:48,692 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:48,692 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:48,692 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:48,692 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:48,692 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:48,704 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:49,368 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:00:49,368 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:00:50,368 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:50,513 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:00:50,697 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:50,697 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:50,697 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:51,369 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:00:51,369 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:00:51,917 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: status_report
+2024-03-18 16:00:52,369 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:52,515 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:00:52,703 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:52,703 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:52,704 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:52,704 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:52,704 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:52,716 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:53,369 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:00:53,369 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:00:54,369 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:54,517 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:00:54,708 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:54,708 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:54,708 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:55,370 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:00:55,370 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:00:56,520 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:00:56,714 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:56,714 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:56,714 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:56,714 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:56,715 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:56,715 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:57,370 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:57,370 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:00:57,370 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:00:57,507 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: status_report
+2024-03-18 16:00:58,522 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:00:58,721 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:00:58,721 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:00:58,721 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:00:59,371 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:00:59,371 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:00:59,371 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:01:00,524 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:01:01,371 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:01:01,371 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:01:01,601 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: stop_status
+2024-03-18 16:01:01,601 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: stop_status
+2024-03-18 16:01:01,823 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:01,823 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:01,823 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:01,823 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:01,824 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:01,835 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:02,371 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:01:02,513 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: status_report
+2024-03-18 16:01:02,526 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:01:03,372 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:01:03,372 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:01:03,742 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:03,742 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:03,743 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:04,372 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:01:04,529 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:01:05,372 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:01:05,373 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:01:05,749 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:05,749 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:05,749 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:05,749 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:05,749 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:05,761 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:06,373 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:01:06,531 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:01:07,373 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:01:07,514 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: status_report
+2024-03-18 16:01:07,752 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:07,752 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:07,753 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:08,373 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:01:08,373 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:01:08,533 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:01:09,373 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:01:10,374 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:01:10,535 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:01:10,759 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:10,760 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:10,760 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:10,760 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:10,760 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:10,772 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:11,374 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:01:11,374 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:01:12,374 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:01:12,537 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:01:12,764 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:12,765 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:12,765 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: status_report
+2024-03-18 16:01:12,765 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:13,375 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:01:13,375 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:01:14,540 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:01:14,770 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:14,770 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:14,771 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:14,771 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:14,771 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:14,782 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:15,375 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:01:15,376 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:01:15,376 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:01:16,444 DEBUG   SystemMonitor:3500612 [system_monitor.py:_start():159] Starting system metrics aggregation loop
+2024-03-18 16:01:16,445 DEBUG   SenderThread:3500612 [sender.py:send():369] send: stats
+2024-03-18 16:01:16,564 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:01:16,601 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: stop_status
+2024-03-18 16:01:16,601 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: stop_status
+2024-03-18 16:01:17,376 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:01:17,376 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:01:17,776 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:17,776 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:17,777 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: status_report
+2024-03-18 16:01:17,777 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:17,928 INFO    wandb-upload_1:3500612 [upload_job.py:push():133] Uploaded file /tmp/tmp1ic76e3ywandb/376mipbx-events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:01:18,376 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:01:18,567 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:01:19,377 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:01:19,782 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:19,782 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:19,783 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:19,783 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:19,783 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:19,794 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:20,377 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:01:20,377 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:01:20,569 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:01:21,377 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:01:22,377 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:01:22,571 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:01:22,787 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:22,787 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:22,787 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: status_report
+2024-03-18 16:01:22,787 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:23,378 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:01:23,378 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:01:24,573 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:01:24,790 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:24,790 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:24,790 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:25,378 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:01:25,378 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:01:25,379 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:01:25,793 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:25,793 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:25,794 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:26,379 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:01:26,575 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:01:27,379 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:01:27,799 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:27,799 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:27,799 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: status_report
+2024-03-18 16:01:27,800 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:28,379 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:01:28,380 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:01:28,578 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:01:29,380 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:01:30,380 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:01:30,580 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:01:30,806 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:30,807 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:30,807 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:30,807 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:30,807 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:30,819 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:31,380 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:01:31,380 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:01:31,617 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: stop_status
+2024-03-18 16:01:31,617 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: stop_status
+2024-03-18 16:01:32,582 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:01:32,812 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:32,812 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:32,812 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: status_report
+2024-03-18 16:01:32,813 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:33,381 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:01:33,381 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:01:33,381 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:01:34,585 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:01:35,381 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:01:35,819 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:35,819 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:35,819 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:35,820 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:35,820 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:35,831 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:36,381 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:01:36,382 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:01:36,587 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:01:37,382 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:01:37,815 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: status_report
+2024-03-18 16:01:38,589 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:01:38,854 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:38,854 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:38,855 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:39,382 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:01:39,383 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:01:39,383 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:01:40,591 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:01:41,383 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:01:41,383 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:01:41,830 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:41,831 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:41,831 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:41,831 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:41,831 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:41,843 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:42,383 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:01:42,593 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:01:42,843 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: status_report
+2024-03-18 16:01:43,384 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:01:44,384 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:01:44,596 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:01:44,837 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:44,838 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:44,838 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:45,384 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:01:45,384 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:01:46,445 DEBUG   SenderThread:3500612 [sender.py:send():369] send: stats
+2024-03-18 16:01:46,617 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: stop_status
+2024-03-18 16:01:46,617 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: stop_status
+2024-03-18 16:01:46,623 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:01:47,385 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:01:47,385 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:01:47,844 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:47,845 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:47,845 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: status_report
+2024-03-18 16:01:47,845 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:47,845 DEBUG   SenderThread:3500612 [sender.py:send():369] send: history
+2024-03-18 16:01:47,846 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: summary_record
+2024-03-18 16:01:47,857 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:48,385 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:01:48,626 ERROR   gpu       :3500612 [interfaces.py:monitor():144] Failed to sample metric: Not Supported
+2024-03-18 16:01:49,155 DEBUG   SenderThread:3500612 [sender.py:send():369] send: exit
+2024-03-18 16:01:49,155 INFO    SenderThread:3500612 [sender.py:send_exit():574] handling exit code: 255
+2024-03-18 16:01:49,155 INFO    SenderThread:3500612 [sender.py:send_exit():576] handling runtime: 92
+2024-03-18 16:01:49,155 INFO    SenderThread:3500612 [sender.py:_save_file():1354] saving file wandb-summary.json with policy end
+2024-03-18 16:01:49,155 INFO    SenderThread:3500612 [sender.py:send_exit():582] send defer
+2024-03-18 16:01:49,155 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: defer
+2024-03-18 16:01:49,155 INFO    HandlerThread:3500612 [handler.py:handle_request_defer():170] handle defer: 0
+2024-03-18 16:01:49,155 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: defer
+2024-03-18 16:01:49,155 INFO    SenderThread:3500612 [sender.py:send_request_defer():598] handle sender defer: 0
+2024-03-18 16:01:49,155 INFO    SenderThread:3500612 [sender.py:transition_state():602] send defer: 1
+2024-03-18 16:01:49,156 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: defer
+2024-03-18 16:01:49,156 INFO    HandlerThread:3500612 [handler.py:handle_request_defer():170] handle defer: 1
+2024-03-18 16:01:49,156 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: defer
+2024-03-18 16:01:49,156 INFO    SenderThread:3500612 [sender.py:send_request_defer():598] handle sender defer: 1
+2024-03-18 16:01:49,156 INFO    SenderThread:3500612 [sender.py:transition_state():602] send defer: 2
+2024-03-18 16:01:49,156 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: defer
+2024-03-18 16:01:49,156 INFO    HandlerThread:3500612 [handler.py:handle_request_defer():170] handle defer: 2
+2024-03-18 16:01:49,156 INFO    HandlerThread:3500612 [system_monitor.py:finish():190] Stopping system monitor
+2024-03-18 16:01:49,156 INFO    HandlerThread:3500612 [interfaces.py:finish():202] Joined cpu monitor
+2024-03-18 16:01:49,156 INFO    HandlerThread:3500612 [interfaces.py:finish():202] Joined disk monitor
+2024-03-18 16:01:49,156 DEBUG   SystemMonitor:3500612 [system_monitor.py:_start():166] Finished system metrics aggregation loop
+2024-03-18 16:01:49,156 DEBUG   SystemMonitor:3500612 [system_monitor.py:_start():170] Publishing last batch of metrics
+2024-03-18 16:01:49,175 INFO    HandlerThread:3500612 [interfaces.py:finish():202] Joined gpu monitor
+2024-03-18 16:01:49,175 INFO    HandlerThread:3500612 [interfaces.py:finish():202] Joined memory monitor
+2024-03-18 16:01:49,175 INFO    HandlerThread:3500612 [interfaces.py:finish():202] Joined network monitor
+2024-03-18 16:01:49,175 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: defer
+2024-03-18 16:01:49,175 INFO    SenderThread:3500612 [sender.py:send_request_defer():598] handle sender defer: 2
+2024-03-18 16:01:49,175 INFO    SenderThread:3500612 [sender.py:transition_state():602] send defer: 3
+2024-03-18 16:01:49,175 DEBUG   SenderThread:3500612 [sender.py:send():369] send: stats
+2024-03-18 16:01:49,176 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: defer
+2024-03-18 16:01:49,176 INFO    HandlerThread:3500612 [handler.py:handle_request_defer():170] handle defer: 3
+2024-03-18 16:01:49,176 DEBUG   SenderThread:3500612 [sender.py:send_request():396] send_request: defer
+2024-03-18 16:01:49,176 INFO    SenderThread:3500612 [sender.py:send_request_defer():598] handle sender defer: 3
+2024-03-18 16:01:49,176 INFO    SenderThread:3500612 [sender.py:transition_state():602] send defer: 4
+2024-03-18 16:01:49,176 DEBUG   HandlerThread:3500612 [handler.py:handle_request():144] handle_request: defer
+2024-03-18 16:01:49,176 INFO    HandlerThread:3500612 [handler.py:handle_request_defer():170] handle defer: 4
+2024-03-18 16:01:49,385 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:01:49,385 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:01:51,386 INFO    Thread-12 :3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:01:53,054 WARNING StreamThr :3500612 [internal.py:is_dead():414] Internal process exiting, parent pid 3498076 disappeared
+2024-03-18 16:01:53,054 ERROR   StreamThr :3500612 [internal.py:wandb_internal():152] Internal process shutdown.
+2024-03-18 16:01:53,176 INFO    WriterThread:3500612 [datastore.py:close():298] close: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/run-o927lr43.wandb
+2024-03-18 16:01:53,176 INFO    SenderThread:3500612 [sender.py:finish():1526] shutting down sender
+2024-03-18 16:01:55,161 INFO    SenderThread:3500612 [dir_watcher.py:finish():359] shutting down directory watcher
+2024-03-18 16:01:55,387 INFO    SenderThread:3500612 [dir_watcher.py:_on_file_modified():289] file/dir modified: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log
+2024-03-18 16:01:55,387 INFO    SenderThread:3500612 [dir_watcher.py:finish():389] scan: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files
+2024-03-18 16:01:55,387 INFO    SenderThread:3500612 [dir_watcher.py:finish():403] scan save: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/config.yaml config.yaml
+2024-03-18 16:01:55,387 INFO    SenderThread:3500612 [dir_watcher.py:finish():403] scan save: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/events.out.tfevents.1710774016.bubo.3498076.0 events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:01:55,387 INFO    SenderThread:3500612 [dir_watcher.py:finish():403] scan save: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/requirements.txt requirements.txt
+2024-03-18 16:01:55,387 INFO    SenderThread:3500612 [dir_watcher.py:finish():403] scan save: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log output.log
+2024-03-18 16:01:55,387 INFO    SenderThread:3500612 [dir_watcher.py:finish():403] scan save: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json wandb-summary.json
+2024-03-18 16:01:55,388 INFO    SenderThread:3500612 [dir_watcher.py:finish():403] scan save: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-metadata.json wandb-metadata.json
+2024-03-18 16:01:55,388 INFO    SenderThread:3500612 [dir_watcher.py:finish():403] scan save: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/diff.patch diff.patch
+2024-03-18 16:01:55,389 INFO    SenderThread:3500612 [dir_watcher.py:finish():403] scan save: /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/code/src/baselines/ngu.py code/src/baselines/ngu.py
+2024-03-18 16:01:55,389 INFO    SenderThread:3500612 [file_pusher.py:finish():159] shutting down file pusher
+2024-03-18 16:01:55,389 INFO    SenderThread:3500612 [file_pusher.py:join():164] waiting for file pusher
+2024-03-18 16:01:55,775 INFO    wandb-upload_2:3500612 [upload_job.py:push():133] Uploaded file /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/config.yaml
+2024-03-18 16:01:55,830 INFO    wandb-upload_3:3500612 [upload_job.py:push():133] Uploaded file /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/wandb-summary.json
+2024-03-18 16:01:55,844 INFO    HandlerThread:3500612 [handler.py:finish():854] shutting down handler
+2024-03-18 16:01:55,912 INFO    wandb-upload_0:3500612 [upload_job.py:push():133] Uploaded file /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/requirements.txt
+2024-03-18 16:01:55,965 INFO    wandb-upload_4:3500612 [upload_job.py:push():133] Uploaded file /tmp/tmp1ic76e3ywandb/f3tdede1-events.out.tfevents.1710774016.bubo.3498076.0
+2024-03-18 16:01:56,249 INFO    wandb-upload_1:3500612 [upload_job.py:push():133] Uploaded file /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_160015-o927lr43/files/output.log

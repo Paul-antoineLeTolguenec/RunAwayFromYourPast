@@ -1,0 +1,121 @@
+wandb_version: 1
+
+n_env:
+  desc: null
+  value: 1
+env_type:
+  desc: null
+  value: Maze
+exp_name:
+  desc: null
+  value: ngu
+seed:
+  desc: null
+  value: 0
+torch_deterministic:
+  desc: null
+  value: true
+cuda:
+  desc: null
+  value: false
+track:
+  desc: null
+  value: true
+wandb_project_name:
+  desc: null
+  value: contrastive_exploration
+wandb_entity:
+  desc: null
+  value: null
+capture_video:
+  desc: null
+  value: false
+do_fig:
+  desc: null
+  value: true
+fig_frequency:
+  desc: null
+  value: 100
+make_gif:
+  desc: null
+  value: true
+env_id:
+  desc: null
+  value: Ur
+total_timesteps:
+  desc: null
+  value: 1000000
+buffer_size:
+  desc: null
+  value: 1000000
+gamma:
+  desc: null
+  value: 0.99
+tau:
+  desc: null
+  value: 0.01
+batch_size:
+  desc: null
+  value: 256
+learning_starts:
+  desc: null
+  value: 4000.0
+policy_lr:
+  desc: null
+  value: 0.0005
+q_lr:
+  desc: null
+  value: 0.001
+q_frequency:
+  desc: null
+  value: 1
+policy_frequency:
+  desc: null
+  value: 2
+target_network_frequency:
+  desc: null
+  value: 1
+noise_clip:
+  desc: null
+  value: 0.2
+alpha:
+  desc: null
+  value: 0.2
+autotune:
+  desc: null
+  value: false
+ngu_lr:
+  desc: null
+  value: 0.001
+ngu_frequency:
+  desc: null
+  value: 1
+ratio_reward:
+  desc: null
+  value: 2.0
+_wandb:
+  desc: null
+  value:
+    code_path: code/src/baselines/ngu.py
+    python_version: 3.9.2
+    cli_version: 0.15.4
+    framework: torch
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    start_time: 1710774282.272402
+    t:
+      1:
+      - 1
+      - 55
+      2:
+      - 1
+      - 55
+      3:
+      - 13
+      - 16
+      - 23
+      - 35
+      4: 3.9.2
+      5: 0.15.4
+      8:
+      - 5

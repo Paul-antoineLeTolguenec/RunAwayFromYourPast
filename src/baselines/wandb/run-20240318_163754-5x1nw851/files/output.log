@@ -1,0 +1,12 @@
+
+using device cpu
+Traceback (most recent call last):
+  File "/home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/ngu.py", line 480, in <module>
+    m_n = ngu_net.uncertainty_measure(torch.Tensor(rb.observations[:rb.pos]).to(device)).cpu().numpy()
+  File "/home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/ngu.py", line 191, in uncertainty_measure
+    knn = self.sum_k_nearest(dist_matrix, k=self.k)
+  File "/home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/ngu.py", line 217, in sum_k_nearest
+    sum_k = self.epsilon/(k_2/mean_k_nearest_2 + self.epsilon)
+  File "/home/p.le-tolguenec/torch-pa/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1614, in __getattr__
+    raise AttributeError("'{}' object has no attribute '{}'".format(
+AttributeError: 'NGU' object has no attribute 'epsilon'

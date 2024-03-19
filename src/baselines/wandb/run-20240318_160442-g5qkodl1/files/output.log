@@ -1,0 +1,6 @@
+
+using device cpu
+Traceback (most recent call last):
+  File "/home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/ngu.py", line 404, in <module>
+    m_n = ngu_net.loss(data.observations).flatten().cpu().numpy()
+NameError: name 'data' is not defined

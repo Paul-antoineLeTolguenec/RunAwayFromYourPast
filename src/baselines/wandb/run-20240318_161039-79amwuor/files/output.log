@@ -1,0 +1,149 @@
+using device cpu
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+ngu_loss tensor(0.0032, grad_fn=<MseLossBackward0>)
+Global step: 4100
+Episodic return of the environment: 0.0
+Global step: 4200
+Global step: 4300
+ngu_loss tensor(0.0002, grad_fn=<MseLossBackward0>)
+Episodic return of the environment: 0.0
+Global step: 4400
+Global step: 4500
+Episodic return of the environment: 0.0
+Global step: 4600
+ngu_loss tensor(0.0012, grad_fn=<MseLossBackward0>)
+Global step: 4700
+Episodic return of the environment: 0.0
+Global step: 4800
+ngu_loss tensor(0.0022, grad_fn=<MseLossBackward0>)
+Global step: 4900
+Episodic return of the environment: 0.0
+Global step: 5000
+Global step: 5100
+ngu_loss tensor(0.0013, grad_fn=<MseLossBackward0>)
+Episodic return of the environment: 0.0
+Global step: 5200
+Global step: 5300
+ngu_loss tensor(0.0006, grad_fn=<MseLossBackward0>)
+Episodic return of the environment: 0.0
+Global step: 5400
+Global step: 5500
+Episodic return of the environment: 0.0
+Global step: 5600
+ngu_loss tensor(0.0002, grad_fn=<MseLossBackward0>)
+Global step: 5700
+Episodic return of the environment: 0.0
+Global step: 5800
+ngu_loss tensor(0.0006, grad_fn=<MseLossBackward0>)
+Global step: 5900
+Episodic return of the environment: 0.0
+Global step: 6000
+Global step: 6100
+ngu_loss tensor(0.0011, grad_fn=<MseLossBackward0>)
+Episodic return of the environment: 0.0
+Global step: 6200
+Global step: 6300
+Episodic return of the environment: 0.0
+ngu_loss tensor(0.0010, grad_fn=<MseLossBackward0>)
+Global step: 6400
+Global step: 6500
+Episodic return of the environment: 0.0
+Global step: 6600
+ngu_loss tensor(0.0005, grad_fn=<MseLossBackward0>)
+Global step: 6700
+Episodic return of the environment: 0.0
+Global step: 6800
+Global step: 6900
+ngu_loss tensor(0.0001, grad_fn=<MseLossBackward0>)
+Episodic return of the environment: 0.0
+Global step: 7000
+Global step: 7100
+ngu_loss tensor(0.0002, grad_fn=<MseLossBackward0>)
+Episodic return of the environment: 0.0
+Global step: 7200
+Global step: 7300
+Episodic return of the environment: 0.0
+Global step: 7400
+ngu_loss tensor(0.0006, grad_fn=<MseLossBackward0>)
+Global step: 7500
+Episodic return of the environment: 0.0
+Global step: 7600
+ngu_loss tensor(0.0008, grad_fn=<MseLossBackward0>)
+Global step: 7700
+Episodic return of the environment: 0.0
+Global step: 7800
+Global step: 7900
+ngu_loss tensor(0.0006, grad_fn=<MseLossBackward0>)
+Episodic return of the environment: 0.0
+Global step: 8000
+Global step: 8100
+ngu_loss tensor(0.0002, grad_fn=<MseLossBackward0>)
+Episodic return of the environment: 0.0
+Global step: 8200
+Global step: 8300
+Episodic return of the environment: 0.0
+Global step: 8400
+ngu_loss tensor(9.8824e-05, grad_fn=<MseLossBackward0>)
+Global step: 8500
+Episodic return of the environment: 0.0
+Global step: 8600
+Global step: 8700
+ngu_loss tensor(0.0002, grad_fn=<MseLossBackward0>)
+Episodic return of the environment: 0.0
+Global step: 8800
+Global step: 8900
+ngu_loss tensor(0.0004, grad_fn=<MseLossBackward0>)
+Episodic return of the environment: 0.0
+Global step: 9000
+Global step: 9100
+Episodic return of the environment: 0.0
+Global step: 9200
+ngu_loss tensor(0.0004, grad_fn=<MseLossBackward0>)
+Global step: 9300
+Episodic return of the environment: 0.0
+Global step: 9400
+ngu_loss tensor(0.0004, grad_fn=<MseLossBackward0>)
+Global step: 9500
+Episodic return of the environment: 0.0
+Global step: 9600
+Global step: 9700
+ngu_loss tensor(0.0002, grad_fn=<MseLossBackward0>)
+Episodic return of the environment: 0.0
+Global step: 9800
+Global step: 9900
+ngu_loss tensor(5.7337e-05, grad_fn=<MseLossBackward0>)
+Episodic return of the environment: 0.0
+Global step: 10000
+Traceback (most recent call last):
+  File "/home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/ngu.py", line 364, in <module>
+    actor_optimizer.step()
+  File "/home/p.le-tolguenec/torch-pa/lib/python3.9/site-packages/torch/optim/optimizer.py", line 280, in wrapper
+    out = func(*args, **kwargs)
+  File "/home/p.le-tolguenec/torch-pa/lib/python3.9/site-packages/torch/optim/optimizer.py", line 33, in _use_grad
+    ret = func(self, *args, **kwargs)
+  File "/home/p.le-tolguenec/torch-pa/lib/python3.9/site-packages/torch/optim/adam.py", line 141, in step
+    adam(
+  File "/home/p.le-tolguenec/torch-pa/lib/python3.9/site-packages/torch/optim/adam.py", line 281, in adam
+    func(params,
+  File "/home/p.le-tolguenec/torch-pa/lib/python3.9/site-packages/torch/optim/adam.py", line 344, in _single_tensor_adam
+    exp_avg.mul_(beta1).add_(grad, alpha=1 - beta1)
+KeyboardInterrupt

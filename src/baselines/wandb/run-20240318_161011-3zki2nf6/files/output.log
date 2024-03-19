@@ -1,0 +1,99 @@
+using device cpu
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+Episodic return of the environment: 0.0
+ngu_loss tensor(0.0033, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(9.5531e-05, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(0.0012, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(0.0017, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(0.0010, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(0.0002, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(0.0001, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(0.0006, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(0.0009, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(0.0007, grad_fn=<MseLossBackward0>)
+Global step: 4100
+ngu_loss tensor(0.0004, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(9.2368e-05, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(0.0001, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(0.0003, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(0.0004, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(0.0004, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(0.0002, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(7.1350e-05, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(3.0477e-05, grad_fn=<MseLossBackward0>)
+Episodic return of the environment: 0.0
+ngu_loss tensor(0.0001, grad_fn=<MseLossBackward0>)
+Global step: 4200
+ngu_loss tensor(0.0002, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(0.0002, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(0.0002, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(6.0393e-05, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(1.6753e-05, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(4.7973e-05, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(0.0001, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(0.0001, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(9.1764e-05, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(3.2257e-05, grad_fn=<MseLossBackward0>)
+Global step: 4300
+ngu_loss tensor(7.0930e-06, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(1.9097e-05, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(5.0896e-05, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(6.0374e-05, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(4.4984e-05, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(1.7856e-05, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(2.4742e-06, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(1.0879e-05, grad_fn=<MseLossBackward0>)
+ngu_loss tensor(2.5882e-05, grad_fn=<MseLossBackward0>)
+Episodic return of the environment: 0.0
+ngu_loss tensor(2.9401e-05, grad_fn=<MseLossBackward0>)
+Global step: 4400
+Traceback (most recent call last):
+  File "/home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/ngu.py", line 411, in <module>
+    env_plot.figure.canvas.draw()
+  File "/home/p.le-tolguenec/torch-pa/lib/python3.9/site-packages/matplotlib/backends/backend_tkagg.py", line 10, in draw
+    super().draw()
+  File "/home/p.le-tolguenec/torch-pa/lib/python3.9/site-packages/matplotlib/backends/backend_agg.py", line 400, in draw
+    self.figure.draw(self.renderer)
+  File "/home/p.le-tolguenec/torch-pa/lib/python3.9/site-packages/matplotlib/artist.py", line 95, in draw_wrapper
+    result = draw(artist, renderer, *args, **kwargs)
+  File "/home/p.le-tolguenec/torch-pa/lib/python3.9/site-packages/matplotlib/artist.py", line 72, in draw_wrapper
+    return draw(artist, renderer)
+  File "/home/p.le-tolguenec/torch-pa/lib/python3.9/site-packages/matplotlib/figure.py", line 3140, in draw
+    mimage._draw_list_compositing_images(
+  File "/home/p.le-tolguenec/torch-pa/lib/python3.9/site-packages/matplotlib/image.py", line 131, in _draw_list_compositing_images
+    a.draw(renderer)
+  File "/home/p.le-tolguenec/torch-pa/lib/python3.9/site-packages/matplotlib/artist.py", line 72, in draw_wrapper
+    return draw(artist, renderer)
+  File "/home/p.le-tolguenec/torch-pa/lib/python3.9/site-packages/matplotlib/axes/_base.py", line 3064, in draw
+    mimage._draw_list_compositing_images(
+  File "/home/p.le-tolguenec/torch-pa/lib/python3.9/site-packages/matplotlib/image.py", line 131, in _draw_list_compositing_images
+    a.draw(renderer)
+  File "/home/p.le-tolguenec/torch-pa/lib/python3.9/site-packages/matplotlib/artist.py", line 72, in draw_wrapper
+    return draw(artist, renderer)
+  File "/home/p.le-tolguenec/torch-pa/lib/python3.9/site-packages/matplotlib/collections.py", line 972, in draw
+    super().draw(renderer)
+  File "/home/p.le-tolguenec/torch-pa/lib/python3.9/site-packages/matplotlib/artist.py", line 72, in draw_wrapper
+    return draw(artist, renderer)
+  File "/home/p.le-tolguenec/torch-pa/lib/python3.9/site-packages/matplotlib/collections.py", line 409, in draw
+    renderer.draw_path_collection(
+  File "/home/p.le-tolguenec/torch-pa/lib/python3.9/site-packages/matplotlib/path.py", line 244, in simplify_threshold
+    @property
+KeyboardInterrupt

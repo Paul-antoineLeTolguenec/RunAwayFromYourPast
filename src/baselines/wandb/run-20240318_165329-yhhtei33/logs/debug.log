@@ -1,0 +1,29 @@
+2024-03-18 16:53:29,171 INFO    MainThread:1920689 [wandb_setup.py:_flush():76] Current SDK version is 0.15.4
+2024-03-18 16:53:29,171 INFO    MainThread:1920689 [wandb_setup.py:_flush():76] Configure stats pid to 1920689
+2024-03-18 16:53:29,171 INFO    MainThread:1920689 [wandb_setup.py:_flush():76] Loading settings from /home/p.le-tolguenec/.config/wandb/settings
+2024-03-18 16:53:29,171 INFO    MainThread:1920689 [wandb_setup.py:_flush():76] Loading settings from /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/settings
+2024-03-18 16:53:29,171 INFO    MainThread:1920689 [wandb_setup.py:_flush():76] Loading settings from environment variables: {}
+2024-03-18 16:53:29,171 INFO    MainThread:1920689 [wandb_setup.py:_flush():76] Applying setup settings: {'_disable_service': False}
+2024-03-18 16:53:29,171 INFO    MainThread:1920689 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program_relpath': 'src/baselines/ngu.py', 'program': '/home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/ngu.py'}
+2024-03-18 16:53:29,172 INFO    MainThread:1920689 [wandb_init.py:_log_setup():507] Logging user logs to /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_165329-yhhtei33/logs/debug.log
+2024-03-18 16:53:29,172 INFO    MainThread:1920689 [wandb_init.py:_log_setup():508] Logging internal logs to /home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/wandb/run-20240318_165329-yhhtei33/logs/debug-internal.log
+2024-03-18 16:53:29,172 INFO    MainThread:1920689 [wandb_init.py:init():547] calling init triggers
+2024-03-18 16:53:29,172 INFO    MainThread:1920689 [wandb_init.py:init():554] wandb.init called with sweep_config: {}
+config: {'n_env': 1, 'env_type': 'Maze', 'exp_name': 'ngu', 'seed': 0, 'torch_deterministic': True, 'cuda': False, 'track': True, 'wandb_project_name': 'contrastive_exploration', 'wandb_entity': None, 'capture_video': False, 'do_fig': True, 'fig_frequency': 100, 'make_gif': True, 'env_id': 'Ur', 'total_timesteps': 1000000, 'buffer_size': 1000000, 'gamma': 0.99, 'tau': 0.01, 'batch_size': 256, 'learning_starts': 4000.0, 'policy_lr': 0.0005, 'q_lr': 0.001, 'q_frequency': 1, 'policy_frequency': 2, 'target_network_frequency': 1, 'noise_clip': 0.2, 'alpha': 0.2, 'autotune': False, 'ngu_lr': 0.001, 'ngu_frequency': 256, 'ratio_reward': 2.0}
+2024-03-18 16:53:29,172 INFO    MainThread:1920689 [wandb_init.py:init():596] starting backend
+2024-03-18 16:53:29,172 INFO    MainThread:1920689 [wandb_init.py:init():600] setting up manager
+2024-03-18 16:53:29,173 INFO    MainThread:1920689 [backend.py:_multiprocessing_setup():106] multiprocessing start_methods=fork,spawn,forkserver, using: spawn
+2024-03-18 16:53:29,173 INFO    MainThread:1920689 [wandb_init.py:init():606] backend started and connected
+2024-03-18 16:53:29,175 INFO    MainThread:1920689 [wandb_init.py:init():703] updated telemetry
+2024-03-18 16:53:29,182 INFO    MainThread:1920689 [wandb_init.py:init():736] communicating run to backend with 60.0 second timeout
+2024-03-18 16:53:29,561 INFO    MainThread:1920689 [wandb_run.py:_on_init():2176] communicating current version
+2024-03-18 16:53:29,648 INFO    MainThread:1920689 [wandb_run.py:_on_init():2185] got version response upgrade_message: "wandb version 0.16.4 is available!  To upgrade, please run:\n $ pip install wandb --upgrade"
+
+2024-03-18 16:53:29,648 INFO    MainThread:1920689 [wandb_init.py:init():787] starting run threads in backend
+2024-03-18 16:53:29,775 INFO    MainThread:1920689 [wandb_run.py:_console_start():2155] atexit reg
+2024-03-18 16:53:29,775 INFO    MainThread:1920689 [wandb_run.py:_redirect():2010] redirect: SettingsConsole.WRAP_RAW
+2024-03-18 16:53:29,775 INFO    MainThread:1920689 [wandb_run.py:_redirect():2075] Wrapping output streams.
+2024-03-18 16:53:29,775 INFO    MainThread:1920689 [wandb_run.py:_redirect():2100] Redirects installed.
+2024-03-18 16:53:29,775 INFO    MainThread:1920689 [wandb_init.py:init():828] run started, returning control to user process
+2024-03-18 16:53:29,776 INFO    MainThread:1920689 [wandb_run.py:_tensorboard_callback():1430] tensorboard callback: runs/Ur__ngu__0__1710777207, True
+2024-03-18 16:53:43,738 WARNING MsgRouterThr:1920689 [router.py:message_loop():77] message_loop has been closed

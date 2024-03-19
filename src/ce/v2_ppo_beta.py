@@ -80,9 +80,11 @@ def parse_args():
         help="Toggles advantages normalization")
     parser.add_argument("--clip-coef", type=float, default=0.2,
         help="the surrogate clipping coefficient")
+    parser.add_argument("--clip-coef-mask", type=float, default=0.4,
+        help="the surrogate clipping coefficient for mask")
     parser.add_argument("--clip-vloss", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="Toggles whether or not to use a clipped loss for the value function, as per the paper.")
-    parser.add_argument("--ent-coef", type=float, default=0.05,
+    parser.add_argument("--ent-coef", type=float, default=0.1,
         help="coefficient of the entropy")
     parser.add_argument("--vf-coef", type=float, default=1.0,
         help="coefficient of the value function")
@@ -99,13 +101,13 @@ def parse_args():
     parser.add_argument("--frac-wash", type=float, default=1/4, help="fraction of the buffer to wash")
     parser.add_argument("--boring-n", type=int, default=4)
     parser.add_argument("--treshold-entropy", type=float, default=0.0)
-    parser.add_argument("--ratio-speed", type=float, default=0.5)
+    parser.add_argument("--ratio-speed", type=float, default=1.0)
     parser.add_argument("--tau-exp-rho", type=float, default=0.25)
     # n agent
     parser.add_argument("--n-agent", type=int, default=5)
     parser.add_argument("--lamda-im", type=float, default=1.0)
     parser.add_argument("--ratio-reward", type=float, default=1.0)
-    parser.add_argument("--learning-explore-start", type=int, default=8)
+    parser.add_argument("--learning-explore-start", type=int, default=16)
     args = parser.parse_args()
     args.num_envs = args.n_agent
     args.classifier_memory*= args.n_agent
@@ -359,7 +361,7 @@ if __name__ == "__main__":
             b_batch_probs_un = probs_un_train
             ratio_classifier = args.classifier_memory/(args.num_rollouts*args.num_envs*max_steps)
             # args.classifier_epochs
-            args.classifier_epochs = int(b_batch_obs_un.shape[0]/args.classifier_batch_size)*2
+            args.classifier_epochs = int(b_batch_obs_un.shape[0]/args.classifier_batch_size)*4
             for epoch_classifier in range(args.classifier_epochs):
                 # sample rho_n
                 idx_ep_rho = np.random.randint(0, args.num_rollouts*args.num_envs, size = args.classifier_batch_size)
@@ -395,14 +397,14 @@ if __name__ == "__main__":
 
             # rewards
             rewards = log_p_s_z if update < args.learning_explore_start else log_p_rho_un + args.lamda_im*log_p_s_z
-            # mask rewards_nn
-            mask_rewards = (0 < log_p_rho_un_nn).float()
-            # mask boring_n
-            mask_boring_n = (mask_rewards.sum(dim=0) < args.num_rollouts*max_steps/2).int()
+            # # mask rewards_nn
+            # mask_rewards = (0 < log_p_rho_un_nn).float()
+            # # mask boring_n
+            # mask_boring_n = (mask_rewards.sum(dim=0) < args.num_rollouts*max_steps/2).int()
+            mask_boring_n =  (log_p_rho_un_nn.mean(dim=0) < 0).int()
             # update boring_n
-            boring_n_agent = np.minimum(np.maximum((boring_n_agent+2*mask_boring_n.cpu().numpy()-1),np.ones(args.n_agent)*args.boring_n),np.ones(args.n_agent)*args.boring_n*4).astype(int)
-            # boring_n_agent = np.maximum((boring_n_agent+2*mask_boring_n.cpu().numpy()-1),np.ones(args.n_agent)*args.boring_n).astype(int)
-
+            # boring_n_agent = np.minimum(np.maximum((boring_n_agent+2*mask_boring_n.cpu().numpy()-1),np.ones(args.n_agent)*args.boring_n),np.ones(args.n_agent)*args.boring_n*4).astype(int)
+            boring_n_agent = np.maximum((boring_n_agent+mask_boring_n.cpu().numpy()),np.ones(args.n_agent)*args.boring_n).astype(int)
             # mask entropy
             mask_entropy = (args.treshold_entropy <= log_p_rho_un_nn).float()
         ########################### UPDATE THE BUFFER ############################
@@ -470,10 +472,12 @@ if __name__ == "__main__":
                     mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
 
                 # Policy loss
+               # Policy loss
                 pg_loss1 = -mb_advantages * ratio
                 pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - args.clip_coef, 1 + args.clip_coef)
-                pg_loss = torch.max(pg_loss1, pg_loss2).mean()
-
+                pg_loss3 = -mb_advantages * torch.clamp(ratio, 1 - args.clip_coef_mask, 1 + args.clip_coef_mask)
+                # pg_loss = torch.max(pg_loss1, pg_loss2).mean()
+                pg_loss = (torch.max(pg_loss1, pg_loss2)*(1-mask_mb)).mean() + (torch.max(pg_loss1, pg_loss3)*(mask_mb)).mean()
                 # Value loss
                 newvalue = newvalue.view(-1)
                 if args.clip_vloss:
@@ -489,7 +493,7 @@ if __name__ == "__main__":
                 else:
                     v_loss = 0.5 * ((newvalue - b_returns[mb_inds]) ** 2).mean()
 
-                entropy_loss = (entropy*mask_mb).sum()/(mask_mb.sum()+1)
+                entropy_loss = (entropy*mask_mb).mean()
                 loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
 
                 optimizer.zero_grad()
@@ -520,7 +524,7 @@ if __name__ == "__main__":
         print('min log_p_rho_un',torch.min(log_p_rho_un_nn))
         print('mean log_p_rho_un',torch.mean(log_p_rho_un_nn))
         print('std log_p_rho_un',torch.std(log_p_rho_un_nn))
-        print('sum mask_rewards dim 0',mask_rewards.sum(dim=0))
+        print('sum mask_rewards dim 0',mask_entropy.sum(dim=0))
         print('boring_n',boring_n_agent)
         print("SPS:", int(global_step / (time.time() - start_time)))
         print(f"global_step={global_step}")

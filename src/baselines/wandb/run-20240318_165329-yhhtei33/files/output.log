@@ -1,0 +1,11 @@
+using device cpu
+torch.Tensor(obs).to(device) torch.Size([1, 2])
+torch.Tensor(obs_episode).to(device) torch.Size([1, 2, 2])
+/home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/ngu.py:379: UserWarning: Creating a tensor from a list of numpy.ndarrays is extremely slow. Please consider converting the list to a single numpy.ndarray with numpy.array() before converting to a tensor. (Triggered internally at ../torch/csrc/utils/tensor_new.cpp:245.)
+  print('torch.Tensor(obs_episode).to(device)',torch.Tensor(obs_episode).to(device).shape)
+Traceback (most recent call last):
+  File "/home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/ngu.py", line 396, in <module>
+    rb.add(obs, real_next_obs, actions, rewards, dones, infos)
+  File "/home/p.le-tolguenec/Documents/contrastive_exploration/src/utils/replay_buffer.py", line 45, in add
+    np.copyto(self.rewards[self.pos:self.pos + self.n_env], np.expand_dims(rewards, axis=1))
+ValueError: could not broadcast input array from shape (2,1) into shape (1,1)

@@ -1,0 +1,125 @@
+{
+    "os": "Linux-5.10.0-26-amd64-x86_64-with-glibc2.31",
+    "python": "3.9.2",
+    "heartbeatAt": "2024-03-18T14:48:40.300152",
+    "startedAt": "2024-03-18T14:48:39.585763",
+    "docker": null,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "/home/p.le-tolguenec/Documents/contrastive_exploration/src/baselines/ngu.py",
+    "codePath": "src/baselines/ngu.py",
+    "git": {
+        "remote": "https://github.com/Paul-antoineLeTolguenec/contrastive_exploration.git",
+        "commit": "1766be7846b54931c70ff8a89d67c36c50e2568e"
+    },
+    "email": "paul-antoine.le_tolguenec@ensta-bretagne.org",
+    "root": "/home/p.le-tolguenec/Documents/contrastive_exploration",
+    "host": "bubo",
+    "username": "p.le-tolguenec",
+    "executable": "/home/p.le-tolguenec/torch-pa/bin/python3",
+    "cpu_count": 8,
+    "cpu_count_logical": 16,
+    "cpu_freq": {
+        "current": 4700.058625,
+        "min": 800.0,
+        "max": 5000.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 4700.169,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 4700.0,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 4699.999,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 4700.001,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 4700.001,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 4699.999,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 4700.16,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 4699.997,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 4700.027,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 4700.068,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 4700.005,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 4700.168,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 4700.018,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 4700.167,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 4700.0,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 4700.159,
+            "min": 800.0,
+            "max": 5000.0
+        }
+    ],
+    "disk": {
+        "total": 467.8895797729492,
+        "used": 11.540481567382812
+    },
+    "gpu": "NVIDIA GeForce RTX 2070",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "NVIDIA GeForce RTX 2070",
+            "memory_total": 8367570944
+        }
+    ],
+    "memory": {
+        "total": 62.60514450073242
+    }
+}

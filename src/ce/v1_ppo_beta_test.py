@@ -79,27 +79,29 @@ def parse_args():
         help="Toggles advantages normalization")
     parser.add_argument("--clip-coef", type=float, default=0.2,
         help="the surrogate clipping coefficient")
+    parser.add_argument("--clip-coef-mask", type=float, default=0.6,
+        help="the surrogate clipping coefficient for mask")
     parser.add_argument("--clip-vloss", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="Toggles whether or not to use a clipped loss for the value function, as per the paper.")
     parser.add_argument("--ent-coef", type=float, default=0.1,
         help="coefficient of the entropy")
-    parser.add_argument("--vf-coef", type=float, default=10.0,
+    parser.add_argument("--vf-coef", type=float, default=1.0,
         help="coefficient of the value function")
     parser.add_argument("--max-grad-norm", type=float, default=0.5,
         help="the maximum norm for the gradient clipping")
     parser.add_argument("--target-kl", type=float, default=None,
         help="the target KL divergence threshold")
     parser.add_argument("--classifier-lr", type=float, default=1e-3)
-    parser.add_argument("--classifier-batch-size", type=int, default=128)
-    parser.add_argument("--classifier-memory", type=int, default=4000)
+    parser.add_argument("--classifier-batch-size", type=int, default=256)
+    parser.add_argument("--classifier-memory", type=int, default=1000)
     parser.add_argument("--classifier-frequency", type=int, default=1)
     parser.add_argument("--classifier-epochs", type=int, default=1)
-    parser.add_argument("--tau-exp-rho", type=float, default=0.5) # 1.0
+    parser.add_argument("--tau-exp-rho", type=float, default=0.25) # 1.0
     parser.add_argument("--frac-wash", type=float, default=1/4, help="fraction of the buffer to wash")
     parser.add_argument("--boring-n", type=int, default=4)
     parser.add_argument("--ratio-reward", type=float, default=1.0)
     parser.add_argument("--treshold-entropy", type=float, default=0.0)
-    parser.add_argument("--ratio-speed", type=float, default=2.0)
+    parser.add_argument("--ratio-speed", type=float, default=1.0)
     args = parser.parse_args()
     # args.num_steps = args.num_steps // args.num_envs
     # fmt: on
@@ -337,7 +339,7 @@ if __name__ == "__main__":
             b_batch_probs_un = probs_un_train
             ratio_classifier = args.classifier_memory/(args.num_rollouts*args.num_envs*max_steps)
             # args.classifier_epochs
-            args.classifier_epochs = int(b_batch_obs_un.shape[0]/args.classifier_batch_size)*2
+            args.classifier_epochs = int(b_batch_obs_un.shape[0]/args.classifier_batch_size)*4
             for epoch_classifier in range(args.classifier_epochs):
                 # sample rho_n
                 idx_ep_rho = np.random.randint(0, args.num_rollouts*args.num_envs, size = args.classifier_batch_size)
@@ -351,8 +353,7 @@ if __name__ == "__main__":
                 mb_un_n = torch.Tensor(b_batch_obs_un[idx_step_un]).to(device)
                 # train the classifier
                 classifier_optimizer.zero_grad()
-                loss = classifier.ce_loss_ppo(batch_q=mb_rho_n, batch_p=mb_un_n, 
-                                              update=update, ratio=ratio_classifier)
+                loss = classifier.ce_loss_ppo(batch_q=mb_rho_n, batch_p=mb_un_n)
                 loss.backward()
                 classifier_optimizer.step()
                 # log the loss
@@ -367,10 +368,12 @@ if __name__ == "__main__":
         mask_rewards = (0 < rewards_nn).float()
         # mask
         mask_entropy = (args.treshold_entropy <= rewards).float()
-
+        mask_boring_n =  (rewards_nn.mean(dim=0) < 0).int()
         ########################### UPDATE THE BUFFER ############################
         # update the buffer
-        args.boring_n = args.boring_n + 1 if (update > 20) and (args.num_rollouts*max_steps/2 > mask_rewards.sum()) else max(args.boring_n-1,4) 
+        args.boring_n = np.minimum(args.boring_n+mask_boring_n.cpu().numpy().astype(int) , update-1)[0] if update > args.boring_n + int(args.classifier_memory/(args.num_rollouts*args.num_envs*max_steps)) else args.boring_n
+        print('boring_n : ',args.boring_n)
+        print('update : ',update)
         obs_un[args.num_rollouts*(update-1):args.num_rollouts*update] = b_batch_obs_rho_n.cpu().numpy()
         obs_un_train, probs_un_train, probs_un = wash(classifier, obs_un_train, probs_un_train, 
         obs_un, probs_un, args.num_rollouts, max_steps, args.num_envs, args.boring_n, update,
@@ -431,10 +434,9 @@ if __name__ == "__main__":
                 # Policy loss
                 pg_loss1 = -mb_advantages * ratio
                 pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - args.clip_coef, 1 + args.clip_coef)
-                pg_loss = torch.max(pg_loss1, pg_loss2)
-                # mask
-                # pg_loss = pg_loss*(1-mask_mb)
-                pg_loss = pg_loss.mean()
+                pg_loss3 = -mb_advantages * torch.clamp(ratio, 1 - args.clip_coef_mask, 1 + args.clip_coef_mask)
+                # pg_loss = torch.max(pg_loss1, pg_loss2).mean()
+                pg_loss = (torch.max(pg_loss1, pg_loss2)*(1-mask_mb)).mean() + (torch.max(pg_loss1, pg_loss3)*(mask_mb)).mean()
 
                 # Value loss
                 newvalue = newvalue.view(-1)
@@ -454,7 +456,7 @@ if __name__ == "__main__":
                 entropy_loss = entropy
                 # mask
                 entropy_loss = entropy_loss*mask_mb
-                entropy_loss = entropy_loss.sum()/(mask_mb.sum()+1)
+                entropy_loss = entropy_loss.mean()
                 loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
 
                 optimizer.zero_grad()
