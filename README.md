@@ -1,4 +1,12 @@
 # contrastive_exploration
+
+# FIRST THING TO DO
+* Normalize z the right way : No adv normalization PPO = Normalization per z
+* Deal with Nan in normalization (add +1 to the std everywhere)
+* Reward for DUCB : Add Mutual Information reward 
+
+
+
 ## Exploration experiments
 * tabular experiment with gridworld (facultative)
 <!-- continuous action -->
@@ -22,8 +30,10 @@
 * DIAYN sac 
 * RND PPO 
 * ICM PPO
+* NGU PPO
 
 ## Metrics 
 * Coverage 
 * Complexity
+
 

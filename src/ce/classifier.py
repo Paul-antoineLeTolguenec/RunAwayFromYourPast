@@ -55,8 +55,8 @@ class Classifier(torch.nn.Module):
         s_p = self(batch_p)
         s_p_p = self.sigmoid(s_p)
         # mask strategy q
-        label_q = torch.ones_like(s_q)
-        # label_q = self.mask_labels_q(s_q)
+        # label_q = torch.ones_like(s_q)
+        label_q = self.mask_labels_q(s_q)
         # mask strategy p
         # label_p = torch.ones_like(s_p)
         label_p = self.mask_labels_p(s_p)
@@ -65,7 +65,7 @@ class Classifier(torch.nn.Module):
         return L if not self.learn_z else L + self.mlh_loss(batch_q, batch_q_z)
 
     
-    def mask_labels_q(self, s_q, tau=5.0): #1.0
+    def mask_labels_q(self, s_q, tau=1.0): #1.0
         with torch.no_grad():
             s_q_clip = torch.clamp(s_q, self.lim_down, 0)
             label_q = torch.exp(s_q_clip/(-self.lim_down*tau))

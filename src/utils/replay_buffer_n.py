@@ -16,7 +16,7 @@ class SampleBatch:
 
 class ReplayBuffer_n:
     def __init__(self, capacity, observation_space, action_space, device, n_agent, 
-                probabilities, window_t,lambda_rho=1.0, lambda_un=1.0, 
+                probabilities, window_t=100,lambda_rho=1.0, lambda_un=1.0, 
                 tau_rho=0.1, tau_un=0.1, percentage=0.98, handle_timeout_termination=False,):
         self.capacity = capacity
         self.n_env  = n_agent
@@ -69,18 +69,7 @@ class ReplayBuffer_n:
         indices = (z_idx-1, s_idx)
         return self._get_samples(indices,z_idx)
 
-    # def sample_threshold(self, t, batch_size,ve):
-    #     z_idx = ve.sample(batch_size, sort = False, uniform = True).cpu().numpy()
-    #     z_idx_random = ve.sample(batch_size, sort = False, uniform = True).cpu().numpy()
-    #     s_idx = np.random.randint(self.pos[z_idx-1]-t, self.pos[z_idx-1])
-    #     # s_idx = np.random.randint(0, self.pos[z_idx-1])
-    #     s_idx_random = np.random.randint(0, self.pos[z_idx_random-1]-t)
-    #     # z_idx_random = ve.sample(batch_size, sort = False).cpu().numpy()
-    #     indices_before_t = (z_idx_random-1, s_idx_random)
-    #     indices_after_t = (z_idx-1, s_idx)
-    #     samples_before_t = self._get_samples(indices_before_t, z_idx_random)
-    #     samples_after_t = self._get_samples(indices_after_t, z_idx)
-    #     return samples_before_t, samples_after_t
+
 
     def sample_threshold(self, t, batch_size,ve):
         z_idx = ve.sample(batch_size, sort = False, uniform = True).cpu().numpy()
@@ -101,17 +90,6 @@ class ReplayBuffer_n:
         samples_before_t = self._get_samples(indices_before_t, z_idx_random)
         samples_after_t = self._get_samples(indices_after_t, z_idx)
         return samples_before_t, samples_after_t
-
-    
-    # def sample_w_labels(self, t, batch_size,ve):
-    #     z_idx = ve.sample(batch_size, sort = True).cpu().numpy()
-    #     z_idx_random = ve.sample(batch_size, sort = True).cpu().numpy()
-    #     s_idx = np.random.randint(0, self.pos[z_idx-1])
-    #     batch = self._get_samples((z_idx-1, s_idx), z_idx)
-    #     # labels == 1 if self.pos-t<indices and z_idx == z_idx_random
-    #     labels = np.where(((self.pos[z_idx-1]-t) < s_idx ) & (z_idx == z_idx_random), 1, 0)
-    #     # print('labels : ', labels)
-    #     return batch, torch.tensor(labels, dtype=torch.int32, device=self.device)
     
     def sample_w_labels(self, t, batch_size,ve):
         z_idx = ve.sample(batch_size, sort = True, uniform = True).cpu().numpy()
@@ -125,18 +103,6 @@ class ReplayBuffer_n:
         labels = np.where(((self.pos[z_idx-1]-t) < indices_un ) & (z_idx == z_idx_random), 1, 0)
         return batch, torch.tensor(labels, dtype=torch.int32, device=self.device)
     
-    # def sample_w_labels(self, t, batch_size,ve):
-    #     z_idx = ve.sample(batch_size, sort = False).cpu().numpy()
-    #     z_idx_random = ve.sample(batch_size, sort = False).cpu().numpy()
-    #     # density
-    #     density_un = self.density_un_base/np.expand_dims(np.sum(self.density_un_base, axis=1), axis=1)
-    #     #  torch.categorical
-    #     s_idx = torch.multinomial(torch.tensor(density_un[z_idx-1], dtype=torch.float32), 1, replacement=True).squeeze(1).numpy()
-    #     batch = self._get_samples((z_idx-1, s_idx), z_idx)
-    #     # labels == 1 if self.pos-t<indices and z_idx == z_idx_random
-    #     labels = np.where(((self.pos[z_idx-1]-t) < s_idx ) & (z_idx == z_idx_random), 1, 0)
-    #     # print('labels : ', labels)
-    #     return batch, torch.tensor(labels, dtype=torch.int32, device=self.device)
 
     def _get_samples(self, indices, z):
         # Utilise l'indexation avancée pour extraire les données et les convertit en tenseurs PyTorch

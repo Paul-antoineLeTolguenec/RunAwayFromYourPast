@@ -35,7 +35,7 @@ def parse_args():
         help="if toggled, `torch.backends.cudnn.deterministic=False`")
     parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="if toggled, cuda will be enabled by default")
-    parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=False,
+    parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="if toggled, this experiment will be tracked with Weights and Biases")
     parser.add_argument("--wandb-project-name", type=str, default="contrastive_exploration",
         help="the wandb's project name")
@@ -44,7 +44,7 @@ def parse_args():
     parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="whether to capture videos of the agent performances (check out `videos` folder)")
     parser.add_argument("--do_fig", type=bool, default=True)
-    parser.add_argument("--fig_frequency", type=int, default=100)
+    parser.add_argument("--fig_frequency", type=int, default=1000)
     parser.add_argument("--make-gif", type=bool, default=True)
 
     # Algorithm specific arguments
@@ -78,8 +78,8 @@ def parse_args():
             help="Entropy regularization coefficient.")
     parser.add_argument("--autotune", type=lambda x:bool(strtobool(x)), default=False, nargs="?", const=True,
         help="automatic tuning of the entropy coefficient")
-    parser.add_argument("--ngu-lr", type=float, default=1e-3)
-    parser.add_argument("--ngu-frequency", type=int, default=256)
+    parser.add_argument("--ngu-lr", type=float, default=5e-4)
+    parser.add_argument("--ngu-frequency", type=int, default=32)
     parser.add_argument("--ratio-reward", type=float, default=2.0)
     args = parser.parse_args()
     # fmt: on
@@ -161,15 +161,15 @@ class NGU(nn.Module):
     def r_i(self, s, s_episode, s_dm_1):
         if s_episode.shape[0] > self.k : 
             with torch.no_grad():
-                alpha = self.rnd.uncertainty_measure(s)
+                alpha = self.rnd_loss(s, reduce=False)
                 s = s.repeat(s_episode.shape[0],1)
                 dists = self.distance_matrix_epoch(s, s_episode).unsqueeze(1)
                 knn, s_dm = self.sum_k_nearest_epoch(dists, self.k, s_dm_1)
             r_episodic  = 1/(torch.sqrt(knn) + self.c)
             r = r_episodic * torch.min(torch.max(alpha,torch.ones_like(alpha)),torch.ones_like(alpha)*self.L)
-            return r.item(), s_dm
+            return r.cpu().numpy(), s_dm
         else : 
-            return 0.0, 0.0
+            return np.array([0.0]), 0.0
     
     def sum_k_nearest_epoch(self, dist, k, s_dm_1):
         k_nearest_neighbors, _ = torch.topk(dist, k=k, dim=0, largest=False)
@@ -333,7 +333,8 @@ if __name__ == "__main__":
     qf2_target = SoftQNetwork(envs).to(device)
     qf1_target.load_state_dict(qf1.state_dict())
     qf2_target.load_state_dict(qf2.state_dict())
-    ngu_net = NGU(np.array(envs.single_observation_space.shape).prod(), np.array(envs.single_action_space.shape).prod(), 64, device).to(device)
+    ngu_net = NGU(np.array(envs.single_observation_space.shape).prod(), np.array(envs.single_action_space.shape).prod(), 8, device).to(device)
+    sdm = 0.0
     q_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()), lr=args.q_lr)
     actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.policy_lr)
     ngu_optimizer = optim.Adam(list(ngu_net.parameters()), lr=args.ngu_lr)
@@ -374,10 +375,9 @@ if __name__ == "__main__":
         # NGU
         for idx in range(args.n_env):
             obs_episode[idx].append(next_obs[idx])
-        # rewards NGU 
-        print('torch.Tensor(obs).to(device)',torch.Tensor(obs).to(device).shape)
-        print('torch.Tensor(obs_episode).to(device)',torch.Tensor(np.concatenate(obs_episode)).to(device).shape)
-        rewards = ngu_net.r_i(torch.Tensor(obs).to(device), torch.Tensor(obs_episode).to(device), rewards)
+        with torch.no_grad():
+            # rewards NGU 
+            rewards, sdm = ngu_net.r_i(torch.Tensor(obs).to(device), torch.Tensor(np.array(obs_episode[0])).to(device), sdm)
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if True in dones:
             r_0 = 0 
@@ -401,6 +401,7 @@ if __name__ == "__main__":
             if done:
                 obs[idx],infos[idx] = envs.envs[idx].reset()
                 obs_episode[idx] = [ ]
+                sm = 0.0
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
             # q network training
@@ -413,9 +414,9 @@ if __name__ == "__main__":
                         qf2_next_target = qf2_target(data.next_observations, next_state_actions)
                         min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
                         # rewards produced by classifier
-                        rewards = data.rewards
+                        rewards = data.rewards.flatten()
                         # normalize rewards
-                        rewards = (rewards - rewards.mean())/(rewards.std() + 1e-6)*args.ratio_reward
+                        # rewards = (rewards - rewards.mean())/(rewards.std() + 1e-6)*args.ratio_reward
                         next_q_value = rewards+ (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
                     qf1_a_values = qf1(data.observations, data.actions).view(-1)
                     qf2_a_values = qf2(data.observations, data.actions).view(-1)

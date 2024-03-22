@@ -11,11 +11,11 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.nn.functional as F
 from torch.distributions.normal import Normal
 from src.utils.custom_sampling import exp_dec
 from torch.utils.tensorboard import SummaryWriter
 # from stable_baselines3.common.buffers import ReplayBuffer
-from src.ce.classifier import Classifier
 from envs.continuous_maze import Maze
 # animation 
 import matplotlib.pyplot as plt
@@ -31,7 +31,7 @@ def parse_args():
         help="the name of this experiment")
     parser.add_argument("--seed", type=int, default=0,
         help="seed of the experiment")
-    parser.add_argument("--env-type", type=str, default="gym")
+    parser.add_argument("--env-type", type=str, default="Maze")
     parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, `torch.backends.cudnn.deterministic=False`")
     parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default= False, nargs="?", const=True,
@@ -45,11 +45,11 @@ def parse_args():
     parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="whether to capture videos of the agent performances (check out `videos` folder)")
     parser.add_argument("--fig_frequency", type=int, default=1)
-    parser.add_argument("--make-gif", type=bool, default=False)
+    parser.add_argument("--make-gif", type=bool, default=True)
     parser.add_argument("--episodic-return", type=bool, default=True)
 
     # Algorithm specific arguments
-    parser.add_argument("--env-id", type=str, default="Hopper-v2",
+    parser.add_argument("--env-id", type=str, default="Ur",
         help="the id of the environment")
     parser.add_argument("--total-timesteps", type=int, default=1000000,
         help="total timesteps of the experiments")
@@ -79,7 +79,7 @@ def parse_args():
         help="Toggles advantages normalization")
     parser.add_argument("--clip-coef", type=float, default=0.2,
         help="the surrogate clipping coefficient")
-    parser.add_argument("--clip-coef-mask", type=float, default=0.6,
+    parser.add_argument("--clip-coef-mask", type=float, default=0.2,
         help="the surrogate clipping coefficient for mask")
     parser.add_argument("--clip-vloss", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="Toggles whether or not to use a clipped loss for the value function, as per the paper.")
@@ -91,21 +91,44 @@ def parse_args():
         help="the maximum norm for the gradient clipping")
     parser.add_argument("--target-kl", type=float, default=None,
         help="the target KL divergence threshold")
-    parser.add_argument("--classifier-lr", type=float, default=1e-3)
-    parser.add_argument("--classifier-batch-size", type=int, default=256)
-    parser.add_argument("--classifier-memory", type=int, default=1000)
-    parser.add_argument("--classifier-frequency", type=int, default=1)
-    parser.add_argument("--classifier-epochs", type=int, default=1)
-    parser.add_argument("--tau-exp-rho", type=float, default=0.25) # 1.0
-    parser.add_argument("--frac-wash", type=float, default=1/4, help="fraction of the buffer to wash")
-    parser.add_argument("--boring-n", type=int, default=4)
+    parser.add_argument("--rnd-lr", type=float, default=5e-4)
+    parser.add_argument("--rnd-frequency", type=int, default=1)
+    parser.add_argument("--beta", type=float, default=0.2)
     parser.add_argument("--ratio-reward", type=float, default=1.0)
-    parser.add_argument("--treshold-entropy", type=float, default=0.0)
-    parser.add_argument("--ratio-speed", type=float, default=1.0)
     args = parser.parse_args()
     # args.num_steps = args.num_steps // args.num_envs
     # fmt: on
     return args
+
+
+class RND(nn.Module):   
+    def __init__(self, state_dim, device):
+        super(RND, self).__init__()
+        # trained network
+        self.f1 = nn.Linear(state_dim, 256, device=device)
+        self.f2 = nn.Linear(256, 64, device=device)
+        self.f3 = nn.Linear(64, 1, device=device)
+        # target network
+        self.f1_t = nn.Linear(state_dim, 256, device=device)
+        self.f2_t = nn.Linear(256, 64, device=device)
+        self.f3_t = nn.Linear(64, 1, device=device)
+
+    def forward(self, x):
+        x = F.relu(self.f1(x))
+        x = F.relu(self.f2(x))
+        x = self.f3(x)
+        return x
+    def forward_t(self, x):
+        with torch.no_grad():
+            x = F.relu(self.f1_t(x))
+            x = F.relu(self.f2_t(x))
+            x = self.f3_t(x)
+            return x
+    
+    def loss(self, x, reduce = True):
+        return F.mse_loss(self.forward(x), self.forward_t(x)) if reduce else F.mse_loss(self.forward(x), self.forward_t(x), reduction = 'none')
+
+
 
 
 def make_env(env_id, idx, capture_video, run_name, gamma, env_type = "gym"):
@@ -129,55 +152,12 @@ def make_env(env_id, idx, capture_video, run_name, gamma, env_type = "gym"):
     return thunk
 
 
+
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     torch.nn.init.orthogonal_(layer.weight, std)
     torch.nn.init.constant_(layer.bias, bias_const)
     return layer
 
-def wash(classifier, obs_train, prob_obs_train, obs_un_n, 
-        prob_obs_un_n, num_rollouts, max_steps, 
-        num_envs, boring_n, update,
-        classifier_memory, frac_wash, ratio_speed, device):
-    """ Wash the buffer """
-    # last rho_n 
-    last_obs_rho_n = obs_un_n[:(update-boring_n)*num_rollouts*num_envs][-num_rollouts*num_envs:].reshape(-1, obs_un_n.shape[-1])
-    # portion to remove
-    size_to_remove = int(frac_wash*obs_train.shape[0])
-    # big batch un 
-    idx_ep_un_n = np.random.randint(0, obs_un_n[:(update-boring_n)*num_rollouts*num_envs].shape[0], size = obs_train.shape[0])
-    idx_step_un_n = np.random.randint(0, max_steps, size = obs_train.shape[0])
-    big_batch_un_n = obs_un_n[:(update-boring_n)*num_rollouts*num_envs][idx_ep_un_n, idx_step_un_n]
-    big_batch_un_n_prob = prob_obs_un_n[:(update-boring_n)*num_rollouts*num_envs][idx_ep_un_n, idx_step_un_n]
-    if obs_un_n.shape[0]*obs_un_n.shape[1] > obs_train.shape[0]:
-        # update prob_obs_train
-        prob_obs_train = (1-torch.sigmoid(classifier(torch.Tensor(obs_train).to(device)))).detach().cpu().numpy().squeeze(-1)
-        # normalize prob_obs_train
-        prob_obs_train = prob_obs_train/prob_obs_train.sum()
-        # update prob_obs_un_n
-        prob_obs_un_n_norm = (torch.sigmoid(classifier(torch.Tensor(big_batch_un_n).to(device)))).detach().cpu().numpy().squeeze(-1)
-        # update prob_obs_un_n
-        prob_obs_un_n[idx_ep_un_n,idx_step_un_n ] = prob_obs_un_n_norm.reshape(-1,1)
-        # mask
-        mask_delta_old_new = (0 < (prob_obs_un_n_norm.reshape(-1,1)-big_batch_un_n_prob)).reshape(-1)
-        prob_obs_un_n_norm = prob_obs_un_n_norm + mask_delta_old_new*ratio_speed
-        # normalize prob_obs_un_n
-        prob_obs_un_norm = prob_obs_un_n_norm/prob_obs_un_n_norm.sum()
-        # choose the index to remove from obs_train
-        idx_to_remove = np.random.choice(obs_train.shape[0], p=prob_obs_train, size = size_to_remove + last_obs_rho_n.shape[0], replace = True)
-        # idx_to_remove = np.random.choice(obs_train.shape[0], p=prob_obs_train, size = size_to_remove, replace = True)
-        # choose the index to add from obs_un_n
-        idx_to_add = np.random.choice(big_batch_un_n.shape[0], p=prob_obs_un_norm, size = size_to_remove, replace = True)
-        # update the buffer
-        obs_train[idx_to_remove[:size_to_remove]] = big_batch_un_n[idx_to_add]
-        obs_train[idx_to_remove[size_to_remove:]] = last_obs_rho_n
-    else:
-        # update the buffer
-        obs_train[:obs_un_n.shape[0]*obs_un_n.shape[1]] = obs_un_n.reshape(-1, obs_un_n.shape[-1])
-    # update prob_obs_train
-    prob_obs_train = (torch.sigmoid(classifier(torch.Tensor(obs_train).to(device)))).detach().cpu().numpy().squeeze(-1)
-    # # normalize prob_obs_train
-    prob_obs_train = prob_obs_train/prob_obs_train.sum()
-    return obs_train, prob_obs_train, prob_obs_un_n
 
 class Agent(nn.Module):
     def __init__(self, envs):
@@ -232,16 +212,13 @@ if __name__ == "__main__":
         "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
     if args.make_gif:
-        if args.env_type == "Maze":
-            # env to plot 
-            env_plot = Maze(name = args.env_id, fig = True)
-            # iter_plot 
-            iter_plot = 0
-            if not os.path.exists('gif'):
-                os.makedirs('gif')
-            writer_gif = imageio.get_writer('gif/test_v1_ppo_beta.mp4', fps=2)
-        else:
-            pass
+        # env to plot 
+        env_plot = Maze(name = args.env_id, fig = True)
+        # iter_plot 
+        iter_plot = 0
+        if not os.path.exists('gif'):
+            os.makedirs('gif')
+        writer_gif = imageio.get_writer('gif/rnd_ppo.mp4', fps=2)
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
@@ -257,10 +234,8 @@ if __name__ == "__main__":
     )
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
     if args.episodic_return:
-        max_steps = envs.envs[0].max_steps if args.env_type == "Maze" else envs.envs[0].spec.max_episode_steps  
+        max_steps = envs.envs[0].max_steps
         args.num_steps = max_steps * args.num_rollouts
-        # classifier epoch 
-        args.classifier_epochs = args.classifier_memory // args.classifier_batch_size
     # update batch size and minibatch size
     args.batch_size = int(args.num_envs * args.num_steps)
     # print('batch_size',args.batch_size)
@@ -271,25 +246,27 @@ if __name__ == "__main__":
     # Agent
     agent = Agent(envs).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
-    classifier = Classifier(envs.single_observation_space, env_max_steps=max_steps,device=device, n_agent=1)
-    classifier_optimizer = optim.Adam(classifier.parameters(), lr=args.classifier_lr, eps=1e-5)
+    rnd = RND(envs.single_observation_space.shape[0], device).to(device)
+    optimizer_rnd = optim.Adam(rnd.parameters(), lr=args.rnd_lr, eps=1e-5)
     # ALGO Logic: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
     actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
+    times = torch.zeros((args.num_steps, args.num_envs) + (1,)).to(device)
     logprobs = torch.zeros((args.num_steps, args.num_envs)).to(device)
     rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
     dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    # full replay buffer
-    obs_un =  np.zeros((args.n_capacity,max_steps) + envs.single_observation_space.shape)
-    probs_un = np.ones((args.n_capacity,max_steps,1))
-    obs_un_train = np.zeros((args.classifier_memory,envs.single_observation_space.shape[0]))
-    probs_un_train = np.zeros((args.classifier_memory,1))
+    # # full replay buffer
+    # obs_un =  np.zeros((args.n_capacity,max_steps) + envs.single_observation_space.shape)
+    # probs_un = np.ones((args.n_capacity,max_steps,1))
+    # obs_un_train = np.zeros((args.classifier_memory,envs.single_observation_space.shape[0]))
+    # probs_un_train = np.zeros((args.classifier_memory,1))
     # times_full = np.zeros((args.n_capacity,max_steps)+(1,))
     # TRY NOT TO MODIFY: start the game
     global_step = 0
     start_time = time.time()
     next_obs, infos = envs.reset(seed=args.seed)
+    times[0] = torch.tensor(np.array([infos["l"]])).to(device)
     next_obs = torch.Tensor(next_obs).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
     num_updates = args.total_timesteps // args.batch_size
@@ -308,8 +285,6 @@ if __name__ == "__main__":
             dones[step] = next_done
 
             # if terminated, reset the env
-
-
             # ALGO LOGIC: action logic
             with torch.no_grad():
                 action, logprob, _, value = agent.get_action_and_value(next_obs)
@@ -319,6 +294,7 @@ if __name__ == "__main__":
 
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, terminated, truncated, infos = envs.step(action.cpu().numpy())
+            times[step] = torch.tensor(np.array([infos["l"]])).to(device)
             done = np.logical_or(terminated, truncated)
             rewards[step] = torch.tensor(reward).to(device).view(-1)*args.ratio_reward
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)
@@ -327,56 +303,21 @@ if __name__ == "__main__":
                 continue
             
            
-       
-        ########################### CLASSIFIER ############################
-        # rho_n
-        b_batch_obs_rho_n = obs.reshape(args.num_rollouts * args.num_envs, max_steps, *envs.single_observation_space.shape)
-        # train the classifier
-        if update%args.classifier_frequency == 0 and update > args.boring_n+ 1 + int(args.classifier_memory/(args.num_rollouts*args.num_envs*max_steps)):
-            # un_n
-            b_batch_obs_un = obs_un_train
-            b_batch_probs_un = probs_un_train
-            ratio_classifier = args.classifier_memory/(args.num_rollouts*args.num_envs*max_steps)
-            # args.classifier_epochs
-            args.classifier_epochs = int(b_batch_obs_un.shape[0]/args.classifier_batch_size)*4
-            for epoch_classifier in range(args.classifier_epochs):
-                # sample rho_n
-                idx_ep_rho = np.random.randint(0, args.num_rollouts*args.num_envs, size = args.classifier_batch_size)
-                idx_step_rho = (exp_dec(args.classifier_batch_size,tau = args.tau_exp_rho)*max_steps).astype(int)
-                # sample un_n
-                idx_step_un = np.random.choice(b_batch_obs_un.shape[0], p=b_batch_probs_un, size = args.classifier_batch_size, replace=True)
-                # idx_step_un = np.random.randint(0, b_batch_obs_un.shape[0], size = args.classifier_batch_size)
-                # mini batch
-                mb_rho_n = b_batch_obs_rho_n[idx_ep_rho, idx_step_rho]
-                mb_un_n = torch.Tensor(b_batch_obs_un[idx_step_un]).to(device)
-                # train the classifier
-                classifier_optimizer.zero_grad()
-                loss = classifier.ce_loss_ppo(batch_q=mb_rho_n, batch_p=mb_un_n)
-                loss.backward()
-                classifier_optimizer.step()
-                # log the loss
-                writer.add_scalar("losses/loss_classifier", loss.item(), global_step)
-        
         ############################ REWARD ##################################
-        # update the reward
-        rewards_nn = classifier(obs).detach().squeeze(-1)
-        # normalize the reward
-        rewards = (rewards_nn - rewards_nn.mean()) / (rewards_nn.std() + 1e-8) 
-        # mask rewards_nn
-        mask_rewards = (0 < rewards_nn).float()
-        # mask
-        mask_entropy = (args.treshold_entropy <= rewards).float()
-        mask_boring_n =  (rewards_nn.mean(dim=0) < 0).int()
-        ########################### UPDATE THE BUFFER ############################
-        # update the buffer
-        args.boring_n = np.minimum(args.boring_n+mask_boring_n.cpu().numpy().astype(int) , update-1)[0] if update > args.boring_n + int(args.classifier_memory/(args.num_rollouts*args.num_envs*max_steps)) else args.boring_n
-        print('boring_n : ',args.boring_n)
-        print('update : ',update)
-        obs_un[args.num_rollouts*(update-1):args.num_rollouts*update] = b_batch_obs_rho_n.cpu().numpy()
-        obs_un_train, probs_un_train, probs_un = wash(classifier, obs_un_train, probs_un_train, 
-        obs_un, probs_un, args.num_rollouts, max_steps, args.num_envs, args.boring_n, update,
-        args.classifier_memory, args.frac_wash, args.ratio_speed, device) if (update > args.boring_n) else (obs_un_train, probs_un_train, probs_un)
-        #  and (update<20 or args.num_rollouts*max_steps/2 < mask_rewards.sum())
+        with torch.no_grad():
+            # update the reward
+            rewards_nn = rnd.loss(obs.reshape(-1, *envs.single_observation_space.shape), reduce = False).reshape(args.num_steps, args.num_envs)
+            # normalize the intrinsic reward
+            rewards= (rewards_nn - rewards_nn.mean()) / (rewards_nn.std() + 1)
+
+        ########################### RND UPDATE ###############################
+        rnd_loss = rnd.loss(obs.reshape(-1, *envs.single_observation_space.shape))
+        optimizer_rnd.zero_grad()
+        rnd_loss.backward()
+        optimizer_rnd.step()
+        
+        
+
         
         ########################### PPO UPDATE ###############################
         # bootstrap value if not done
@@ -398,7 +339,6 @@ if __name__ == "__main__":
 
         # flatten the batch
         b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
-        b_mask = mask_entropy.reshape(-1)
         b_logprobs = logprobs.reshape(-1)
         b_actions = actions.reshape((-1,) + envs.single_action_space.shape)
         b_advantages = advantages.reshape(-1)
@@ -417,7 +357,6 @@ if __name__ == "__main__":
                 _, newlogprob, entropy, newvalue = agent.get_action_and_value(b_obs[mb_inds], b_actions[mb_inds])
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()
-                mask_mb = b_mask[mb_inds]
 
                 with torch.no_grad():
                     # calculate approx_kl http://joschu.net/blog/kl-approx.html
@@ -432,9 +371,7 @@ if __name__ == "__main__":
                 # Policy loss
                 pg_loss1 = -mb_advantages * ratio
                 pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - args.clip_coef, 1 + args.clip_coef)
-                pg_loss3 = -mb_advantages * torch.clamp(ratio, 1 - args.clip_coef_mask, 1 + args.clip_coef_mask)
-                # pg_loss = torch.max(pg_loss1, pg_loss2).mean()
-                pg_loss = (torch.max(pg_loss1, pg_loss2)*(1-mask_mb)).mean() + (torch.max(pg_loss1, pg_loss3)*(mask_mb)).mean()
+                pg_loss = torch.max(pg_loss1, pg_loss2).mean()
 
                 # Value loss
                 newvalue = newvalue.view(-1)
@@ -452,8 +389,6 @@ if __name__ == "__main__":
                     v_loss = 0.5 * ((newvalue - b_returns[mb_inds]) ** 2).mean()
 
                 entropy_loss = entropy
-                # mask
-                entropy_loss = entropy_loss*mask_mb
                 entropy_loss = entropy_loss.mean()
                 loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
 
@@ -479,17 +414,12 @@ if __name__ == "__main__":
         writer.add_scalar("losses/clipfrac", np.mean(clipfracs), global_step)
         writer.add_scalar("losses/explained_variance", explained_var, global_step)
         writer.add_scalar("charts/advantages_mean", mb_advantages.mean(), global_step)
-        writer.add_scalar("charts/rewads_mean", rewards_nn.mean(), global_step)
-        writer.add_scalar("charts/rewads_std", rewards_nn.std(), global_step)
-        writer.add_scalar("charts/reward_max", rewards_nn.max(), global_step)
-        writer.add_scalar("charts/reward_min", rewards_nn.min(), global_step)
+        writer.add_scalar("losses/rnd_loss", rnd_loss.item(), global_step)
 
         print("SPS:", int(global_step / (time.time() - start_time)))
         print(f"global_step={global_step}")
         print('update : ',update)
         print('reward mean : ',rewards_nn.mean())
-        print('sum mask : ',mask_rewards.sum())
-        print('boring_n : ',args.boring_n)
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
         if args.track and args.capture_video:
@@ -499,19 +429,13 @@ if __name__ == "__main__":
                     video_filenames.add(filename)
         if update % args.fig_frequency == 0 and args.make_gif and global_step > 0:
             # clear the plot
-            env_plot.ax.clear()
+            # env_plot.ax.clear()
             # reset the limits
-            env_plot.reset_lim_fig()
+            # env_plot.reset_lim_fig()
             # data  to plot
-            data_to_plot =torch.Tensor(obs_un[:args.num_rollouts*args.num_envs*update, : ].reshape(-1, *envs.single_observation_space.shape)).to(device)
+            obs = obs.reshape(-1, *envs.single_observation_space.shape)
             # Plotting measure 
-            m_n = classifier(data_to_plot).detach().cpu().numpy().squeeze(-1)
-            # data to plot
-            data_to_plot = data_to_plot.detach().cpu().numpy()
-            # Plotting the environment
-            env_plot.ax.scatter(data_to_plot[:,0], data_to_plot[:,1], s=1, c = m_n, cmap = 'viridis')
-            # plot obs train
-            env_plot.ax.scatter(obs_un_train[:,0], obs_un_train[:,1], s=1, c = 'b')
+            env_plot.ax.scatter(obs[:,0],obs[:,1],c='b',s=1)
 
             # save fig env_plot
             env_plot.figure.canvas.draw()
