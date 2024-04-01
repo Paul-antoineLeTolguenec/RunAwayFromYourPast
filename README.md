@@ -1,6 +1,7 @@
 # contrastive_exploration
 
 # FIRST THING TO DO
+* start from v1 clean (implement speed prob and check )
 * Normalize z the right way : No adv normalization PPO = Normalization per z
 * Deal with Nan in normalization (add +1 to the std everywhere)
 * Reward for DUCB : Add Mutual Information reward 
@@ -25,7 +26,10 @@
 * RND sac 
 * ICM sac 
 * SSM sac 
-* APT ? Not for now 
+* APT ? TO DO 
+* LSD sac TODO ASAP
+* CSD sac TODO ASAP
+* METRA sac TODO ASAP
 * NGU  sac 
 * DIAYN sac 
 * RND PPO 
