@@ -398,8 +398,8 @@ if __name__ == "__main__":
         with torch.no_grad():
             # log(rho_n/un_n)
             log_p_rho_un_nn = classifier(obs).detach().squeeze(-1)
-            # log_p_rho_un = (log_p_rho_un_nn - torch.mean(log_p_rho_un_nn, dim=0).unsqueeze(0))/(torch.std(log_p_rho_un_nn, dim=0).unsqueeze(0) + 1e-1)
-            log_p_rho_un = log_p_rho_un_nn
+            log_p_rho_un = (log_p_rho_un_nn - torch.mean(log_p_rho_un_nn, dim=0).unsqueeze(0))/(torch.std(log_p_rho_un_nn, dim=0).unsqueeze(0) + 1e-1)
+            # log_p_rho_un = log_p_rho_un_nn
             # p(z|s)
             p_s_z = torch.gather(torch.softmax(classifier.forward_z(obs),dim=-1), -1, (zs[:,:,epoch_reconf]-1).unsqueeze(-1)).squeeze(-1)
             log_p_s_z_nn = torch.log(p_s_z + 1e-8)

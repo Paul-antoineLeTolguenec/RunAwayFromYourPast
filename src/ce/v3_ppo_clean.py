@@ -82,7 +82,7 @@ def parse_args():
         help="Toggles advantages normalization")
     parser.add_argument("--clip-coef", type=float, default=0.2,
         help="the surrogate clipping coefficient")
-    parser.add_argument("--clip-coef-mask", type=float, default=0.4,
+    parser.add_argument("--clip-coef-mask", type=float, default=0.2,
         help="the surrogate clipping coefficient for mask")
     parser.add_argument("--clip-vloss", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="Toggles whether or not to use a clipped loss for the value function, as per the paper.")
@@ -103,7 +103,7 @@ def parse_args():
     parser.add_argument("--frac-wash", type=float, default=1/4, help="fraction of the buffer to wash")
     parser.add_argument("--treshold-entropy", type=float, default=0.0)
     parser.add_argument("--tau-exp-rho", type=float, default=0.5)
-    parser.add_argument("--start-explore", type=int, default=4)
+    parser.add_argument("--start-explore", type=int, default=8)
     parser.add_argument("--treshold-success", type=float, default=0.0)
     parser.add_argument("--update-un-frequency", type=int, default=1)
     # n agent
@@ -371,8 +371,8 @@ if __name__ == "__main__":
         with torch.no_grad():
             # log(rho_n/un_n)
             log_p_rho_un_nn = classifier(obs).detach().squeeze(-1)
-            # log_p_rho_un = (log_p_rho_un_nn - torch.mean(log_p_rho_un_nn, dim=0).unsqueeze(0))/(torch.std(log_p_rho_un_nn, dim=0).unsqueeze(0) + 1e-1)
-            log_p_rho_un = log_p_rho_un_nn
+            log_p_rho_un = (log_p_rho_un_nn - torch.mean(log_p_rho_un_nn, dim=0).unsqueeze(0))/(torch.std(log_p_rho_un_nn, dim=0).unsqueeze(0) + 1e-1)
+            # log_p_rho_un = log_p_rho_un_nn
 
             # p(z|s)
             p_s_z = torch.gather(torch.softmax(classifier.forward_z(obs),dim=-1), -1, (zs-1).type(torch.int64)).squeeze(-1)

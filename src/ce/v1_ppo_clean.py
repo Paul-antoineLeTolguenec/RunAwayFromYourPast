@@ -79,7 +79,7 @@ def parse_args():
         help="Toggles advantages normalization")
     parser.add_argument("--clip-coef", type=float, default=0.2,
         help="the surrogate clipping coefficient")
-    parser.add_argument("--clip-coef-mask", type=float, default=0.4,
+    parser.add_argument("--clip-coef-mask", type=float, default=0.2,
         help="the surrogate clipping coefficient for mask")
     parser.add_argument("--clip-vloss", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="Toggles whether or not to use a clipped loss for the value function, as per the paper.")
@@ -187,6 +187,26 @@ def update_train(obs_un, obs_un_train, frac,capacity,
     obs_un_train[idx_remove] = batch_obs_un[idx_replace]
     return obs_un_train
 
+def update_obs(obs_un, obs_latent, obs, args, success, update,  device):
+    if obs_latent is None:
+        obs_latent = obs.reshape(-1, *envs.single_observation_space.shape).clone()
+    if obs_un is None:
+        obs_un = obs.reshape(-1, *envs.single_observation_space.shape).clone()
+    else:
+        if update <  args.start_explore : 
+            obs_un = torch.cat([obs_un, obs.reshape(-1, *envs.single_observation_space.shape).clone()], dim=0)
+            obs_latent = torch.cat([obs_latent, obs.reshape(-1, *envs.single_observation_space.shape).clone()], dim=0)
+        elif success:
+            if obs_latent.shape[0] > 0:
+                obs_un = torch.cat([obs_un, obs_latent[:args.num_steps*args.num_envs].clone()], dim=0) 
+                obs_latent = obs_latent[args.num_steps*args.num_envs:]
+            else  :
+                obs_un = torch.cat([obs_un, obs.reshape(-1, *envs.single_observation_space.shape).clone()], dim=0)
+        else:
+            obs_latent = torch.cat([obs_latent, obs.reshape(-1, *envs.single_observation_space.shape).clone()], dim=0)
+
+        
+    return obs_un, obs_latent
 
 if __name__ == "__main__":
     args = parse_args()
@@ -256,6 +276,7 @@ if __name__ == "__main__":
     values = torch.zeros((args.num_steps, args.num_envs)).to(device)
     # full replay buffer
     obs_un =  None
+    obs_latent = None
     obs_un_train = None
     probs_un_train = None
     # times_full = np.zeros((args.n_capacity,max_steps)+(1,))
@@ -328,16 +349,16 @@ if __name__ == "__main__":
         # update the reward
         rewards_nn = classifier(obs).detach().squeeze(-1)
         # normalize the reward
-        # rewards = (rewards_nn - rewards_nn.mean()) / (rewards_nn.std() + 1e-1) 
-        rewards = rewards_nn
+        rewards = (rewards_nn - rewards_nn.mean()) / (rewards_nn.std() + 1e-1) 
+        # rewards = rewards_nn
         # mask entropy
         mask_entropy = (args.treshold_entropy <= rewards).float()
         # success
         success =  (rewards_nn.mean(dim=0) >= args.treshold_success).item()
         ########################### UPDATE THE BUFFER ############################
         # obs_un
-        obs_un = obs.reshape(-1, *envs.single_observation_space.shape).clone() if obs_un is None else (torch.cat([obs_un, obs.reshape(-1, *envs.single_observation_space.shape).clone()], dim=0) if (success or update <  args.start_explore) else obs_un)
-        # obs_un = obs.reshape(-1, *envs.single_observation_space.shape) if obs_un is None else torch.cat([obs_un, obs.reshape(-1, *envs.single_observation_space.shape)], dim=0)
+        # obs_un = obs.reshape(-1, *envs.single_observation_space.shape).clone() if obs_un is None else (torch.cat([obs_un, obs.reshape(-1, *envs.single_observation_space.shape).clone()], dim=0) if (success or update <  args.start_explore) else obs_un)
+        obs_un, obs_latent = update_obs(obs_un, obs_latent, obs, args, success, update, device)
         # obs_train & probs_train 
         obs_un_train = obs_un[:args.classifier_memory].clone() if (obs_un_train is None or obs_un_train.shape[0] < args.classifier_memory) else (update_train(obs_un, obs_un_train, frac = args.frac_wash, 
                                                                                                                                             capacity = args.classifier_memory, n_past = args.start_explore, 
@@ -454,7 +475,7 @@ if __name__ == "__main__":
         print(f"global_step={global_step}")
         print('update : ',update)
         print('reward mean : ',rewards_nn.mean())
-        print('success : ',success)
+        # print('success : ',success)
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
         if args.track and args.capture_video:
