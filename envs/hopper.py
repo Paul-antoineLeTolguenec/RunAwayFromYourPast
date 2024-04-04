@@ -4,7 +4,7 @@ import inspect
 
 # Créer l'environnement avec le mode de rendu 'rgb_array'
 env = gym.make('Hopper-v3', render_mode='rgb_array', reset_noise_scale = 0.0,
-               exclude_current_positions_from_observation=True)
+               exclude_current_positions_from_observation=False)
 max_steps = env.spec.max_episode_steps
 print('Max steps: ', max_steps) 
 observation,i = env.reset()
