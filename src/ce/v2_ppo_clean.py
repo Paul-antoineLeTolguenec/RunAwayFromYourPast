@@ -81,7 +81,7 @@ def parse_args():
         help="Toggles advantages normalization")
     parser.add_argument("--clip-coef", type=float, default=0.2,
         help="the surrogate clipping coefficient")
-    parser.add_argument("--clip-coef-mask", type=float, default=0.2,
+    parser.add_argument("--clip-coef-mask", type=float, default=0.4,
         help="the surrogate clipping coefficient for mask")
     parser.add_argument("--clip-vloss", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="Toggles whether or not to use a clipped loss for the value function, as per the paper.")
@@ -177,12 +177,13 @@ class Agent(nn.Module):
         if action is None:
             action = probs.sample()
         return action, probs.log_prob(action).sum(1), probs.entropy().sum(1), self.critic(x)
+    
 def update_train(obs_un, obs_un_train, frac,capacity, 
                  n_past, n_rollouts, max_steps, 
                  n_envs, classifier, device):
     # n_batch = int(obs_un_train.shape[0])
     n_batch = capacity
-    n_replace = int(obs_un_train.shape[0]*frac)
+    n_replace = int(obs_un_train.shape[0])
     idx = np.random.randint(0, max(obs_un.shape[0]-max_steps*n_rollouts*n_past*n_envs,1), size = n_batch)
     # idx = np.random.randint(0,obs_un.shape[0], n_batch)
     batch_obs_un = obs_un[idx]
@@ -197,6 +198,28 @@ def update_train(obs_un, obs_un_train, frac,capacity,
     # replace
     obs_un_train[idx_remove] = batch_obs_un[idx_replace]
     return obs_un_train
+
+def update_obs(obs_un, z_un, obs_latent, obs, zs, args, success, update,  device):
+    if obs_un is None:
+        obs_un = obs.reshape(-1, *envs.single_observation_space.shape).clone()
+        z_un = zs.reshape(-1, 1).clone()
+    if obs_latent is None:
+        obs_latent = obs.reshape(-1, *envs.single_observation_space.shape).clone()
+    else:
+        if update <  args.start_explore : 
+            obs_un = torch.cat([obs_un, obs.reshape(-1, *envs.single_observation_space.shape).clone()], dim=0)
+            z_un = torch.cat([z_un, zs.reshape(-1, 1).clone()], dim=0)
+            obs_latent = torch.cat([obs_latent, obs.reshape(-1, *envs.single_observation_space.shape).clone()], dim=0)
+        elif success:
+            if obs_latent.shape[0] > 0:
+                obs_un = torch.cat([obs_un, obs_latent[:args.num_steps*args.num_envs].clone()], dim=0) 
+                obs_latent = obs_latent[args.num_steps*args.num_envs:]
+            else  :
+                obs_un = torch.cat([obs_un, obs.reshape(-1, *envs.single_observation_space.shape).clone()], dim=0)
+            z_un = torch.cat([z_un, zs.reshape(-1, 1).clone()], dim=0)
+        else:
+            obs_latent = torch.cat([obs_latent, obs.reshape(-1, *envs.single_observation_space.shape).clone()], dim=0)
+    return obs_un, obs_latent, z_un
 
 if __name__ == "__main__":
     args = parse_args()
@@ -246,7 +269,7 @@ if __name__ == "__main__":
     if args.episodic_return:
         max_steps = envs.envs[0].max_steps
         args.num_steps = max_steps * args.num_rollouts
-        args.classifier_memory = max_steps * args.num_rollouts * args.num_envs * 2
+        args.classifier_memory = max_steps * args.num_rollouts * args.num_envs *2
     # update batch size and minibatch size
     args.batch_size = int(args.num_envs * args.num_steps)
     # args.minibatch_size = int(args.batch_size // args.num_minibatches)
@@ -276,6 +299,7 @@ if __name__ == "__main__":
     values = torch.zeros((args.num_steps, args.num_envs)).to(device)
     # full replay buffer
     obs_un =None
+    obs_latent =[None for _ in range(args.n_agent)]
     z_un = None
     obs_un_train = None
     # sample n z 
@@ -379,7 +403,8 @@ if __name__ == "__main__":
         # obs_un add 
         for idx in range(args.n_agent):
             z_idx = z[idx].item() - 1
-            obs_un = obs_permute[z_idx].reshape(-1, *envs.single_observation_space.shape).clone() if obs_un is None else (torch.cat([obs_un, obs_permute[z_idx].reshape(-1, *envs.single_observation_space.shape).clone()], dim=0) if (success_per_agent[z_idx] or update <  args.start_explore) else obs_un)
+            # obs_un = obs_permute[z_idx].reshape(-1, *envs.single_observation_space.shape).clone() if obs_un is None else (torch.cat([obs_un, obs_permute[z_idx].reshape(-1, *envs.single_observation_space.shape).clone()], dim=0) if (success_per_agent[z_idx] or update <  args.start_explore) else obs_un)
+            obs_un, obs_latent[idx], z_un = update_obs(obs_un, z_un, obs_latent[idx], obs_permute[z_idx], zs_permute[z_idx], args, success_per_agent[z_idx], update, device)
             z_un = zs_permute[z_idx].reshape(-1, 1).clone() if z_un is None else (torch.cat([z_un, zs_permute[z_idx].reshape(-1, 1).clone()], dim=0) if (success_per_agent[z_idx] or update <  args.start_explore) else z_un)
         # obs_train & probs_train 
         obs_un_train = obs_un[:args.classifier_memory].clone() if (obs_un_train is None or obs_un_train.shape[0] < args.classifier_memory) else (update_train(obs_un, obs_un_train, frac = args.frac_wash, 

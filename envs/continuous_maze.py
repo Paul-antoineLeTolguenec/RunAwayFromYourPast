@@ -1,13 +1,17 @@
 import gym
 from gym.spaces import Discrete, Box
+import torch, os, imageio
 import numpy as np
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import copy
 
+
 class Maze(gym.Env):
-        def __init__(self, fig = False, name = None, target = [0.0,-0.5], render = False):
+        def __init__(self, name = None, target = [0.0,-0.5],
+                     max_episode_steps = 200, seed = 0):
+            super(Maze, self).__init__()
             self.x=0
             self.y=0
             self.dx=0
@@ -19,9 +23,9 @@ class Maze(gym.Env):
             self.min_y=-1
             self.observation_space=Box(low=-1, high=1, shape=(2,), dtype=np.float32)
             self.action_space=Box(low=-1, high=1, shape=(2,), dtype=np.float32)
-            self.max_steps = 200
             self.walls = [(-1,-1,-1,1),(-1,-1,1,-1),(-1,1,1,1),(1,-1,1,1)]
             self.dangerous_point =[]
+            self.max_episode_steps = max_episode_steps
             self.x_init=0
             self.y_init=0
             self.dx_init=0
@@ -30,33 +34,14 @@ class Maze(gym.Env):
             self.target = target
             self.episode_length = 0 
             self.episode_reward = 0
+            self.seed = seed
             self.d = 0
             if name!=None:
                 self.x_init = Mazes[name]['x_init']
                 self.y_init = Mazes[name]['y_init']
                 for wall in Mazes[name]['walls'] : self.walls.append(wall)
-            # figure 
-            if fig : 
-                self.figure, self.ax = plt.subplots()
-                self.ax.set_xlim([-self.max_x, self.max_x])
-                self.ax.set_ylim([-self.max_y, self.max_y])
-                self.reset_lim_fig(render=render)
+                target = Mazes[name]['target']
             
-        def reset_lim_fig(self, render = False):
-            self.ax.set_xlim([-self.max_x, self.max_x])
-            self.ax.set_ylim([-self.max_y, self.max_y])
-            # Draw the agent
-            self.agent_dot,_ = self.ax.plot(self.x, self.y, 'bo', label='Agent')  if render else (None,None)
-            # Draw walls
-            for wall in self.walls:
-                x1, y1, x2, y2 = wall
-                self.ax.plot([x1, x2], [y1, y2], color='black')
-            plt.title('Maze Environment')
-            plt.xlabel('X')
-            plt.ylabel('Y')
-            plt.grid(True)
-            # plt.legend()
-            # plt.show()
 
         def reward(self):
             d_next = np.sqrt((self.x-self.target[0])**2+(self.y-self.target[1])**2)
@@ -88,18 +73,14 @@ class Maze(gym.Env):
             self.episode_length += 1
             reward = self.reward()
             self.episode_reward += reward
-            if self.episode_length >= self.max_steps : 
+            if self.episode_length >= self.max_episode_steps : 
                 return np.array([self.x,self.y], dtype=np.float32).copy(), reward, True, False, {'pos' : copy.deepcopy(np.array([self.x,self.y], dtype=np.float32)), 'l' : self.episode_length, 'episode' : {'r' : self.episode_reward, 
                                                                                                                                                                            'l' : self.episode_length, 
                                                                                                                                                                            'target' : self.target}}
             else:
                 return np.array([self.x,self.y], dtype=np.float32).copy(), reward, False, False, {'pos' : copy.deepcopy(np.array([self.x,self.y], dtype=np.float32)), 'l' : self.episode_length, 'r' : self.episode_reward, 'target' : self.target}
         
-        def render(self, mode='human'):
-            if mode == 'human':
-                # Update agent's position
-                self.agent_dot.set_data(self.x, self.y)
-                plt.pause(0.01)  # Pause to update the display
+    
         
         def point_intersection(self, x1, y1, x2, y2, x3, y3, x4, y4):
             # Calculer le déterminant
@@ -152,25 +133,23 @@ class Maze(gym.Env):
 
             return (new_x, new_y)
 
-        def close(self):
-            # close the figure
-            plt.close(self.figure) if hasattr(self, 'figure') else None
-            return super().close()
-
+        
 
 
 Mazes = {
     'Easy' : { 
         'walls':[],
         'x_init':0.0,
-        'y_init':0.0
+        'y_init':0.0, 
+        'target': [1.0,1.0]
     },
     'Ur' : { 
         'walls':[
             (0,-10,0,0.0)
         ],
         'x_init':-0.5,
-        'y_init':-0.5
+        'y_init':-0.5,
+        'target': [0.75, -0.75]
     },
     'Hard' : { 
         'walls':[(-0.25,-2,-0.25,-0.75),
@@ -180,11 +159,12 @@ Mazes = {
                  (0.5,-0.50,2,-0.50),
                  (0.50,0.0,0.50,2)],
         'x_init':-0.5,
-        'y_init':-0.5
+        'y_init':-0.5, 
+        'target': [-0.75, 0.75]
     }
 }
 if __name__ ==  '__main__' : 
-    env = Maze(fig=True, name ='Hard', render=True)
+    env = Maze(name ='Hard', render=True)
     s=env.reset()
     for k in range(env.max_steps):
         env.step(np.array([-1,10]))

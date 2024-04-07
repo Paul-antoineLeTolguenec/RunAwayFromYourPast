@@ -1,10 +1,9 @@
 # contrastive_exploration
 
 # FIRST THING TO DO
-* start from v1 clean (implement speed prob and check )
-* Normalize z the right way : No adv normalization PPO = Normalization per z
-* Deal with Nan in normalization (add +1 to the std everywhere)
-* Reward for DUCB : Add Mutual Information reward 
+* Reward for DUCB : Add Mutual Information reward (?)
+* Whopper check 
+* setup wenv then get back to baselines
 
 
 
@@ -41,3 +40,25 @@
 * Complexity
 
 
+## TIPS XP 
+* Maze : 
+exp_tau = 0.5
+clip_coef = 0.2
+clip_coef_mask = 0.4
+ent_coef = 0.2
+mask_q = None
+lipshitz = False
+update-epochs = 16
+frac = 1/4
+NOTE : Equilibrium easy to maintain without mask_q
+
+* MUJOCO :
+exp_tau = 0.5
+clip_coef = 0.2
+clip_coef_mask = 0.4
+ent_coef = 0.1
+mask_q = 0.5
+lipschitz = True
+update-epochs = 16
+frac = 1/8
+NOTE : Equilibrium in favor of q 
