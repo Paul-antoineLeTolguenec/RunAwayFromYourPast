@@ -7,19 +7,15 @@ import torch
 
 class Classifier(torch.nn.Module):
     def __init__(self, observation_space,device, env_max_steps, 
-                lipshitz= False, lim_down = -5, lim_up = 5, 
+                lipshitz= False, lim_down = -10, lim_up = 10, 
                 w_old = 0.0001, learn_z = False, 
                 n_agent = 1, n_reconf = 0, 
                 env_id = None,
-                spectral_coef = 1e-1,
+                spectral_coef = 5e-2,
+                bound_spectral = 1.0,
                 feature_extractor = False):
         super(Classifier, self).__init__()
-        # spectral normalization
-        if lipshitz:
-            self.fc1 = spectral_norm(torch.nn.Linear(observation_space.shape[0], 128,device=device))
-            self.fc2 = spectral_norm(torch.nn.Linear(128, 64, device=device))
-            self.fc3 = spectral_norm(torch.nn.Linear(64, 1, device=device))
-        elif feature_extractor:
+        if feature_extractor:
             self.fc1 = torch.nn.Linear(config[env_id]['coverage_idx'].shape[0], 128,device=device)
             self.fc2 = torch.nn.Linear(128, 64, device=device)
             self.fc3 = torch.nn.Linear(64, 1, device=device)
@@ -39,13 +35,10 @@ class Classifier(torch.nn.Module):
         self.feature_extractor = feature_extractor
         self.lipshitz = lipshitz
         self.spectral_coef = spectral_coef
+        self.bound_spectral = bound_spectral
         self.env_id = env_id
         if learn_z : 
-            if lipshitz:
-                self.fcz1 = spectral_norm(torch.nn.Linear(observation_space.shape[0], 128,device=device))
-                self.fcz2 = spectral_norm(torch.nn.Linear(128, 64, device=device))
-                self.fcz3 = spectral_norm(torch.nn.Linear(64, n_agent, device=device))
-            elif feature_extractor:
+            if feature_extractor:
                 self.fcz1 = torch.nn.Linear(config[env_id]['coverage_idx'].shape[0], 128,device=device)
                 self.fcz2 = torch.nn.Linear(128, 64, device=device)
                 self.fcz3 =  torch.nn.Linear(64, n_agent, device=device)
@@ -53,7 +46,7 @@ class Classifier(torch.nn.Module):
                 self.fcz1 = torch.nn.Linear(observation_space.shape[0], 128,device=device)
                 self.fcz2 = torch.nn.Linear(128, 64, device=device)
                 self.fcz3 =  torch.nn.Linear(64, n_agent, device=device)
-                self.softmax = torch.nn.Softmax(dim=1)
+            self.softmax = torch.nn.Softmax(dim=1)
         
     def forward(self, x):
         x = self.feature(x) if self.feature_extractor else x
@@ -80,8 +73,8 @@ class Classifier(torch.nn.Module):
         penalty = 0.0
         for name, param in self.named_parameters():
             if 'weight' in name:  # only compute penalty for weights
-                norm = torch.linalg.norm(param, ord=2)
-                penalty += (norm ** 2)
+                norm = torch.linalg.norm(param, ord=2) 
+                penalty += torch.relu(norm - self.bound_spectral)**2
         return penalty
 
     def ce_loss_ppo(self, batch_q, batch_p, batch_q_z = None, batch_p_z =None, relabeling = True, ratio = 1.0):
@@ -93,8 +86,8 @@ class Classifier(torch.nn.Module):
         label_q = torch.ones_like(s_q)
         # label_q = self.mask_labels_q(s_q)
         # mask strategy p
-        # label_p = torch.ones_like(s_p)
-        label_p = self.mask_labels_p(s_p)
+        label_p = torch.ones_like(s_p) if not self.learn_z else self.mask_labels_p(s_p)
+        # label_p = self.mask_labels_p(s_p)
         L = -((label_q*torch.log(s_q_p)).mean() +(label_p*torch.log(1 - s_p_p)).mean())
         if self.learn_z:
             L += self.mlh_loss(batch_q, batch_q_z) 

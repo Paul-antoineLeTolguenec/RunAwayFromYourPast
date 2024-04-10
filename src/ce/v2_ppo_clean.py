@@ -16,8 +16,9 @@ from src.utils.custom_sampling import exp_dec
 from torch.utils.tensorboard import SummaryWriter
 # from stable_baselines3.common.buffers import ReplayBuffer
 from src.ce.classifier import Classifier
+from envs.wenv import Wenv
+from envs.config_env import config
 from src.ce.vector_encoding import VE
-from envs.continuous_maze import Maze
 # animation 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
@@ -32,7 +33,6 @@ def parse_args():
         help="the name of this experiment")
     parser.add_argument("--seed", type=int, default=0,
         help="seed of the experiment")
-    parser.add_argument("--env-type", type=str, default="Maze")
     parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, `torch.backends.cudnn.deterministic=False`")
     parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
@@ -47,11 +47,13 @@ def parse_args():
         help="whether to capture videos of the agent performances (check out `videos` folder)")
     parser.add_argument("--fig_frequency", type=int, default=1)
     parser.add_argument("--make-gif", type=bool, default=True)
-    parser.add_argument("--plot-density", type=bool, default=True)
+    parser.add_argument("--plotly", type=bool, default=False)
+
+
     parser.add_argument("--episodic-return", type=bool, default=True)
 
     # Algorithm specific arguments
-    parser.add_argument("--env-id", type=str, default="Ur",
+    parser.add_argument("--env-id", type=str, default="Maze-Ur",
         help="the id of the environment")
     parser.add_argument("--total-timesteps", type=int, default=int(1e7),
         help="total timesteps of the experiments")
@@ -71,7 +73,7 @@ def parse_args():
         help="the discount factor gamma")
     parser.add_argument("--gae-lambda", type=float, default=0.95,
         help="the lambda for the general advantage estimation")
-    parser.add_argument("--num-minibatches", type=int, default=64,
+    parser.add_argument("--num-minibatches", type=int, default=32,
         help="the number of mini-batches")
     parser.add_argument("--minibatch-size", type=int, default=128,
                         help="the size of the mini-batch")
@@ -81,13 +83,13 @@ def parse_args():
         help="Toggles advantages normalization")
     parser.add_argument("--clip-coef", type=float, default=0.2,
         help="the surrogate clipping coefficient")
-    parser.add_argument("--clip-coef-mask", type=float, default=0.4,
+    parser.add_argument("--clip-coef-mask", type=float, default=0.2,
         help="the surrogate clipping coefficient for mask")
     parser.add_argument("--clip-vloss", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="Toggles whether or not to use a clipped loss for the value function, as per the paper.")
-    parser.add_argument("--ent-coef", type=float, default=0.2,
+    parser.add_argument("--ent-coef", type=float, default=0.05,
         help="coefficient of the entropy")
-    parser.add_argument("--vf-coef", type=float, default=10.0,
+    parser.add_argument("--vf-coef", type=float, default=1.0,
         help="coefficient of the value function")
     parser.add_argument("--max-grad-norm", type=float, default=0.5,
         help="the maximum norm for the gradient clipping")
@@ -95,16 +97,21 @@ def parse_args():
         help="the target KL divergence threshold")
     # classifier
     parser.add_argument("--classifier-lr", type=float, default=1e-3)
-    parser.add_argument("--classifier-batch-size", type=int, default=256)
+    parser.add_argument("--classifier-batch-size", type=int, default=128)
     parser.add_argument("--classifier-memory", type=int, default=1000)
     parser.add_argument("--classifier-frequency", type=int, default=1)
     parser.add_argument("--classifier-epochs", type=int, default=8)
+    parser.add_argument("--feature-extractor", type=lambda x: bool(strtobool(x)), default=False)
+    parser.add_argument("--lipshitz", type=lambda x: bool(strtobool(x)), default=False)
     parser.add_argument("--frac-wash", type=float, default=1/4, help="fraction of the buffer to wash")
-    parser.add_argument("--treshold-entropy", type=float, default=0.0)
     parser.add_argument("--tau-exp-rho", type=float, default=0.5)
     parser.add_argument("--start-explore", type=int, default=8)
+    parser.add_argument("--treshold-entropy", type=float, default=0.0)
     parser.add_argument("--treshold-success", type=float, default=0.0)
     parser.add_argument("--update-un-frequency", type=int, default=1)
+    parser.add_argument("--per-threshold", type=float, default=0.5)
+    parser.add_argument("--per-max-step", type=float, default=0.75)
+
     # n agent
     parser.add_argument("--n-agent", type=int, default=6)
     parser.add_argument("--lamda-im", type=float, default=10.0)
@@ -119,12 +126,9 @@ def parse_args():
 
 
 
-def make_env(env_id, idx, capture_video, run_name, gamma, env_type = "gym"):
+def make_env(env_id, idx, capture_video, run_name):
     def thunk():
-        if capture_video:
-            env = gym.make(env_id, render_mode="rgb_array")
-        else:
-            env = gym.make(env_id) if env_type == "gym" else Maze(name=env_id)
+        env = Wenv(env_id=env_id, xp_id=run_name, **config[env_id])
         env = gym.wrappers.FlattenObservation(env)  # deal with dm_control's Dict observation space
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
@@ -183,7 +187,7 @@ def update_train(obs_un, obs_un_train, frac,capacity,
                  n_envs, classifier, device):
     # n_batch = int(obs_un_train.shape[0])
     n_batch = capacity
-    n_replace = int(obs_un_train.shape[0])
+    n_replace = int(obs_un_train.shape[0]*frac)
     idx = np.random.randint(0, max(obs_un.shape[0]-max_steps*n_rollouts*n_past*n_envs,1), size = n_batch)
     # idx = np.random.randint(0,obs_un.shape[0], n_batch)
     batch_obs_un = obs_un[idx]
@@ -213,7 +217,7 @@ def update_obs(obs_un, z_un, obs_latent, obs, zs, args, success, update,  device
         elif success:
             if obs_latent.shape[0] > 0:
                 obs_un = torch.cat([obs_un, obs_latent[:args.num_steps*args.num_envs].clone()], dim=0) 
-                obs_latent = obs_latent[args.num_steps*args.num_envs:]
+                obs_latent = obs_latent[args.num_steps*args.num_envs:].clone()
             else  :
                 obs_un = torch.cat([obs_un, obs.reshape(-1, *envs.single_observation_space.shape).clone()], dim=0)
             z_un = torch.cat([z_un, zs.reshape(-1, 1).clone()], dim=0)
@@ -223,7 +227,7 @@ def update_obs(obs_un, z_un, obs_latent, obs, zs, args, success, update,  device
 
 if __name__ == "__main__":
     args = parse_args()
-    run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
+    run_name = f"{args.env_id}__{args.exp_name}__{args.seed}"
     if args.track:
         import wandb
 
@@ -242,16 +246,15 @@ if __name__ == "__main__":
         "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
     if args.make_gif:
-        # env to plot 
-        env_plot = Maze(name = args.env_id, fig = True)
-        # iter_plot 
-        iter_plot = 0
-        last_iter  = 0
-        if not os.path.exists('gif'):
-            os.makedirs('gif')
-        writer_gif = imageio.get_writer('gif/v2_ppo_clean.mp4', fps=2)
-        # generate n_agent different colors for matplotlib
-        colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
+        env_plot = Wenv(env_id=args.env_id, 
+                        render_bool_matplot=True, 
+                        xp_id=run_name, 
+                        **config[args.env_id])
+    if args.plotly:
+        env_plot = Wenv(env_id=args.env_id, 
+                        render_bool_plotly=True, 
+                        xp_id=run_name, 
+                        **config[args.env_id])
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
@@ -263,24 +266,31 @@ if __name__ == "__main__":
 
     # env setup
     envs = gym.vector.SyncVectorEnv(
-        [make_env(args.env_id, i, args.capture_video, run_name, args.gamma, args.env_type) for i in range(args.num_envs)]
+        [make_env(args.env_id, i, args.capture_video, run_name) for i in range(args.num_envs)]
     )
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
     if args.episodic_return:
-        max_steps = envs.envs[0].max_steps
+        max_steps = envs.envs[0].spec.max_episode_steps  
         args.num_steps = max_steps * args.num_rollouts
-        args.classifier_memory = max_steps * args.num_rollouts * args.num_envs *2
+        args.classifier_memory = max_steps * args.num_rollouts * args.num_envs 
     # update batch size and minibatch size
     args.batch_size = int(args.num_envs * args.num_steps)
     # args.minibatch_size = int(args.batch_size // args.num_minibatches)
     args.num_minibatches = int(args.batch_size // args.minibatch_size)
-    print('mini batch size',args.minibatch_size)
-    print('num minibatches',args.num_minibatches)
-    print('batch size',args.batch_size)
+    # print('mini batch size',args.minibatch_size)
+    # print('num minibatches',args.num_minibatches)
+    # print('batch size',args.batch_size)
     # Agent
     agent = Agent(envs, args.n_agent).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
-    classifier = Classifier(observation_space=envs.single_observation_space, device=device, env_max_steps = max_steps, learn_z=True, n_agent = args.n_agent)
+    classifier = Classifier(observation_space=envs.single_observation_space, 
+                            device=device, 
+                            env_max_steps = max_steps, 
+                            learn_z=True, 
+                            n_agent = args.n_agent,
+                            lipshitz=args.lipshitz,
+                            feature_extractor=args.feature_extractor, 
+                            env_id=args.env_id)
     classifier_optimizer = optim.Adam(classifier.parameters(), lr=args.classifier_lr, eps=1e-5)
     # success per agent 
     success_per_agent = torch.zeros(args.n_agent).to(device)
@@ -301,7 +311,9 @@ if __name__ == "__main__":
     obs_un =None
     obs_latent =[None for _ in range(args.n_agent)]
     z_un = None
+    # obs_un_train = torch.tensor(envs.envs[0].reset()[0], dtype=torch.float).to(device).unsqueeze(0).repeat(args.classifier_memory,1)
     obs_un_train = None
+
     # sample n z 
     z = ve.z.clone()
 
@@ -349,9 +361,11 @@ if __name__ == "__main__":
     
         ########################### CLASSIFIER ############################
         # rho_n
-        b_batch_obs_rho_n = obs.permute(1,0,2).reshape(args.num_envs*args.num_rollouts, max_steps, *envs.single_observation_space.shape)
-        b_batch_times_rho_n = times.permute(1,0,2).reshape(args.num_envs*args.num_rollouts, max_steps, 1).cpu().numpy()
-        b_batch_z_rho_n = zs.permute(1,0,2).reshape(args.num_envs*args.num_rollouts, max_steps, 1)
+        b_batch_obs_rho_n = obs.reshape(-1, *envs.single_observation_space.shape)
+        b_batch_times_rho_n = times.reshape(-1, 1)
+        mask_obs_rho = (b_batch_times_rho_n >= torch.max(times).item()*args.per_max_step).squeeze(-1)
+        b_batch_obs_rho_n = b_batch_obs_rho_n[mask_obs_rho]
+        b_batch_z_rho_n = zs.reshape(-1, 1)
         # train the classifier
         if obs_un_train is not None and obs_un_train.shape[0] >= args.classifier_memory :  
             # un_n
@@ -360,14 +374,15 @@ if __name__ == "__main__":
             classifier_epochs = int(b_batch_obs_un.shape[0]/args.classifier_batch_size)*args.classifier_epochs
             for epoch_classifier in range(classifier_epochs):
                 # sample rho_n
-                idx_ep_rho = np.random.randint(0, args.num_rollouts*args.num_envs, size = args.classifier_batch_size)
-                idx_step_rho = (exp_dec(args.classifier_batch_size,tau = args.tau_exp_rho)*max_steps).astype(int)
+                idx_step_rho = np.random.randint(0, b_batch_obs_rho_n.shape[0], size = args.classifier_batch_size)
+                # idx_step_rho = (exp_dec(args.classifier_batch_size,tau = args.tau_exp_rho)*max_steps).astype(int)
+                # idx_step_rho = np.random.randint(0, b_batch_obs_rho_n.shape[1], size = args.classifier_batch_size)
                 # sample un_n
                 idx_step_un = np.random.randint(0, b_batch_obs_un.shape[0], size = args.classifier_batch_size)
                 # mini batch
-                mb_rho_n = b_batch_obs_rho_n[idx_ep_rho, idx_step_rho]
-                mb_rho_n_times = b_batch_times_rho_n[idx_ep_rho, idx_step_rho]
-                mb_rho_n_z = b_batch_z_rho_n[idx_ep_rho, idx_step_rho]
+                mb_rho_n = b_batch_obs_rho_n[idx_step_rho]
+                mb_rho_n_times = b_batch_times_rho_n[idx_step_rho]
+                mb_rho_n_z = b_batch_z_rho_n[idx_step_rho]
                 mb_un_n = torch.Tensor(b_batch_obs_un[idx_step_un]).to(device)
                 # train the classifier
                 classifier_optimizer.zero_grad()
@@ -381,31 +396,38 @@ if __name__ == "__main__":
         with torch.no_grad():
             # log(rho_n/un_n)
             log_p_rho_un_nn = classifier(obs).detach().squeeze(-1)
-            log_p_rho_un = (log_p_rho_un_nn - torch.mean(log_p_rho_un_nn, dim=0).unsqueeze(0))/(torch.std(log_p_rho_un_nn, dim=0).unsqueeze(0) + 1e-1)
-            # log_p_rho_un = log_p_rho_un_nn
+            log_p_rho_un = log_p_rho_un_nn
 
             # p(z|s)
             p_s_z = torch.gather(torch.softmax(classifier.forward_z(obs),dim=-1), -1, (zs-1).type(torch.int64)).squeeze(-1)
-            log_p_s_z_nn = torch.log(p_s_z + 1e-8)
-            # log_p_s_z = (log_p_s_z_nn - torch.mean(log_p_s_z_nn, dim=0).unsqueeze(0))/(torch.std(log_p_s_z_nn, dim=0).unsqueeze(0) + 1e-1)
+            log_p_s_z_nn = torch.log( p_s_z + 1e-8)
             log_p_s_z = log_p_s_z_nn 
-            # rewards
-            rewards = log_p_s_z if update < args.start_explore else log_p_rho_un + args.lamda_im*log_p_s_z
+
+            rewards = (log_p_s_z if update < args.start_explore else log_p_rho_un + args.lamda_im*log_p_s_z)*args.ratio_reward
+
             # mask entropy
             mask_entropy = (args.treshold_entropy <= log_p_rho_un_nn).float()
+
             # success
             mean_per_agent = log_p_rho_un_nn.mean(dim=0)
-            success_per_agent =  (mean_per_agent >= args.treshold_success).float()
+            success_per_agent =  ((mean_per_agent >= args.treshold_success).int() & (mask_entropy.mean(dim=0) >= args.per_threshold).int()).float()
             
         ########################### UPDATE THE BUFFER ############################
         obs_permute = obs.permute(1,0,2)
+        times_permute = times.permute(1,0,2)
         zs_permute = zs.permute(1,0,2)
+        # indices = torch.nonzero(times_permute <= torch.max(times)*args.per_max_step)
+        # obs_permute_u = []
+        # zs_permute_u = []
+        # for idx in range(args.n_agent): 
+        #     mask_idx = (indices[:,0] == idx)
+        #     obs_permute_u.append(obs_permute[indices[mask_idx, 0], indices[mask_idx, 1], :])
+        #     zs_permute_u.append(zs_permute[indices[mask_idx, 0], indices[mask_idx, 1], :])
         # obs_un add 
         for idx in range(args.n_agent):
             z_idx = z[idx].item() - 1
-            # obs_un = obs_permute[z_idx].reshape(-1, *envs.single_observation_space.shape).clone() if obs_un is None else (torch.cat([obs_un, obs_permute[z_idx].reshape(-1, *envs.single_observation_space.shape).clone()], dim=0) if (success_per_agent[z_idx] or update <  args.start_explore) else obs_un)
             obs_un, obs_latent[idx], z_un = update_obs(obs_un, z_un, obs_latent[idx], obs_permute[z_idx], zs_permute[z_idx], args, success_per_agent[z_idx], update, device)
-            z_un = zs_permute[z_idx].reshape(-1, 1).clone() if z_un is None else (torch.cat([z_un, zs_permute[z_idx].reshape(-1, 1).clone()], dim=0) if (success_per_agent[z_idx] or update <  args.start_explore) else z_un)
+            # z_un = zs_permute[z_idx].reshape(-1, 1).clone() if z_un is None else (torch.cat([z_un, zs_permute[z_idx].reshape(-1, 1).clone()], dim=0) if (success_per_agent[z_idx] or update <  args.start_explore) else z_un)
         # obs_train & probs_train 
         obs_un_train = obs_un[:args.classifier_memory].clone() if (obs_un_train is None or obs_un_train.shape[0] < args.classifier_memory) else (update_train(obs_un, obs_un_train, frac = args.frac_wash, 
                                                                                                                                             capacity = args.classifier_memory, n_past = args.start_explore, 
@@ -487,6 +509,8 @@ if __name__ == "__main__":
                     v_loss = 0.5 * ((newvalue - b_returns[mb_inds]) ** 2).mean()
 
                 entropy_loss = (entropy*mask_mb).mean()
+                # entropy_loss = (entropy).mean()
+
                 loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
 
                 optimizer.zero_grad()
@@ -512,12 +536,13 @@ if __name__ == "__main__":
         writer.add_scalar("losses/explained_variance", explained_var, global_step)
         print('max log_p_s_z',torch.max(log_p_s_z, dim = 0).values)
         print('min log_p_s_z',torch.min(log_p_s_z, dim = 0).values)
-        print('mean log_p_s_z',torch.mean(log_p_s_z_nn, dim = 0))
+        # print('mean log_p_s_z',torch.mean(log_p_s_z_nn, dim = 0))
         print('max log_p_rho_un',torch.max(log_p_rho_un, dim = 0).values)
         print('min log_p_rho_un',torch.min(log_p_rho_un, dim = 0).values)
-        print('mean log_p_rho_un',torch.mean(log_p_rho_un_nn, dim = 0))
+        # print('mean log_p_rho_un',torch.mean(log_p_rho_un_nn, dim = 0))
         # print('std log_p_rho_un',torch.std(log_p_rho_un_nn))
-        # print('sum mask_rewards dim 0',mask_entropy.sum(dim=0))
+        print('mean_per_agent',mean_per_agent)
+        print('mask_entropy.mean(0)',mask_entropy.mean(dim=0))
         print('update : ', update)
         print('success per agent', success_per_agent)
         print("SPS:", int(global_step / (time.time() - start_time)))
@@ -530,41 +555,9 @@ if __name__ == "__main__":
                     wandb.log({f"videos": wandb.Video(f"videos/{run_name}/{filename}")})
                     video_filenames.add(filename)
         if update % args.fig_frequency == 0 and args.make_gif and global_step > 0:
-            with torch.no_grad():
-                if args.plot_density : 
-                    # clear the plot
-                    env_plot.ax.clear()
-                    # reset the limits
-                    env_plot.reset_lim_fig()
-                    # plot measure 
-                    data_to_plot  = torch.Tensor(obs_un.reshape(-1, *envs.single_observation_space.shape)).to(device)
-                    # obs permute
-                    obs_permute = obs.permute(1,0,2)
-                    # cat 
-                    data_to_plot = torch.cat([data_to_plot, obs_permute.reshape(-1, *envs.single_observation_space.shape)], dim = 0)
-                    # # Plotting measure 
-                    m_n = classifier(data_to_plot).detach().cpu().numpy().flatten()
-                    # cpu 
-                    data_to_plot = data_to_plot.cpu().numpy()
-                    # # Plotting the environment
-                    env_plot.ax.scatter(data_to_plot[:,0], data_to_plot[:,1], c = m_n, s=1)
-                    # plot obs_un_train 
-                    env_plot.ax.scatter(obs_un_train.cpu().numpy()[:,0], obs_un_train.cpu().numpy()[:,1], c = 'b', s=1)
-                else : 
-                    iter_plot  = obs_un.shape[0]
-                    z_un_plot = z_un[last_iter: iter_plot].cpu().numpy() - 1
-                    data_to_plot  = obs_un[last_iter: iter_plot].cpu().numpy()
-                    for idx in range(args.n_agent):
-                        mask_z = z_un_plot == idx
-                        mask_z = mask_z.squeeze(-1)
-                        env_plot.ax.scatter(data_to_plot[mask_z,0], data_to_plot[mask_z,1], c = colors[idx], s=1)
-                    last_iter = iter_plot
-                # save fig env_plot
-                env_plot.figure.canvas.draw()
-                image = np.frombuffer(env_plot.figure.canvas.tostring_rgb(), dtype='uint8')
-                image = image.reshape(env_plot.figure.canvas.get_width_height()[::-1] + (3,))
-                writer_gif.append_data(image)
-                # iter_plot
-                iter_plot += 1
+            if args.make_gif : 
+                env_plot.gif(obs_un, obs_un_train, obs.clone(), classifier, device)
+            if args.plotly:
+                env_plot.plotly(obs_un, obs_un_train, classifier, device)
     envs.close()
     writer.close()

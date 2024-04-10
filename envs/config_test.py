@@ -1,20 +1,20 @@
 from config_env import config
 import numpy as np
 from wenv import Wenv
+import envs
 
-# env = Wenv(env_id = 'Hopper-v3', **config['Hopper-v3'])
-# env = Wenv(env_id = 'FetchReach-v3', **config['FetchReach-v3'])
-# env = Wenv(env_id = 'Swimmer-v3', **config['Swimmer-v3'])
-env = Wenv(env_id = 'Reacher-v4', **config['Reacher-v4'])
-
-obs, i = env.reset(seed=0)
-print(obs)
-print(i)
-print('obs shape', obs.shape)
-for i in range(5):
-    action = np.ones(env.action_space.shape[0])
-    obs, reward, done, trunc, info = env.step(action)
-    print('obs ', obs)
-   
-    if done:
-        break
+for name_id, conf in config.items():
+    print('name_id : ', name_id)
+    env = Wenv(env_id=name_id, **conf)
+    print('coverage_idx', conf['coverage_idx'])
+    print('matrix_coverage shape', env.matrix_coverage.shape)
+        # print('observation space', env.observation_space)
+        # print('action space', env.action_space)
+        # # reset
+        # obs, i = env.reset()
+        # print('obs.shape', obs.shape)
+        # print('i', i)
+        # # step 
+        # obs, reward, done, trunc, i = env.step(env.action_space.sample())
+        # print('obs.shape', obs.shape)
+        # print('i', i)

@@ -30,8 +30,10 @@ class Wenv(gym.Env):
         self.spec = self.env.spec
         # metrics
         self.coverage_accuracy = coverage_accuracy
-        self.matrice_coverage = np.zeros((coverage_idx.shape[0], self.coverage_accuracy))
+        self.matrix_coverage = np.zeros((coverage_idx.shape[0], self.coverage_accuracy))
         self.coverage_idx = coverage_idx
+        self.episode_length = 0
+        self.episode_reward = 0
         # figure 
         if render_bool_matplot:
             self.figure, self.ax = plt.subplots()
@@ -51,18 +53,32 @@ class Wenv(gym.Env):
 
       
     def reset(self, seed=0):
-        self.seed(seed)
+        # self.seed(seed)
+        self.episode_length = 0
+        self.episode_reward = 0
+        obs, i = self.env.reset()
         if self.type_id == 'robotics':
+           obs = self.parser_robotics(obs)
+        elif self.type_id == 'atari' : 
             obs, i = self.env.reset()
-            return self.parser_robotics(obs), i
-        else:
-            return self.env.reset()
+            i['position'] = self.parser_ram_atari()
+        # update episode length and reward
+        i['l'] = self.episode_length
+        i['r'] = self.episode_reward
+        return obs, i
     def step(self, action):
+        obs, reward, done, trunc, info = self.env.step(action)
+        self.episode_length += 1
+        self.episode_reward += reward
         if self.type_id == 'robotics':
-            obs, reward, done, trunc, info = self.env.step(action)
-            return self.parser_robotics(obs), reward, done, trunc, info
-        else:
-            return self.env.step(action)
+            obs = self.parser_robotics(obs)
+        elif self.type_id == 'atari':
+            info['position'] = self.parser_ram_atari()
+        # update episode length and reward
+        info['l'] = self.episode_length
+        info['r'] = self.episode_reward
+        return obs, reward, done, trunc, info
+    
     def render(self):
         return self.env.render()
     def close(self):
@@ -72,21 +88,30 @@ class Wenv(gym.Env):
     def __str__(self):
         return self.env.__str__()
     
-    def gif(self, obs_un, obs_un_train, classifier, device , z_un = None): 
-        # clear the plot
-        self.ax.clear()
-        # data  to plot
-        data_to_plot =torch.Tensor(obs_un.reshape(-1, *self.observation_space.shape)).to(device)
-        # Plotting measure 
-        m_n = classifier(data_to_plot).detach().cpu().numpy().squeeze(-1)
-        # normalize
-        # m_n = (m_n - m_n.mean()) / m_n.std()
-        # data to plot
-        data_to_plot = data_to_plot.detach().cpu().numpy()
-        # Plotting the environment
-        self.ax.scatter(data_to_plot[:,self.coverage_idx[0]], data_to_plot[:,self.coverage_idx[1]], s=1, c = m_n, cmap='viridis')
-        # plot obs train
-        self.ax.scatter(obs_un_train[:,self.coverage_idx[0]], obs_un_train[:,self.coverage_idx[1]], s=1, c='b')
+    def gif(self, obs_un, obs_un_train, obs, classifier, device , z_un = None): 
+        with torch.no_grad():
+            # clear the plot
+            self.ax.clear()
+            # data  to plot
+            data_to_plot =torch.Tensor(obs_un.reshape(-1, *self.observation_space.shape)).to(device)
+            # Plotting measure 
+            m_n = classifier(data_to_plot)
+            mask =torch.nonzero(m_n> 0, as_tuple=True)[0]
+            mask_z =torch.nonzero(m_n< 0, as_tuple=True)[0]
+            m_n = m_n.detach().cpu().numpy().squeeze(-1)
+            # normalize
+            # m_n = (m_n - m_n.mean()) / m_n.std()
+            # data to plot
+            data_to_plot = data_to_plot.detach().cpu().numpy()
+            # Plotting the environment
+            self.ax.scatter(data_to_plot[:,self.coverage_idx[0]], data_to_plot[:,self.coverage_idx[1]], s=1, c = m_n, cmap='viridis')
+            # plot obs train
+            # self.ax.scatter(data_to_plot[mask,self.coverage_idx[0]], data_to_plot[mask,self.coverage_idx[1]], s=1, c='g')
+            # self.ax.scatter(data_to_plot[mask_z,self.coverage_idx[0]], data_to_plot[mask_z,self.coverage_idx[1]], s=1, c='r')
+            self.ax.scatter(obs_un_train[:,self.coverage_idx[0]], obs_un_train[:,self.coverage_idx[1]], s=1, c='b', alpha=0.5)
+            data_obs = obs.reshape(-1, *self.observation_space.shape).detach().cpu().numpy()
+            self.ax.scatter(data_obs[:,self.coverage_idx[0]], data_obs[:,self.coverage_idx[1]], s=1, c='black')
+
         # Bounds
         self.ax.set_xlim([self.render_settings['x_lim'][0], self.render_settings['x_lim'][1]])
         self.ax.set_ylim([self.render_settings['y_lim'][0], self.render_settings['y_lim'][1]])
@@ -148,6 +173,20 @@ class Wenv(gym.Env):
 
     def parser_robotics(self, obs):
         return obs['observation']
+    
+    def parser_ram_atari(self): 
+        ram = self.env.unwrapped.ale.getRAM()
+        if 'Montezuma' in self.env_id : 
+            return {'x' : 2*((ram[42]/255)-0.5), 'y' : 2*((ram[43]/255)-0.5)}
+        elif 'Pitfall' in self.env_id : 
+            return {'x': 2*((ram[97]/255)-0.5), 'y': 2*((ram[105]/255)-0.5)}
+        else : 
+            raise
+
+    def update_coverage(self, obs, info=None):
+        # update coverage
+        if info is None:
+            self.matrix_coverage[:, i] = obs[ : , self.coverage_idx]
 if __name__ == '__main__':
     import envs
     # Maze
