@@ -102,7 +102,7 @@ def parse_args():
     parser.add_argument("--classifier-frequency", type=int, default=1)
     parser.add_argument("--classifier-epochs", type=int, default=8)
     parser.add_argument("--feature-extractor", type=lambda x: bool(strtobool(x)), default=False)
-    parser.add_argument("--lipshitz", type=lambda x: bool(strtobool(x)), default=False)
+    parser.add_argument("--lipshitz", type=lambda x: bool(strtobool(x)), default=True)
     parser.add_argument("--frac-wash", type=float, default=1/4, help="fraction of the buffer to wash")
     parser.add_argument("--tau-exp-rho", type=float, default=0.5)
     parser.add_argument("--start-explore", type=int, default=8)
@@ -114,7 +114,7 @@ def parse_args():
 
     # n agent
     parser.add_argument("--n-agent", type=int, default=6)
-    parser.add_argument("--lamda-im", type=float, default=10.0)
+    parser.add_argument("--lamda-im", type=float, default=1.0)
     parser.add_argument("--ratio-reward", type=float, default=1.0)
     args = parser.parse_args()
     args.num_envs = args.n_agent

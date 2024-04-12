@@ -52,7 +52,7 @@ def parse_args():
     parser.add_argument("--episodic-return", type=bool, default=True)
 
     # Algorithm specific arguments
-    parser.add_argument("--env-id", type=str, default="HalfCheetah-v3",
+    parser.add_argument("--env-id", type=str, default="Maze-Ur", 
         help="the id of the environment")
     parser.add_argument("--total-timesteps", type=int, default=1000000,
         help="total timesteps of the experiments")
@@ -86,10 +86,10 @@ def parse_args():
         help="the surrogate clipping coefficient for mask")
     parser.add_argument("--clip-vloss", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="Toggles whether or not to use a clipped loss for the value function, as per the paper.")
-    parser.add_argument("--ent-coef", type=float, default=0.05,
+    parser.add_argument("--ent-coef", type=float, default=0.1,
         help="coefficient of the entropy")
-    parser.add_argument("--ent-coef-mask", type=float, default=0.1,
-        help="coefficient of the entropy")
+    # parser.add_argument("--ent-coef-mask", type=float, default=0.1,
+    #     help="coefficient of the entropy")
     parser.add_argument("--vf-coef", type=float, default=1.0,
         help="coefficient of the value function")
     parser.add_argument("--max-grad-norm", type=float, default=0.5,
@@ -109,7 +109,7 @@ def parse_args():
     parser.add_argument("--ratio-reward", type=float, default=1.0)
     parser.add_argument("--treshold-entropy", type=float, default=0.0)
     parser.add_argument("--treshold-success", type=float, default=0.0)
-    parser.add_argument("--per-threshold", type=float, default=0.5)
+    parser.add_argument("--per-threshold", type=float, default=0.75)
     parser.add_argument("--per-max-step", type=float, default=0.75)
     parser.add_argument("--adaptative-success-bool", type=lambda x: bool(strtobool(x)), default=False)
     parser.add_argument("--update-un-frequency", type=int, default=1)

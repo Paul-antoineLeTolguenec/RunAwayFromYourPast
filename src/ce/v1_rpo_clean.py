@@ -52,7 +52,7 @@ def parse_args():
     parser.add_argument("--episodic-return", type=bool, default=True)
 
     # PPO
-    parser.add_argument("--env-id", type=str, default="HalfCheetah-v3",
+    parser.add_argument("--env-id", type=str, default="Hopper-v3",
         help="the id of the environment")
     parser.add_argument("--total-timesteps", type=int, default=1000000,
         help="total timesteps of the experiments")
@@ -64,7 +64,7 @@ def parse_args():
         help="the number of parallel game environments")
     parser.add_argument("--num-steps", type=int, default=2048,
         help="the number of steps to run in each environment per policy rollout")
-    parser.add_argument("--num_rollouts", type=int, default=2,
+    parser.add_argument("--num_rollouts", type=int, default=4,
         help="the number of rollouts ")
     parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="Toggle learning rate annealing for policy and value networks")
@@ -74,7 +74,7 @@ def parse_args():
         help="the lambda for the general advantage estimation")
     parser.add_argument("--num-minibatches", type=int, default=32,
         help="the number of mini-batches")
-    parser.add_argument("--minibatch-size", type=int, default=64,
+    parser.add_argument("--minibatch-size", type=int, default=128,
                         help="the size of the mini-batch")
     parser.add_argument("--update-epochs", type=int, default=16,
         help="the K epochs to update the policy")
@@ -82,7 +82,7 @@ def parse_args():
         help="Toggles advantages normalization")
     parser.add_argument("--clip-coef", type=float, default=0.2,
         help="the surrogate clipping coefficient")
-    parser.add_argument("--clip-coef-mask", type=float, default=0.2,
+    parser.add_argument("--clip-coef-mask", type=float, default=0.4,
         help="the surrogate clipping coefficient for mask")
     parser.add_argument("--clip-vloss", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="Toggles whether or not to use a clipped loss for the value function, as per the paper.")
@@ -96,7 +96,7 @@ def parse_args():
         help="the maximum norm for the gradient clipping")
     parser.add_argument("--target-kl", type=float, default=None,
         help="the target KL divergence threshold")
-    parser.add_argument("--rpo-alpha", type=float, default=0.1)
+    parser.add_argument("--rpo-alpha", type=float, default=0.5)
     # CLASIFIER
     parser.add_argument("--classifier-lr", type=float, default=1e-3)
     parser.add_argument("--classifier-batch-size", type=int, default=256)
@@ -105,15 +105,14 @@ def parse_args():
     parser.add_argument("--classifier-epochs", type=int, default=8)
     parser.add_argument("--feature-extractor", type=lambda x: bool(strtobool(x)), default=False)
     parser.add_argument("--lipshitz", type=lambda x: bool(strtobool(x)), default=True)
-    parser.add_argument("--tau-exp-rho", type=float, default=0.5) # 1.0
     parser.add_argument("--frac-wash", type=float, default=1/4, help="fraction of the buffer to wash")
     parser.add_argument("--start-explore", type=int, default=1)
     parser.add_argument("--ratio-reward", type=float, default=1.0)
     parser.add_argument("--treshold-entropy", type=float, default=0.0)
     parser.add_argument("--treshold-success", type=float, default=0.0)
-    parser.add_argument("--per-threshold", type=float, default=0.75)
-    parser.add_argument("--per-max-step", type=float, default=0.75)
-    parser.add_argument("--adaptative-success-bool", type=lambda x: bool(strtobool(x)), default=False)
+    parser.add_argument("--per-threshold", type=float, default=3/4)
+    parser.add_argument("--per-max-step", type=float, default=3/4)
+    parser.add_argument("--nb_success", type=int, default=8)
     parser.add_argument("--update-un-frequency", type=int, default=1)
     parser.add_argument("--ratio-speed", type=float, default=1.0)
     args = parser.parse_args()
@@ -149,6 +148,19 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     torch.nn.init.constant_(layer.bias, bias_const)
     return layer
 
+class CountSuccess:
+    def __init__(self, n_success):
+        self.n_success = n_success
+        self.success = 0
+    def update(self, success_epoch):
+        self.success = self.success + 1 if success_epoch  else 0
+    def get(self):
+        if self.success >= self.n_success : 
+            self.success = 0
+            return True
+        else:
+            return False
+    
 
 class Agent(nn.Module):
     def __init__(self, envs, rpo_alpha):
@@ -197,11 +209,11 @@ def update_train(obs_un, obs_un_train, frac,capacity,
     idx = np.random.randint(0, max(obs_un.shape[0]-max_steps*n_rollouts*n_past*n_envs,1), size = n_batch)
     batch_obs_un = obs_un[idx]
     # probs batch un
-    batch_probs_un = (torch.sigmoid(classifier(torch.Tensor(batch_obs_un).to(device)))).detach().cpu().numpy().squeeze(-1)
+    batch_probs_un = (torch.sigmoid(classifier(torch.Tensor(batch_obs_un).to(device)))).detach().cpu().numpy().squeeze(-1) * 0 +1
     batch_probs_un_norm = batch_probs_un/batch_probs_un.sum()
     idx_replace = np.random.choice(batch_obs_un.shape[0], n_replace, p=batch_probs_un_norm)
     # probs un train
-    probs_un_train = (1-torch.sigmoid(classifier(torch.Tensor(obs_un_train).to(device)))).detach().cpu().numpy().squeeze(-1)
+    probs_un_train = (1-torch.sigmoid(classifier(torch.Tensor(obs_un_train).to(device)))).detach().cpu().numpy().squeeze(-1) * 0 +1
     probs_un_train_norm = probs_un_train/probs_un_train.sum()
     idx_remove = np.random.choice(obs_un_train.shape[0], n_replace, p=probs_un_train_norm)
     # replace
@@ -290,6 +302,7 @@ if __name__ == "__main__":
                             feature_extractor=args.feature_extractor, 
                             env_id=args.env_id).to(device)
     classifier_optimizer = optim.Adam(classifier.parameters(), lr=args.classifier_lr, eps=1e-5)
+    cs = CountSuccess(args.nb_success)
     # ALGO Logic: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
     actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
@@ -356,10 +369,7 @@ if __name__ == "__main__":
             for epoch_classifier in range(classifier_epochs):
                 # sample rho_n
                 idx_step_rho = np.random.randint(0, b_batch_obs_rho_n.shape[0], size = args.classifier_batch_size)
-                # idx_step_rho = np.random.randint(0, b_batch_obs_rho_n.shape[1], size = args.classifier_batch_size)
-                # idx_step_rho = (exp_dec(args.classifier_batch_size,tau = args.tau_exp_rho)*max_steps).astype(int)
                 # sample un_n
-                # idx_step_un = np.random.choice(b_batch_obs_un.shape[0], p=b_batch_probs_un, size = args.classifier_batch_size, replace=True)
                 idx_step_un = np.random.randint(0, b_batch_obs_un.shape[0], size = args.classifier_batch_size)
                 # mini batch
                 mb_rho_n = b_batch_obs_rho_n[idx_step_rho]
@@ -381,14 +391,14 @@ if __name__ == "__main__":
         # mask entropy
         mask_entropy = (args.treshold_entropy <= rewards_nn).float()
         # success
-        # success =  (rewards_nn.mean(dim=0) >= args.treshold_success).item() if not args.adaptative_success_bool else (rewards_nn.mean(dim=0) >= adaptative_success).item()
-        success = (((rewards_nn >= args.treshold_entropy).float().mean().item() >= args.per_threshold) & (rewards_nn.mean(dim=0) >= args.treshold_success)).item()
-        print('(rewards_nn >= args.treshold_entropy).mean().item()',(rewards_nn >= args.treshold_entropy).float().mean().item())
-        # adaptative success
-        adaptative_success = max(adaptative_success, rewards_nn.mean(dim=0).item()) if success else max(min(adaptative_success, rewards_nn.mean(dim=0).item()),args.treshold_success)
+        cs.update((((rewards_nn >= args.treshold_entropy).float().mean().item() >= args.per_threshold) & (rewards_nn.mean(dim=0) >= args.treshold_success)).item())
+        success = cs.get()
+        
 
         ########################### UPDATE THE BUFFER ############################
         # obs_un
+        # mask_add =  (1 - mask_obs_rho.float()).bool()
+        # obs_un, obs_latent = update_obs(obs_un, obs_latent, obs[mask_add], args, success, update, device)
         obs_un, obs_latent = update_obs(obs_un, obs_latent, obs, args, success, update, device)
         # obs_train & probs_train 
         obs_un_train = obs_un[:args.classifier_memory].clone() if (obs_un_train is None or obs_un_train.shape[0] < args.classifier_memory) else (update_train(obs_un, obs_un_train, frac = args.frac_wash, 
@@ -419,7 +429,7 @@ if __name__ == "__main__":
         b_advantages = advantages.reshape(-1)
         b_returns = returns.reshape(-1)
         b_values = values.reshape(-1)
-
+        b_mask = mask_entropy.reshape(-1)
         # Optimizing the policy and value network
         b_inds = np.arange(args.batch_size)
         clipfracs = []
@@ -432,7 +442,7 @@ if __name__ == "__main__":
                 _, newlogprob, entropy, newvalue = agent.get_action_and_value(b_obs[mb_inds], b_actions[mb_inds])
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()
-
+                mask_mb = b_mask[mb_inds]
                 with torch.no_grad():
                     # calculate approx_kl http://joschu.net/blog/kl-approx.html
                     old_approx_kl = (-logratio).mean()
@@ -448,7 +458,7 @@ if __name__ == "__main__":
                 pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - args.clip_coef, 1 + args.clip_coef)
                 pg_loss3 = -mb_advantages * torch.clamp(ratio, 1 - args.clip_coef_mask, 1 + args.clip_coef_mask)
                 # pg_loss = torch.max(pg_loss1, pg_loss2).mean()
-                pg_loss = (torch.max(pg_loss1, pg_loss2)*(1-mask_entropy[mb_inds]) + pg_loss3*mask_entropy[mb_inds]).mean()
+                pg_loss = (torch.max(pg_loss1, pg_loss2)*(1-mask_mb) + torch.max(pg_loss1, pg_loss3)*mask_mb).mean()
 
                 # Value loss
                 newvalue = newvalue.view(-1)
@@ -465,7 +475,7 @@ if __name__ == "__main__":
                 else:
                     v_loss = 0.5 * ((newvalue - b_returns[mb_inds]) ** 2).mean()
 
-                entropy_loss = entropy.mean()
+                entropy_loss = (entropy*mask_mb).mean()
                 loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
 
                 optimizer.zero_grad()
