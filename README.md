@@ -1,6 +1,11 @@
 # contrastive_exploration
 
 # FIRST THING TO DO
+* MAKING V1 WORK : 
+- mask 0>logrho
+- keeb  safe data
+
+
 * Reward for DUCB : Add Mutual Information reward (?)
 * Whopper check 
 * setup wenv then get back to baselines

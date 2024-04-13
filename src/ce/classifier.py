@@ -11,8 +11,8 @@ class Classifier(torch.nn.Module):
                 w_old = 0.0001, learn_z = False, 
                 n_agent = 1, n_reconf = 0, 
                 env_id = None,
-                spectral_coef = 1e-2,
-                bound_spectral = 1.0,
+                spectral_coef = 5e-2,
+                bound_spectral = 1,
                 iter_lip = 1,
                 feature_extractor = False):
         super(Classifier, self).__init__()
@@ -47,10 +47,6 @@ class Classifier(torch.nn.Module):
                 self.fcz1 = torch.nn.Linear(config[env_id]['coverage_idx'].shape[0], 128,device=device)
                 self.fcz2 = torch.nn.Linear(128, 64, device=device)
                 self.fcz3 =  torch.nn.Linear(64, n_agent, device=device)
-            # elif lipshitz:
-            #     self.fcz1 = spectral_norm(torch.nn.Linear(observation_space.shape[0], 128,device=device), n_power_iterations =iter_lip)
-            #     self.fcz2 = spectral_norm(torch.nn.Linear(128, 64, device=device), n_power_iterations =iter_lip)
-            #     self.fcz3 = spectral_norm(torch.nn.Linear(64, n_agent, device=device), n_power_iterations =iter_lip)
             else:
                 self.fcz1 = torch.nn.Linear(observation_space.shape[0], 128,device=device)
                 self.fcz2 = torch.nn.Linear(128, 64, device=device)
@@ -60,8 +56,11 @@ class Classifier(torch.nn.Module):
     def forward(self, x):
         x = self.feature(x) if self.feature_extractor else x
         x = self.relu(self.fc1(x))
+        x = self.bound_spectral * x if self.lipshitz else x
         x = self.relu(self.fc2(x))
+        x = self.bound_spectral * x if self.lipshitz else x
         x = self.fc3(x)
+        x = self.bound_spectral * x if self.lipshitz else x
         # return x
         return torch.clamp(x, self.lim_down, self.lim_up)
     

@@ -53,7 +53,7 @@ def parse_args():
     parser.add_argument("--episodic-return", type=bool, default=True)
 
     # PPO
-    parser.add_argument("--env-id", type=str, default="Maze-Easy",
+    parser.add_argument("--env-id", type=str, default="Maze-Ur",
         help="the id of the environment")
     parser.add_argument("--total-timesteps", type=int, default=int(1e7),
         help="total timesteps of the experiments")
@@ -65,7 +65,7 @@ def parse_args():
         help="the number of parallel game environments")
     parser.add_argument("--num-steps", type=int, default=2048,
         help="the number of steps to run in each environment per policy rollout")
-    parser.add_argument("--num_rollouts", type=int, default=2,
+    parser.add_argument("--num_rollouts", type=int, default=4,
         help="the number of rollouts ")
     parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="Toggle learning rate annealing for policy and value networks")
@@ -81,7 +81,7 @@ def parse_args():
         help="the K epochs to update the policy")
     parser.add_argument("--norm-adv", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggles advantages normalization")
-    parser.add_argument("--clip-coef", type=float, default=0.2,
+    parser.add_argument("--clip-coef", type=float, default=0.1,
         help="the surrogate clipping coefficient")
     parser.add_argument("--clip-coef-mask", type=float, default=0.4,
         help="the surrogate clipping coefficient for mask")
@@ -89,7 +89,7 @@ def parse_args():
         help="Toggles whether or not to use a clipped loss for the value function, as per the paper.")
     parser.add_argument("--ent-coef", type=float, default=0.0,
         help="coefficient of the entropy")
-    parser.add_argument("--vf-coef", type=float, default=1.0,
+    parser.add_argument("--vf-coef", type=float, default=10.0,
         help="coefficient of the value function")
     parser.add_argument("--max-grad-norm", type=float, default=0.5,
         help="the maximum norm for the gradient clipping")
@@ -104,15 +104,15 @@ def parse_args():
     parser.add_argument("--classifier-epochs", type=int, default=8)
     parser.add_argument("--feature-extractor", type=lambda x: bool(strtobool(x)), default=False)
     parser.add_argument("--lipshitz", type=lambda x: bool(strtobool(x)), default=False)
-    parser.add_argument("--frac-wash", type=float, default=1/4, help="fraction of the buffer to wash")
+    parser.add_argument("--frac-wash", type=float, default=1/8, help="fraction of the buffer to wash")
     parser.add_argument("--tau-exp-rho", type=float, default=0.5)
-    parser.add_argument("--start-explore", type=int, default=128)
+    parser.add_argument("--start-explore", type=int, default=8)
     parser.add_argument("--treshold-entropy", type=float, default=0.0)
     parser.add_argument("--treshold-success", type=float, default=0.0)
     parser.add_argument("--update-un-frequency", type=int, default=1)
-    parser.add_argument("--per-threshold", type=float, default=2/4)
-    parser.add_argument("--per-max-step", type=float, default=2/4)
-    parser.add_argument("--n-success", type=int, default=4)
+    parser.add_argument("--per-threshold", type=float, default=3/4)
+    parser.add_argument("--per-max-step", type=float, default=3/4)
+    parser.add_argument("--n-success", type=int, default=2)
 
     # n agent
     parser.add_argument("--n-agent", type=int, default=4)
@@ -401,8 +401,6 @@ if __name__ == "__main__":
         b_batch_z_rho_n = zs.reshape(-1, 1)
         # train the classifier
         if obs_un_train is not None and obs_un_train.shape[0] >= args.classifier_memory :  
-            print('un_n_train',obs_un_train.shape[0])
-            print('z_un_train',z_un_train.shape[0])
             # un_n
             b_batch_obs_un = obs_un_train
             # classifier_epochs
@@ -458,16 +456,15 @@ if __name__ == "__main__":
         # obs_un add 
         for idx in range(args.n_agent):
             z_idx = z[idx].item() - 1
-            obs_un, obs_latent[idx], z_un, z_latent[idx] = update_obs(obs_un, z_un, obs_latent[idx], z_latent[idx], obs_permute[z_idx], zs_permute[z_idx], args, success_per_agent[z_idx], update, device)
-            # obs_un, obs_latent[idx], z_un, z_latent[idx] = update_obs(obs_un, z_un, obs_latent[idx], z_latent[idx], obs_permute[z_idx], zs_permute[z_idx], args, True, update, device)
+            (obs_un, z_un) = (obs_permute[z_idx], zs_permute[z_idx]) if (obs_un is None) else (torch.cat([obs_un, obs_permute[z_idx]], dim=0), torch.cat([z_un, zs_permute[z_idx]], dim=0))
 
         # obs_train & probs_train 
-        obs_un_train, z_un_train = (obs_un[:args.classifier_memory].clone(), z_un[:args.classifier_memory].clone()) if (obs_un_train is None or obs_un_train.shape[0] < args.classifier_memory) else (update_train(obs_un, obs_un_train, 
-                                                                                                                                            z_un, z_un_train, 
-                                                                                                                                            frac = args.frac_wash, 
-                                                                                                                                            capacity = args.classifier_memory, n_past = args.start_explore, 
-                                                                                                                                            n_rollouts = args.num_rollouts, max_steps = max_steps, 
-                                                                                                                                            n_envs = args.num_envs, classifier = classifier, device = device))  if (success_per_agent.any() and update%args.update_un_frequency==0) else (obs_un_train, z_un_train)
+        obs_un_train, z_un_train = update_train(obs_un, obs_un_train, 
+                                                z_un, z_un_train, 
+                                                frac = args.frac_wash, 
+                                                capacity = args.classifier_memory, n_past = args.start_explore, 
+                                                n_rollouts = args.num_rollouts, max_steps = max_steps, 
+                                                n_envs = args.num_envs, classifier = classifier, device = device)  if (success_per_agent.any() and update%args.update_un_frequency==0) else (obs_un_train, z_un_train)
             
         ########################### PPO UPDATE ###############################
        

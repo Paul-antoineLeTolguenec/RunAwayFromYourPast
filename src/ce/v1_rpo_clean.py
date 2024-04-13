@@ -52,7 +52,7 @@ def parse_args():
     parser.add_argument("--episodic-return", type=bool, default=True)
 
     # PPO
-    parser.add_argument("--env-id", type=str, default="Hopper-v3",
+    parser.add_argument("--env-id", type=str, default="Walker2d-v3",
         help="the id of the environment")
     parser.add_argument("--total-timesteps", type=int, default=1000000,
         help="total timesteps of the experiments")
@@ -76,11 +76,11 @@ def parse_args():
         help="the number of mini-batches")
     parser.add_argument("--minibatch-size", type=int, default=128,
                         help="the size of the mini-batch")
-    parser.add_argument("--update-epochs", type=int, default=16,
+    parser.add_argument("--update-epochs", type=int, default= 16,
         help="the K epochs to update the policy")
     parser.add_argument("--norm-adv", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggles advantages normalization")
-    parser.add_argument("--clip-coef", type=float, default=0.2,
+    parser.add_argument("--clip-coef", type=float, default=0.1,
         help="the surrogate clipping coefficient")
     parser.add_argument("--clip-coef-mask", type=float, default=0.4,
         help="the surrogate clipping coefficient for mask")
@@ -105,14 +105,14 @@ def parse_args():
     parser.add_argument("--classifier-epochs", type=int, default=8)
     parser.add_argument("--feature-extractor", type=lambda x: bool(strtobool(x)), default=False)
     parser.add_argument("--lipshitz", type=lambda x: bool(strtobool(x)), default=True)
-    parser.add_argument("--frac-wash", type=float, default=1/4, help="fraction of the buffer to wash")
+    parser.add_argument("--frac-wash", type=float, default=1/8, help="fraction of the buffer to wash")
     parser.add_argument("--start-explore", type=int, default=1)
     parser.add_argument("--ratio-reward", type=float, default=1.0)
     parser.add_argument("--treshold-entropy", type=float, default=0.0)
     parser.add_argument("--treshold-success", type=float, default=0.0)
     parser.add_argument("--per-threshold", type=float, default=3/4)
     parser.add_argument("--per-max-step", type=float, default=3/4)
-    parser.add_argument("--nb_success", type=int, default=8)
+    parser.add_argument("--nb_success", type=int, default=4)
     parser.add_argument("--update-un-frequency", type=int, default=1)
     parser.add_argument("--ratio-speed", type=float, default=1.0)
     args = parser.parse_args()
@@ -123,21 +123,13 @@ def parse_args():
 
 def make_env(env_id, idx, capture_video, run_name):
     def thunk():
-        # if capture_video:
-        #     env = gym.make(env_id, render_mode="rgb_array")
-        # else:
-        #     env = gym.make(env_id) if env_type == "gym" else Maze(name=env_id)
         env = Wenv(env_id=env_id, xp_id=run_name, **config[env_id])
         env = gym.wrappers.FlattenObservation(env)  # deal with dm_control's Dict observation space
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
             if idx == 0:
                 env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-        # env = gym.wrappers.ClipAction(env)
-        # env = gym.wrappers.NormalizeObservation(env)
-        # env = gym.wrappers.TransformObservation(env, lambda obs: np.clip(obs, -10, 10))
-        # env = gym.wrappers.NormalizeReward(env, gamma=gamma)
-        # env = gym.wrappers.TransformReward(env, lambda reward: np.clip(reward, -10, 10))
+        env = gym.wrappers.ClipAction(env)
         return env
 
     return thunk
@@ -185,12 +177,13 @@ class Agent(nn.Module):
     def get_value(self, x):
         return self.critic(x)
 
-    def get_action_and_value(self, x, action=None):
+    def get_action_and_value(self, x, action=None, classifier = None):
         action_mean = self.actor_mean(x)
         action_logstd = self.actor_logstd.expand_as(action_mean)
         action_std = torch.exp(action_logstd)
-        probs = Normal(action_mean, action_std)
+        probs = Normal(action_mean, action_std) 
         if action is None:
+            probs = probs if classifier(x) > 0 else Normal(action_mean, action_std/10.0)
             action = probs.sample()
         else:  # new to RPO
             # sample again to add stochasticity to the policy
@@ -209,34 +202,18 @@ def update_train(obs_un, obs_un_train, frac,capacity,
     idx = np.random.randint(0, max(obs_un.shape[0]-max_steps*n_rollouts*n_past*n_envs,1), size = n_batch)
     batch_obs_un = obs_un[idx]
     # probs batch un
-    batch_probs_un = (torch.sigmoid(classifier(torch.Tensor(batch_obs_un).to(device)))).detach().cpu().numpy().squeeze(-1) * 0 +1
+    batch_probs_un = (torch.sigmoid(classifier(torch.Tensor(batch_obs_un).to(device)))).detach().cpu().numpy().squeeze(-1) 
     batch_probs_un_norm = batch_probs_un/batch_probs_un.sum()
     idx_replace = np.random.choice(batch_obs_un.shape[0], n_replace, p=batch_probs_un_norm)
+    # idx_replace = np.random.randint(0, obs_un_train.shape[0], size = n_replace)
     # probs un train
-    probs_un_train = (1-torch.sigmoid(classifier(torch.Tensor(obs_un_train).to(device)))).detach().cpu().numpy().squeeze(-1) * 0 +1
+    probs_un_train = (1-torch.sigmoid(classifier(torch.Tensor(obs_un_train).to(device)))).detach().cpu().numpy().squeeze(-1) 
     probs_un_train_norm = probs_un_train/probs_un_train.sum()
     idx_remove = np.random.choice(obs_un_train.shape[0], n_replace, p=probs_un_train_norm)
+    # idx_remove = np.random.randint(0, obs_un_train.shape[0], size = n_replace)
     # replace
     obs_un_train[idx_remove] = batch_obs_un[idx_replace]
     return obs_un_train
-
-def update_obs(obs_un, obs_latent, obs, args, success, update,  device):
-    if obs_un is None:
-        obs_un = obs.reshape(-1, *envs.single_observation_space.shape).clone()
-        obs_latent = obs.reshape(-1, *envs.single_observation_space.shape).clone()
-    else:
-        if update <  args.start_explore : 
-            obs_un = torch.cat([obs_un, obs.reshape(-1, *envs.single_observation_space.shape).clone()], dim=0)
-            obs_latent = torch.cat([obs_latent, obs.reshape(-1, *envs.single_observation_space.shape).clone()], dim=0)
-        elif success:
-            if obs_latent.shape[0] > 0:
-                obs_un = torch.cat([obs_un, obs_latent[:args.num_steps*args.num_envs].clone()], dim=0) 
-                obs_latent = obs_latent[args.num_steps*args.num_envs:].clone()
-            else  :
-                obs_un = torch.cat([obs_un, obs.reshape(-1, *envs.single_observation_space.shape).clone()], dim=0)
-        else:
-            obs_latent = torch.cat([obs_latent, obs.reshape(-1, *envs.single_observation_space.shape).clone()], dim=0)
-    return obs_un, obs_latent
 
 if __name__ == "__main__":
     args = parse_args()
@@ -311,6 +288,19 @@ if __name__ == "__main__":
     rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
     dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)).to(device)
+    # backup
+    obs_backup = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
+    actions_backup = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
+    times_backup = torch.zeros((args.num_steps, args.num_envs) + (1,)).to(device)
+    logprobs_backup = torch.zeros((args.num_steps, args.num_envs)).to(device)
+    rewards_backup = torch.zeros((args.num_steps, args.num_envs)).to(device)
+    dones_backup = torch.zeros((args.num_steps, args.num_envs)).to(device)
+    values_backup = torch.zeros((args.num_steps, args.num_envs)).to(device)
+    advantages_backup = torch.zeros((args.num_steps, args.num_envs)).to(device)
+    returns_backup = torch.zeros((args.num_steps, args.num_envs)).to(device)
+    next_done_backup = torch.zeros(args.num_envs).to(device)
+    next_obs_backup = torch.zeros((args.num_envs,) + envs.single_observation_space.shape).to(device)
+
     # full replay buffer
     obs_un =  None
     obs_latent = None
@@ -341,7 +331,7 @@ if __name__ == "__main__":
 
             # ALGO LOGIC: action logic
             with torch.no_grad():
-                action, logprob, _, value = agent.get_action_and_value(next_obs)
+                action, logprob, _, value = agent.get_action_and_value(next_obs, classifier = classifier)
                 values[step] = value.flatten()
             actions[step] = action
             logprobs[step] = logprob
@@ -397,14 +387,14 @@ if __name__ == "__main__":
 
         ########################### UPDATE THE BUFFER ############################
         # obs_un
-        # mask_add =  (1 - mask_obs_rho.float()).bool()
-        # obs_un, obs_latent = update_obs(obs_un, obs_latent, obs[mask_add], args, success, update, device)
-        obs_un, obs_latent = update_obs(obs_un, obs_latent, obs, args, success, update, device)
-        # obs_train & probs_train 
-        obs_un_train = obs_un[:args.classifier_memory].clone() if (obs_un_train is None or obs_un_train.shape[0] < args.classifier_memory) else (update_train(obs_un, obs_un_train, frac = args.frac_wash, 
-                                                                                                                                            capacity = args.classifier_memory, n_past = args.start_explore, 
-                                                                                                                                            n_rollouts = args.num_rollouts, max_steps = max_steps, 
-                                                                                                                                            n_envs = args.num_envs, classifier = classifier, device = device))  if (success or update % args.update_un_frequency == 0) else obs_un_train
+        # mask_add =  ~mask_obs_rho
+        obs_un = torch.cat([obs_un, obs.reshape(-1, *envs.single_observation_space.shape).clone()], dim=0) if (obs_un is not None) else obs.reshape(-1, *envs.single_observation_space.shape).clone()
+        # obs_train & probs_train                                                                                                                       
+        obs_un_train = update_train(obs_un, obs_un_train, frac = args.frac_wash, 
+                                    capacity = args.classifier_memory, n_past = args.start_explore, 
+                                    n_rollouts = args.num_rollouts, max_steps = max_steps, 
+                                    n_envs = args.num_envs, classifier = classifier, device = device)  if success  else obs_un_train
+        
 
         ########################### PPO UPDATE ###############################
         with torch.no_grad():
@@ -421,37 +411,70 @@ if __name__ == "__main__":
                 delta = rewards[t] + args.gamma * nextvalues * nextnonterminal - values[t]
                 advantages[t] = lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
             returns = advantages + values
+        
+        ########################### BACKUP BUFFER ############################
+        if update == 1 or classifier(obs_backup).mean().item() < classifier(obs).mean().item():
+            print('update backup')
+            obs_backup = obs.clone()
+            actions_backup = actions.clone()
+            times_backup = times.clone()
+            logprobs_backup = logprobs.clone()
+            rewards_backup = rewards.clone()
+            dones_backup = dones.clone()
+            values_backup = values.clone()
+            advantages_backup = advantages.clone()
+            returns_backup = returns.clone()
+            mask_entropy_backup = mask_entropy.clone()
+            next_obs_backup = next_obs.clone()
+            next_done_backup = next_done.clone()
+        else : 
+            with torch.no_grad():
+                rewards_backup = classifier(obs_backup).squeeze(-1) * args.ratio_reward
+                next_value_backup = agent.get_value(next_obs_backup).reshape(1, -1)
+                advantages_backup = torch.zeros_like(rewards_backup).to(device)
+                lastgaelam = 0
+                for t in reversed(range(args.num_steps)):
+                    if t == args.num_steps - 1:
+                        nextnonterminal = 1.0 - next_done_backup
+                        nextvalues = next_value_backup
+                    else:
+                        nextnonterminal = 1.0 - dones_backup[t + 1]
+                        nextvalues = values_backup[t + 1]
+                    delta = rewards_backup[t] + args.gamma * nextvalues * nextnonterminal - values_backup[t]
+                    advantages_backup[t] = lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
 
         # flatten the batch
-        b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
-        b_logprobs = logprobs.reshape(-1)
-        b_actions = actions.reshape((-1,) + envs.single_action_space.shape)
-        b_advantages = advantages.reshape(-1)
-        b_returns = returns.reshape(-1)
-        b_values = values.reshape(-1)
-        b_mask = mask_entropy.reshape(-1)
+        b_obs_train = torch.cat([obs_backup, obs], dim=0).reshape(-1, *envs.single_observation_space.shape)
+        b_logprobs_train = torch.cat([logprobs_backup, logprobs], dim=0).reshape(-1)
+        b_actions_train = torch.cat([actions_backup, actions], dim=0).reshape(-1, *envs.single_action_space.shape)
+        b_advantages_train = torch.cat([advantages_backup, advantages], dim=0).reshape(-1)
+        if args.norm_adv:
+            b_advantages_train = (b_advantages_train - b_advantages_train.mean()) / (b_advantages_train.std() + 1e-8)
+        b_returns_train = torch.cat([returns_backup, returns], dim=0).reshape(-1)
+        b_values_train = torch.cat([values_backup, values], dim=0).reshape(-1)
+        b_mask_train = torch.cat([mask_entropy_backup, mask_entropy], dim=0).reshape(-1)
         # Optimizing the policy and value network
-        b_inds = np.arange(args.batch_size)
+        b_inds_train = np.arange(2*args.batch_size)
         clipfracs = []
         for epoch in range(args.update_epochs):
-            np.random.shuffle(b_inds)
-            for start in range(0, args.batch_size, args.minibatch_size):
+            np.random.shuffle(b_inds_train)
+            for start in range(0, 2*args.batch_size, args.minibatch_size):
                 end = start + args.minibatch_size
-                mb_inds = b_inds[start:end]
+                mb_inds = b_inds_train[start:end]
 
-                _, newlogprob, entropy, newvalue = agent.get_action_and_value(b_obs[mb_inds], b_actions[mb_inds])
-                logratio = newlogprob - b_logprobs[mb_inds]
+                _, newlogprob, entropy, newvalue = agent.get_action_and_value(b_obs_train[mb_inds], b_actions_train[mb_inds])
+                logratio = newlogprob - b_logprobs_train[mb_inds]
                 ratio = logratio.exp()
-                mask_mb = b_mask[mb_inds]
+                mask_mb = b_mask_train[mb_inds]
                 with torch.no_grad():
                     # calculate approx_kl http://joschu.net/blog/kl-approx.html
                     old_approx_kl = (-logratio).mean()
                     approx_kl = ((ratio - 1) - logratio).mean()
                     clipfracs += [((ratio - 1.0).abs() > args.clip_coef).float().mean().item()]
 
-                mb_advantages = b_advantages[mb_inds]
-                if args.norm_adv:
-                    mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
+                mb_advantages = b_advantages_train[mb_inds]
+                # if args.norm_adv:
+                #     mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
 
                 # Policy loss
                 pg_loss1 = -mb_advantages * ratio
@@ -463,21 +486,20 @@ if __name__ == "__main__":
                 # Value loss
                 newvalue = newvalue.view(-1)
                 if args.clip_vloss:
-                    v_loss_unclipped = (newvalue - b_returns[mb_inds]) ** 2
-                    v_clipped = b_values[mb_inds] + torch.clamp(
-                        newvalue - b_values[mb_inds],
+                    v_loss_unclipped = (newvalue - b_returns_train[mb_inds]) ** 2
+                    v_clipped = b_values_train[mb_inds] + torch.clamp(
+                        newvalue - b_values_train[mb_inds],
                         -args.clip_coef,
                         args.clip_coef,
                     )
-                    v_loss_clipped = (v_clipped - b_returns[mb_inds]) ** 2
+                    v_loss_clipped = (v_clipped - b_returns_train[mb_inds]) ** 2
                     v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
                     v_loss = 0.5 * v_loss_max.mean()
                 else:
-                    v_loss = 0.5 * ((newvalue - b_returns[mb_inds]) ** 2).mean()
+                    v_loss = 0.5 * ((newvalue - b_returns_train[mb_inds]) ** 2).mean()
 
                 entropy_loss = (entropy*mask_mb).mean()
-                loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
-
+                loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef 
                 optimizer.zero_grad()
                 loss.backward()
                 nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
@@ -487,7 +509,7 @@ if __name__ == "__main__":
                 if approx_kl > args.target_kl:
                     break
 
-        y_pred, y_true = b_values.cpu().numpy(), b_returns.cpu().numpy()
+        y_pred, y_true = b_values_train.cpu().numpy(), b_returns_train.cpu().numpy()
         var_y = np.var(y_true)
         explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
         # TRY NOT TO MODIFY: record rewards for plotting purposes

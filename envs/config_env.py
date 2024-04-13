@@ -103,7 +103,7 @@ config = {
                'max_episode_steps': 1000, 
                'terminate_when_unhealthy': True},
     'coverage_idx': np.array([0,1]),
-    'render_settings': {'x_lim': [-1, 1], 'y_lim': [0, 2]}
+    'render_settings': {'x_lim': [-10, 10], 'y_lim': [0, 2]}
 },
 "Ant-v3": {
     'type_id': 'mujoco',
