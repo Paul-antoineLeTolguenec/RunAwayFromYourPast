@@ -52,7 +52,7 @@ def parse_args():
     parser.add_argument("--episodic-return", type=bool, default=True)
 
     # PPO
-    parser.add_argument("--env-id", type=str, default="Hopper-v3",
+    parser.add_argument("--env-id", type=str, default="HalfCheetah-v3",
         help="the id of the environment")
     parser.add_argument("--total-timesteps", type=int, default=1000000,
         help="total timesteps of the experiments")
@@ -76,13 +76,13 @@ def parse_args():
         help="the number of mini-batches")
     parser.add_argument("--minibatch-size", type=int, default=128,
                         help="the size of the mini-batch")
-    parser.add_argument("--update-epochs", type=int, default= 16,
+    parser.add_argument("--update-epochs", type=int, default= 10,
         help="the K epochs to update the policy")
     parser.add_argument("--norm-adv", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggles advantages normalization")
     parser.add_argument("--clip-coef", type=float, default=0.2,
         help="the surrogate clipping coefficient")
-    parser.add_argument("--clip-coef-mask", type=float, default=0.4,
+    parser.add_argument("--clip-coef-mask", type=float, default=0.2,
         help="the surrogate clipping coefficient for mask")
     parser.add_argument("--clip-vloss", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="Toggles whether or not to use a clipped loss for the value function, as per the paper.")
@@ -90,13 +90,13 @@ def parse_args():
         help="coefficient of the entropy")
     # parser.add_argument("--ent-coef-mask", type=float, default=0.1,
     #     help="coefficient of the entropy")
-    parser.add_argument("--vf-coef", type=float, default=1.0,
+    parser.add_argument("--vf-coef", type=float, default=0.5,
         help="coefficient of the value function")
     parser.add_argument("--max-grad-norm", type=float, default=0.5,
         help="the maximum norm for the gradient clipping")
     parser.add_argument("--target-kl", type=float, default=None,
         help="the target KL divergence threshold")
-    parser.add_argument("--rpo-alpha", type=float, default=0.1)
+    parser.add_argument("--rpo-alpha", type=float, default=0.5)
     # CLASIFIER
     parser.add_argument("--classifier-lr", type=float, default=1e-3)
     parser.add_argument("--classifier-batch-size", type=int, default=256)
@@ -106,14 +106,14 @@ def parse_args():
     parser.add_argument("--feature-extractor", type=lambda x: bool(strtobool(x)), default=False)
     parser.add_argument("--lipshitz", type=lambda x: bool(strtobool(x)), default=True)
     parser.add_argument("--bound-spectral", type=float, default=1)
-    parser.add_argument("--frac-wash", type=float, default=1/8, help="fraction of the buffer to wash")
+    parser.add_argument("--frac-wash", type=float, default=1/4, help="fraction of the buffer to wash")
     parser.add_argument("--start-explore", type=int, default=1)
     parser.add_argument("--ratio-reward", type=float, default=1.0)
     parser.add_argument("--treshold-entropy", type=float, default=0.0)
     parser.add_argument("--treshold-success", type=float, default=0.0)
     parser.add_argument("--per-threshold", type=float, default=2/4)
     parser.add_argument("--per-max-step", type=float, default=2/4)
-    parser.add_argument("--nb_success", type=int, default=8)
+    parser.add_argument("--nb_success", type=int, default=4)
     parser.add_argument("--update-un-frequency", type=int, default=1)
     parser.add_argument("--ratio-speed", type=float, default=1.0)
     args = parser.parse_args()
@@ -263,7 +263,7 @@ if __name__ == "__main__":
     if args.episodic_return:
         max_steps = envs.envs[0].spec.max_episode_steps  
         args.num_steps = max_steps * args.num_rollouts
-        args.classifier_memory = max_steps*args.num_rollouts*args.num_envs 
+        args.classifier_memory = max_steps*args.num_rollouts*args.num_envs*2
     # update batch size and minibatch size
     args.batch_size = int(args.num_envs * args.num_steps)
     # print('batch_size',args.batch_size)
@@ -347,9 +347,9 @@ if __name__ == "__main__":
             
         ########################### CLASSIFIER ############################
         # rho_n
-        b_batch_obs_rho_n = obs.reshape(-1, *envs.single_observation_space.shape)
-        b_batch_times_rho_n = times.reshape(-1, 1)
-        mask_obs_rho = (b_batch_times_rho_n >= torch.max(times).item()*args.per_max_step).squeeze(-1)
+        b_batch_obs_rho_n = torch.cat([obs.reshape(-1, *envs.single_observation_space.shape), obs_backup.reshape(-1, *envs.single_observation_space.shape)], dim=0)
+        b_batch_times_rho_n = torch.cat([times.reshape(-1, 1), times_backup.reshape(-1, 1)], dim=0)
+        mask_obs_rho = (b_batch_times_rho_n >= torch.max(b_batch_times_rho_n).item()*args.per_max_step).squeeze(-1)
         b_batch_obs_rho_n = b_batch_obs_rho_n[mask_obs_rho]
         # train the classifier if obs_un_train
         if obs_un_train is not None and obs_un_train.shape[0] >= args.classifier_memory:
@@ -389,13 +389,16 @@ if __name__ == "__main__":
 
         ########################### UPDATE THE BUFFER ############################
         # obs_un
-        mask_add =  ~mask_obs_rho
-        obs_un = torch.cat([obs_un, obs.reshape(-1, *envs.single_observation_space.shape).clone()], dim=0) if (obs_un is not None) else obs.reshape(-1, *envs.single_observation_space.shape).clone()
+        # mask_add =  ~mask_obs_rho
+        if obs_un is not None :
+            obs_un = torch.cat([obs_un, obs.reshape(-1, *envs.single_observation_space.shape).clone()], dim=0) if success else obs_un
+        else : 
+            obs_un = obs.reshape(-1, *envs.single_observation_space.shape).clone()
         # obs_train & probs_train                                                                                                                       
         obs_un_train = update_train(obs_un, obs_un_train, frac = args.frac_wash, 
                                     capacity = args.classifier_memory, n_past = args.start_explore, 
                                     n_rollouts = args.num_rollouts, max_steps = max_steps, 
-                                    n_envs = args.num_envs, classifier = classifier, device = device)  if success  else obs_un_train
+                                    n_envs = args.num_envs, classifier = classifier, device = device)  if True  else obs_un_train
         
 
         ########################### PPO UPDATE ###############################
@@ -416,7 +419,6 @@ if __name__ == "__main__":
         
         ########################### BACKUP BUFFER ############################
         if update == 1 or classifier(obs_backup).mean().item() < classifier(obs).mean().item():
-            print('update backup')
             obs_backup = obs.clone()
             actions_backup = actions.clone()
             times_backup = times.clone()
@@ -444,7 +446,6 @@ if __name__ == "__main__":
                         nextvalues = values_backup[t + 1]
                     delta = rewards_backup[t] + args.gamma * nextvalues * nextnonterminal - values_backup[t]
                     advantages_backup[t] = lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
-
         # flatten the batch
         b_obs_train = torch.cat([obs_backup, obs], dim=0).reshape(-1, *envs.single_observation_space.shape)
         b_logprobs_train = torch.cat([logprobs_backup, logprobs], dim=0).reshape(-1)

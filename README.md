@@ -10,10 +10,11 @@
 
  WARNING : Replay XP doesn't work properly
 * V1 RPO SIMPLE : 
-- sample rho adaptively
+-check 
+<!-- - sample rho adaptively
 - add rho only if success
 - stop sampling un adaptively
-- keeb  safe data properly
+- keeb  safe data properly -->
 
 
 * Reward for DUCB : Add Mutual Information reward (?)

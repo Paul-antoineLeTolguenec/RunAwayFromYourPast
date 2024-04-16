@@ -107,8 +107,8 @@ class Wenv(gym.Env):
             data_to_plot =torch.Tensor(obs_un.reshape(-1, *self.observation_space.shape)).to(device)
             # Plotting measure 
             m_n = classifier(data_to_plot)
-            mask =torch.nonzero(m_n> 0, as_tuple=True)[0]
-            mask_z =torch.nonzero(m_n< 0, as_tuple=True)[0]
+            # mask =torch.nonzero(m_n> 0, as_tuple=True)[0]
+            # mask_z =torch.nonzero(m_n< 0, as_tuple=True)[0]
             m_n = m_n.detach().cpu().numpy().squeeze(-1)
             # normalize
             # m_n = (m_n - m_n.mean()) / m_n.std()
@@ -119,7 +119,7 @@ class Wenv(gym.Env):
             # plot obs train
             # self.ax.scatter(data_to_plot[mask,self.coverage_idx[0]], data_to_plot[mask,self.coverage_idx[1]], s=1, c='g')
             # self.ax.scatter(data_to_plot[mask_z,self.coverage_idx[0]], data_to_plot[mask_z,self.coverage_idx[1]], s=1, c='r')
-            # self.ax.scatter(obs_un_train[:,self.coverage_idx[0]], obs_un_train[:,self.coverage_idx[1]], s=1, c='b', alpha=0.5)
+            self.ax.scatter(obs_un_train[:,self.coverage_idx[0]].cpu(), obs_un_train[:,self.coverage_idx[1]].cpu(), s=1, c='b', alpha=0.5)
             data_obs = obs.reshape(-1, *self.observation_space.shape).detach().cpu().numpy() if obs is not None else None
             self.ax.scatter(data_obs[:,self.coverage_idx[0]], data_obs[:,self.coverage_idx[1]], s=1, c='black',alpha=0.1)  if obs is not None else None
 

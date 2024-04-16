@@ -11,7 +11,6 @@ class Classifier(torch.nn.Module):
                 w_old = 0.0001, learn_z = False, 
                 n_agent = 1, n_reconf = 0, 
                 env_id = None,
-                spectral_coef = 5e-2,
                 bound_spectral = 1,
                 iter_lip = 1,
                 feature_extractor = False):
@@ -39,7 +38,6 @@ class Classifier(torch.nn.Module):
         self.n_reconf = n_reconf
         self.feature_extractor = feature_extractor
         self.lipshitz = lipshitz
-        self.spectral_coef = spectral_coef
         self.bound_spectral = bound_spectral
         self.env_id = env_id
         if learn_z : 
@@ -94,9 +92,9 @@ class Classifier(torch.nn.Module):
         label_q = torch.ones_like(s_q)
         # label_q = self.mask_labels_q(s_q)
         # mask strategy p
-        label_p = torch.ones_like(s_p) if not self.learn_z else self.mask_labels_p(s_p)
-        # label_p = self.mask_labels_p(s_p)
-        L = -((label_q*torch.log(s_q_p)).mean() +(2*label_p*torch.log(1 - s_p_p)).mean())
+        # label_p = torch.ones_like(s_p) if not self.learn_z else self.mask_labels_p(s_p)
+        label_p = self.mask_labels_p(s_p)
+        L = -((label_q*torch.log(s_q_p)).mean() +(label_p*torch.log(1 - s_p_p)).mean())
         if self.learn_z:
             L += self.mlh_loss(batch_q, batch_q_z) + self.mlh_loss(batch_p, batch_p_z)
         # if self.lipshitz:
@@ -111,7 +109,7 @@ class Classifier(torch.nn.Module):
             label_q = torch.exp(s_q_clip/(-self.lim_down*tau))
             return label_q
        
-    def mask_labels_p(self, s_p,w=3.0): #1.0
+    def mask_labels_p(self, s_p,w=1.0): #1.0
         with torch.no_grad():
             mask_p = (0.0 <= s_p).float()
             label_p = torch.ones_like(s_p) + mask_p*w

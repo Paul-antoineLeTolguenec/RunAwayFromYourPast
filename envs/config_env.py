@@ -3,19 +3,19 @@ config = {
 ##########################       MAZE       ############################################
 "Maze-Easy": { 
     'type_id': 'maze',
-    'kwargs': {},
+    'kwargs': {'max_episode_steps': 200},
     'coverage_idx': np.array([0,1]),
     'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1]}
 },
 "Maze-Ur": { 
     'type_id': 'maze',
-    'kwargs': {},
+    'kwargs': {'max_episode_steps': 200},
     'coverage_idx': np.array([0,1]),
     'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1]}
 },
 "Maze-Hard": { 
     'type_id': 'maze',
-    'kwargs': {},
+    'kwargs': {'max_episode_steps': 200},
     'coverage_idx': np.array([0,1]),
     'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1]}
 },
