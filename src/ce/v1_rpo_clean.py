@@ -52,7 +52,7 @@ def parse_args():
     parser.add_argument("--episodic-return", type=bool, default=True)
 
     # PPO
-    parser.add_argument("--env-id", type=str, default="Walker2d-v3",
+    parser.add_argument("--env-id", type=str, default="Hopper-v3",
         help="the id of the environment")
     parser.add_argument("--total-timesteps", type=int, default=1000000,
         help="total timesteps of the experiments")
@@ -80,7 +80,7 @@ def parse_args():
         help="the K epochs to update the policy")
     parser.add_argument("--norm-adv", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggles advantages normalization")
-    parser.add_argument("--clip-coef", type=float, default=0.1,
+    parser.add_argument("--clip-coef", type=float, default=0.2,
         help="the surrogate clipping coefficient")
     parser.add_argument("--clip-coef-mask", type=float, default=0.4,
         help="the surrogate clipping coefficient for mask")
@@ -96,7 +96,7 @@ def parse_args():
         help="the maximum norm for the gradient clipping")
     parser.add_argument("--target-kl", type=float, default=None,
         help="the target KL divergence threshold")
-    parser.add_argument("--rpo-alpha", type=float, default=0.5)
+    parser.add_argument("--rpo-alpha", type=float, default=0.1)
     # CLASIFIER
     parser.add_argument("--classifier-lr", type=float, default=1e-3)
     parser.add_argument("--classifier-batch-size", type=int, default=256)
@@ -105,14 +105,15 @@ def parse_args():
     parser.add_argument("--classifier-epochs", type=int, default=8)
     parser.add_argument("--feature-extractor", type=lambda x: bool(strtobool(x)), default=False)
     parser.add_argument("--lipshitz", type=lambda x: bool(strtobool(x)), default=True)
+    parser.add_argument("--bound-spectral", type=float, default=1)
     parser.add_argument("--frac-wash", type=float, default=1/8, help="fraction of the buffer to wash")
     parser.add_argument("--start-explore", type=int, default=1)
     parser.add_argument("--ratio-reward", type=float, default=1.0)
     parser.add_argument("--treshold-entropy", type=float, default=0.0)
     parser.add_argument("--treshold-success", type=float, default=0.0)
-    parser.add_argument("--per-threshold", type=float, default=3/4)
-    parser.add_argument("--per-max-step", type=float, default=3/4)
-    parser.add_argument("--nb_success", type=int, default=4)
+    parser.add_argument("--per-threshold", type=float, default=2/4)
+    parser.add_argument("--per-max-step", type=float, default=2/4)
+    parser.add_argument("--nb_success", type=int, default=8)
     parser.add_argument("--update-un-frequency", type=int, default=1)
     parser.add_argument("--ratio-speed", type=float, default=1.0)
     args = parser.parse_args()
@@ -183,7 +184,7 @@ class Agent(nn.Module):
         action_std = torch.exp(action_logstd)
         probs = Normal(action_mean, action_std) 
         if action is None:
-            probs = probs if classifier(x) > 0 else Normal(action_mean, action_std/10.0)
+            # probs = probs if classifier(x) > 0 else Normal(action_mean, action_std/100.0)
             action = probs.sample()
         else:  # new to RPO
             # sample again to add stochasticity to the policy
@@ -277,6 +278,7 @@ if __name__ == "__main__":
                             n_agent=1, 
                             lipshitz=args.lipshitz,
                             feature_extractor=args.feature_extractor, 
+                            bound_spectral=args.bound_spectral,
                             env_id=args.env_id).to(device)
     classifier_optimizer = optim.Adam(classifier.parameters(), lr=args.classifier_lr, eps=1e-5)
     cs = CountSuccess(args.nb_success)
@@ -387,7 +389,7 @@ if __name__ == "__main__":
 
         ########################### UPDATE THE BUFFER ############################
         # obs_un
-        # mask_add =  ~mask_obs_rho
+        mask_add =  ~mask_obs_rho
         obs_un = torch.cat([obs_un, obs.reshape(-1, *envs.single_observation_space.shape).clone()], dim=0) if (obs_un is not None) else obs.reshape(-1, *envs.single_observation_space.shape).clone()
         # obs_train & probs_train                                                                                                                       
         obs_un_train = update_train(obs_un, obs_un_train, frac = args.frac_wash, 

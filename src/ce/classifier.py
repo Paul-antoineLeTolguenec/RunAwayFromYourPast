@@ -85,7 +85,7 @@ class Classifier(torch.nn.Module):
                 penalty += torch.relu(norm - self.bound_spectral)**2
         return penalty
 
-    def ce_loss_ppo(self, batch_q, batch_p, batch_q_z = None, batch_p_z =None, relabeling = True, ratio = 1.0):
+    def ce_loss_ppo(self, batch_q, batch_p, batch_q_z = None, batch_p_z =None, relabeling = True, ratio = 1.0, return_log_and_prob = False):
         s_q = self(batch_q)
         s_q_p = self.sigmoid(s_q)
         s_p = self(batch_p)
@@ -96,12 +96,14 @@ class Classifier(torch.nn.Module):
         # mask strategy p
         label_p = torch.ones_like(s_p) if not self.learn_z else self.mask_labels_p(s_p)
         # label_p = self.mask_labels_p(s_p)
-        L = -((label_q*torch.log(s_q_p)).mean() +(label_p*torch.log(1 - s_p_p)).mean())
+        L = -((label_q*torch.log(s_q_p)).mean() +(2*label_p*torch.log(1 - s_p_p)).mean())
         if self.learn_z:
             L += self.mlh_loss(batch_q, batch_q_z) + self.mlh_loss(batch_p, batch_p_z)
         # if self.lipshitz:
         #     L += self.spectral_coef * self.spectral_loss()
-        return L
+        return L 
+        #SAC specific
+        # if not return_log_and_prob else L, (s_q).mean().detach().cpu().numpy(), s_p_p.detach().cpu().numpy()
     
     def mask_labels_q(self, s_q, tau=0.5): #1.0
         with torch.no_grad():
@@ -109,7 +111,7 @@ class Classifier(torch.nn.Module):
             label_q = torch.exp(s_q_clip/(-self.lim_down*tau))
             return label_q
        
-    def mask_labels_p(self, s_p,w=1.0): #1.0
+    def mask_labels_p(self, s_p,w=3.0): #1.0
         with torch.no_grad():
             mask_p = (0.0 <= s_p).float()
             label_p = torch.ones_like(s_p) + mask_p*w

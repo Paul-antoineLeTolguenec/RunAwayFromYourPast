@@ -1,9 +1,19 @@
 # contrastive_exploration
 
 # FIRST THING TO DO
-* MAKING V1 WORK : 
-- mask 0>logrho
-- keeb  safe data
+* SAC V1 : 
+- check times classifier 
+- select last pho_n+1 properly
+- init un with \delta_0
+- adpative sample un 
+- remake criteria
+
+ WARNING : Replay XP doesn't work properly
+* V1 RPO SIMPLE : 
+- sample rho adaptively
+- add rho only if success
+- stop sampling un adaptively
+- keeb  safe data properly
 
 
 * Reward for DUCB : Add Mutual Information reward (?)

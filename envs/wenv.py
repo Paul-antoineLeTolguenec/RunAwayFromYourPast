@@ -51,8 +51,17 @@ class Wenv(gym.Env):
             if self.coverage_idx.shape[0] == 3:
                 self.figure = initialize_figure_3d(render_settings=render_settings)
 
-      
-    def reset(self, seed=0):
+    def set_all_seeds(self, seed):
+        self.seed(seed)
+        self.env.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        
+    def reset(self, seed = 0):
         # self.seed(seed)
         self.episode_length = 0
         self.episode_reward = 0
@@ -66,6 +75,8 @@ class Wenv(gym.Env):
         i['l'] = self.episode_length
         i['r'] = self.episode_reward
         return obs, i
+    
+
     def step(self, action):
         obs, reward, done, trunc, info = self.env.step(action)
         self.episode_length += 1
@@ -108,9 +119,9 @@ class Wenv(gym.Env):
             # plot obs train
             # self.ax.scatter(data_to_plot[mask,self.coverage_idx[0]], data_to_plot[mask,self.coverage_idx[1]], s=1, c='g')
             # self.ax.scatter(data_to_plot[mask_z,self.coverage_idx[0]], data_to_plot[mask_z,self.coverage_idx[1]], s=1, c='r')
-            self.ax.scatter(obs_un_train[:,self.coverage_idx[0]], obs_un_train[:,self.coverage_idx[1]], s=1, c='b', alpha=0.5)
-            data_obs = obs.reshape(-1, *self.observation_space.shape).detach().cpu().numpy()
-            self.ax.scatter(data_obs[:,self.coverage_idx[0]], data_obs[:,self.coverage_idx[1]], s=1, c='black')
+            # self.ax.scatter(obs_un_train[:,self.coverage_idx[0]], obs_un_train[:,self.coverage_idx[1]], s=1, c='b', alpha=0.5)
+            data_obs = obs.reshape(-1, *self.observation_space.shape).detach().cpu().numpy() if obs is not None else None
+            self.ax.scatter(data_obs[:,self.coverage_idx[0]], data_obs[:,self.coverage_idx[1]], s=1, c='black',alpha=0.1)  if obs is not None else None
 
         # Bounds
         self.ax.set_xlim([self.render_settings['x_lim'][0], self.render_settings['x_lim'][1]])
