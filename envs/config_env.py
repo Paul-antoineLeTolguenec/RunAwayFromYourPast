@@ -164,14 +164,18 @@ config = {
 # MontezumaRevengeNoFrameskip-v4
 "MontezumaRevengeNoFrameskip-v4": {
     'type_id': 'atari',
-    'kwargs': {'frameskip': 4},
+    'kwargs': {'frameskip': 4, 
+               'max_episode_steps': 10000, 
+               'render_mode': 'human'},
     'coverage_idx': np.array([0,1]),
     'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1]}
 },
 # PitfallNoFrameskip-v4
 "PitfallNoFrameskip-v4": {
     'type_id': 'atari',
-    'kwargs': {'frameskip': 4},
+    'kwargs': {'frameskip': 4,
+               'max_episode_steps': 10000, 
+               'render_mode': 'human'},
     'coverage_idx': np.array([0,1]),
     'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1]}
 },

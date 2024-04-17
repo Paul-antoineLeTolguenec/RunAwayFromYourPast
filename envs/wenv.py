@@ -99,7 +99,7 @@ class Wenv(gym.Env):
     def __str__(self):
         return self.env.__str__()
     
-    def gif(self, obs_un, obs_un_train, obs, classifier, device , z_un = None): 
+    def gif(self, obs_un, obs_un_train, obs, classifier, device , z_un = None, obs_rho = None):
         with torch.no_grad():
             # clear the plot
             self.ax.clear()
@@ -122,6 +122,8 @@ class Wenv(gym.Env):
             self.ax.scatter(obs_un_train[:,self.coverage_idx[0]].cpu(), obs_un_train[:,self.coverage_idx[1]].cpu(), s=1, c='b', alpha=0.5)
             data_obs = obs.reshape(-1, *self.observation_space.shape).detach().cpu().numpy() if obs is not None else None
             self.ax.scatter(data_obs[:,self.coverage_idx[0]], data_obs[:,self.coverage_idx[1]], s=1, c='black',alpha=0.1)  if obs is not None else None
+            data_obs_rho = obs_rho.reshape(-1, *self.observation_space.shape).detach().cpu().numpy() if obs_rho is not None else None
+            self.ax.scatter(data_obs_rho[:,self.coverage_idx[0]], data_obs_rho[:,self.coverage_idx[1]], s=1, c='red',alpha=0.1)  if obs_rho is not None else None
 
         # Bounds
         self.ax.set_xlim([self.render_settings['x_lim'][0], self.render_settings['x_lim'][1]])
