@@ -71,46 +71,51 @@ class Args:
     """Toggles advantages normalization"""
     clip_coef: float = 0.2
     """the surrogate clipping coefficient"""
+    clip_mask_coef: float = 0.4
+    """the mask clipping coefficient"""
     clip_vloss: bool = False #True
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
     ent_coef: float = 0.0
     """coefficient of the entropy"""
+    ent_mask_coef: float = 0.1
+    """coefficient of the entropy mask"""
     vf_coef: float = 0.5
     """coefficient of the value function"""
     max_grad_norm: float = 0.5
     """the maximum norm for the gradient clipping"""
     target_kl: float = None
     """the target KL divergence threshold"""
-    rpo_alpha: float = 0.5
+    rpo_alpha: float = 0.1
     """the alpha parameter for RPO"""
 
     # CLASSIFIER SPECIFIC
     classifier_lr: float = 1e-3
     """the learning rate of the classifier"""
-    classifier_epochs: int = 16
+    classifier_epochs: int = 64
     """the number of epochs to train the classifier"""
     classifier_batch_size: int = 256
     """the batch size of the classifier"""
     feature_extractor: bool = False
     """if toggled, a feature extractor will be used"""
-    lipshitz: bool = True
+    lipshitz: bool = False
     """if toggled, the classifier will be Lipshitz"""
-    bound_spectral: float = 2.0
+    bound_spectral: float = 1.0
     """the spectral bound of the classifier"""
     frac_wash: float = 1/4
     """the fraction of the dataset to wash"""
-    percentage_time: float = 3/4
+    percentage_time: float = 0/4
     """the percentage of the time to use the classifier"""
 
     # RHO SPECIFIC
-    n_best_rollout_to_keep: int = 8
+    n_best_rollout_to_keep: int = 2
     """the number of best rollouts to keep"""
     mean_re_init: float = -10.0
     """the mean re-init value"""
-    polyak: float = 0.95
+    polyak: float = 0.75
     """the polyak averaging coefficient"""
     polyak_speed: float = 0.75
-    n_rollouts: int = 4
+    """ polyak averagieng coefficient for speed """
+    n_rollouts: int = 2
     """the number of rollouts"""
     keep_extrinsic_reward: bool = False
     """if toggled, the extrinsic reward will be kept"""
@@ -146,7 +151,7 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
 
 
 class Agent(nn.Module):
-    def __init__(self, envs, rpo_alpha):
+    def __init__(self, envs, rpo_alpha = 0.0):
         super().__init__()
         self.rpo_alpha = rpo_alpha
         self.critic = nn.Sequential(
@@ -175,11 +180,11 @@ class Agent(nn.Module):
         probs = Normal(action_mean, action_std)
         if action is None:
             action = probs.sample()
-        else:  # new to RPO
-            # sample again to add stochasticity to the policy
-            z = torch.FloatTensor(action_mean.shape).uniform_(-self.rpo_alpha, self.rpo_alpha).to(device)
-            action_mean = action_mean + z
-            probs = Normal(action_mean, action_std)
+        # else:  # new to RPO
+        #     # sample again to add stochasticity to the policy
+        #     z = torch.FloatTensor(action_mean.shape).uniform_(-self.rpo_alpha, self.rpo_alpha).to(device)
+        #     action_mean = action_mean + z
+        #     probs = Normal(action_mean, action_std)
 
         return action, probs.log_prob(action).sum(1), probs.entropy().sum(1), self.critic(x)
 
@@ -192,13 +197,13 @@ def update_train(obs_un, obs_un_train, classifier, device, args):
         idx_un_train = np.random.randint(0, obs_un_train.shape[0], size = n_batch)
         batch_un_train = obs_un_train[idx_un_train]
         # probs batch un
-        batch_probs_un = (torch.sigmoid(classifier(torch.Tensor(batch_un).to(device)))).detach().cpu().numpy().squeeze(-1)
+        batch_probs_un = (torch.sigmoid(classifier(torch.Tensor(batch_un).to(device)))).detach().cpu().numpy().squeeze(-1) 
         batch_probs_un_norm = batch_probs_un/batch_probs_un.sum()
-        idx_replace = np.random.choice(idx_un, size=n_replace, p=batch_probs_un_norm, replace=False)
+        idx_replace = np.random.choice(idx_un, size=n_replace, p=batch_probs_un_norm)
         # probs un train
-        probs_un_train = (1-torch.sigmoid(classifier(torch.Tensor(batch_un_train).to(device)))).detach().cpu().numpy().squeeze(-1)
+        probs_un_train = (1-torch.sigmoid(classifier(torch.Tensor(batch_un_train).to(device)))).detach().cpu().numpy().squeeze(-1) 
         probs_un_train_norm = probs_un_train/probs_un_train.sum()
-        idx_remove = np.random.choice(idx_un_train, size=n_replace, p=probs_un_train_norm, replace=False)
+        idx_remove = np.random.choice(idx_un_train, size=n_replace, p=probs_un_train_norm)
     obs_un_train[idx_remove] = obs_un[idx_replace].clone()
     return obs_un_train
 
@@ -270,7 +275,7 @@ if __name__ == "__main__":
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
     args.num_iterations = args.total_timesteps // args.batch_size
-    args.classifier_epochs *= args.num_steps // args.classifier_batch_size
+    args.classifier_epochs = args.classifier_epochs*args.num_steps // args.classifier_batch_size
     if args.track:
         import wandb
 
@@ -412,8 +417,10 @@ if __name__ == "__main__":
             mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], args.classifier_batch_size)
             mb_rho = batch_obs_rho[mb_rho_idx]
             mb_un_idx = np.random.randint(0, obs_un_train.shape[0], args.classifier_batch_size)
+            # mb_un_idx = np.random.randint(0, obs_un.shape[0], args.classifier_batch_size)
             mb_un = obs_un_train[mb_un_idx]
-            loss = classifier.ce_loss_ppo(batch_obs_rho, obs_un_train)
+            # mb_un = obs_un[mb_un_idx]
+            loss = classifier.ce_loss_ppo(mb_rho, mb_un)
             classifier_optimizer.zero_grad()
             loss.backward()
             classifier_optimizer.step()
@@ -422,9 +429,11 @@ if __name__ == "__main__":
         with torch.no_grad():
             log_rho_un = classifier(obs)
         rewards = rewards + log_rho_un if args.keep_extrinsic_reward else log_rho_un
+        mask_pos = (log_rho_un > 0).float()
         # UPDATE DKL average
         dkl_rho_un = args.polyak * dkl_rho_un + (1-args.polyak) * log_rho_un.mean().item()
         rate_dkl = (dkl_rho_un - last_dkl_rho_un)*(1-args.polyak_speed) + args.polyak_speed*rate_dkl
+        last_dkl_rho_un = dkl_rho_un
         print(f"DKL_RHO_UN: {dkl_rho_un}, RATE_DKL: {rate_dkl}")
         # UPDATE UN
         obs_un, obs_rho, actions_rho, logprobs_rho, rewards_rho, dones_rho, values_rho, times_rho,dkl_rho_un, rate_dkl = add_to_un(obs_un, 
@@ -441,7 +450,7 @@ if __name__ == "__main__":
                                                                                                                             classifier,
                                                                                                                             args)
         # UPDATE UN TRAIN
-        obs_un_train = update_train(obs_un, obs_un_train, classifier, device, args) if rate_dkl > 0 else obs_un_train
+        obs_un_train = update_train(obs_un, obs_un_train, classifier, device, args) #if rate_dkl > 0 else obs_un_train
 
         # KEEP BEST ROLLOUTS TO AVOID DETACH 
         best_rollouts = select_best_rollout(obs_rho, classifier, args)
@@ -450,9 +459,11 @@ if __name__ == "__main__":
         logprobs_backup = torch.cat([logprobs_rho[i] for i in best_rollouts],dim=0)
         rewards_backup = torch.cat([classifier(obs_rho[i]).detach() for i in best_rollouts],dim=0)
         dones_backup = torch.cat([dones_rho[i] for i in best_rollouts],dim=0)
-        values_backup = torch.cat([agent.get_value(obs_rho[i]).detach() for i in best_rollouts],dim=0)
+        values_backup = torch.cat([agent.get_value(obs_rho[i]).detach()  for i in best_rollouts],dim=0)
+        # values_backup = torch.cat([values_rho[i] for i in best_rollouts],dim=0)
         times_backup = torch.cat([times_rho[i] for i in best_rollouts],dim=0)
-        
+        mask_pos_backup = (rewards_backup > 0).float()
+
         obs_train = torch.cat([obs_backup, obs], dim=0)
         actions_train = torch.cat([actions_backup, actions], dim=0)
         logprobs_train = torch.cat([logprobs_backup, logprobs], dim=0)
@@ -460,6 +471,7 @@ if __name__ == "__main__":
         dones_train = torch.cat([dones_backup, dones], dim=0)
         values_train = torch.cat([values_backup, values], dim=0)
         times_train = torch.cat([times_backup, times], dim=0)
+        mask_pos_train = torch.cat([mask_pos_backup, mask_pos], dim=0)
 
         # bootstrap value if not done
         with torch.no_grad():
@@ -484,7 +496,7 @@ if __name__ == "__main__":
         b_advantages = advantages_train.reshape(-1)
         b_returns = returns_train.reshape(-1)
         b_values = values_train.reshape(-1)
-
+        b_mask_pos = mask_pos_train.reshape(-1)
         # Optimizing the policy and value network
         b_inds = np.arange(args.batch_size+obs_backup.shape[0])
         clipfracs = []
@@ -511,7 +523,8 @@ if __name__ == "__main__":
                 # Policy loss
                 pg_loss1 = -mb_advantages * ratio
                 pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - args.clip_coef, 1 + args.clip_coef)
-                pg_loss = torch.max(pg_loss1, pg_loss2).mean()
+                pg_loss3 = -mb_advantages * torch.clamp(ratio, 1 - args.clip_mask_coef, 1 + args.clip_mask_coef)
+                pg_loss = (torch.max(pg_loss1, pg_loss2)*(1-b_mask_pos[mb_inds]) + torch.max(pg_loss1, pg_loss3)*b_mask_pos[mb_inds]).mean()
 
                 # Value loss
                 newvalue = newvalue.view(-1)
@@ -529,7 +542,8 @@ if __name__ == "__main__":
                     v_loss = 0.5 * ((newvalue - b_returns[mb_inds]) ** 2).mean()
 
                 entropy_loss = entropy.mean()
-                loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
+                entropy_mask_loss = (entropy*b_mask_pos[mb_inds]).mean()
+                loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef - args.ent_mask_coef * entropy_mask_loss
 
                 optimizer.zero_grad()
                 loss.backward()

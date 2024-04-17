@@ -90,10 +90,8 @@ class Classifier(torch.nn.Module):
         s_p_p = self.sigmoid(s_p)
         # mask strategy q
         label_q = torch.ones_like(s_q)
-        # label_q = self.mask_labels_q(s_q)
         # mask strategy p
         label_p = torch.ones_like(s_p) if not self.learn_z else self.mask_labels_p(s_p)
-        # label_p = self.mask_labels_p(s_p)
         L = -((label_q*torch.log(s_q_p)).mean() +(label_p*torch.log(1 - s_p_p)).mean())
         if self.learn_z:
             L += self.mlh_loss(batch_q, batch_q_z) + self.mlh_loss(batch_p, batch_p_z)
