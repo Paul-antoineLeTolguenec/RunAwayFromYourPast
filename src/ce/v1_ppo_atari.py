@@ -119,7 +119,7 @@ class Args:
     """ polyak averagieng coefficient for speed """
     n_rollouts: int = 2
     """the number of rollouts"""
-    keep_extrinsic_reward: bool = False
+    keep_extrinsic_reward: bool = True
     """if toggled, the extrinsic reward will be kept"""
     start_explore: int = 4
     """the number of updates to start exploring"""
@@ -146,7 +146,7 @@ def make_env(env_id, idx, capture_video, run_name):
             env = Wenv(env_id, **config[env_id])
         env = gym.wrappers.RecordEpisodeStatistics(env)
         # env = NoopResetEnv(env, noop_max=10)
-        env = MaxAndSkipEnv(env, skip=4)
+        # env = MaxAndSkipEnv(env, skip=4)
         env = EpisodicLifeEnv(env)
         # if "FIRE" in env.unwrapped.get_action_meanings():
         #     env = FireResetEnv(env)
@@ -252,19 +252,21 @@ def add_to_un(obs_un,
               rate_dkl,
               classifier,
               args, 
-              update):
+              update,
+              nb_rollouts_per_episode):
     # if dkl_rho_un > 0 or True:
     if update > args.start_explore and dkl_rho_un >= 0 and rate_dkl >= 0:
         # KEEP BEST ROLLOUTS
         list_mean_rollouts = []
         with torch.no_grad():
             for i in range(len(obs_rho)):
-                mean_rollout = torch.mean(classifier(obs_rho[i])).cpu().item()
+                mean_rollout = torch.mean(classifier(obs_rho[i].to(device))).cpu().item()
                 list_mean_rollouts.append(mean_rollout)
         ranked_rollouts = np.argsort(list_mean_rollouts)
-        obs_un = torch.cat([obs_un, torch.cat([obs_rho[i].squeeze(1) for i in ranked_rollouts[:args.n_rollouts]],dim=0)], dim=0)
+        obs_un = torch.cat([obs_un, torch.cat([obs_rho[i] for i in ranked_rollouts[:args.n_rollouts]],dim=0)], dim=0)
         # DELETE WORST ROLLOUTS FROM RHO
-        for idx in sorted(ranked_rollouts[:args.n_rollouts], reverse=True):
+        # for idx in sorted(ranked_rollouts[:args.n_rollouts], reverse=True):
+        for idx in sorted(ranked_rollouts[:nb_rollouts_per_episode[0]], reverse=True):
             obs_rho.pop(idx)
             actions_rho.pop(idx)
             logprobs_rho.pop(idx)
@@ -272,10 +274,12 @@ def add_to_un(obs_un,
             dones_rho.pop(idx)
             values_rho.pop(idx)
             times_rho.pop(idx)
+        # UPDATE NB ROLLOUTS PER EPISODE
+        nb_rollouts_per_episode.pop(0)
         # UPDATE DKL average
         dkl_rho_un = 0
         rate_dkl = 0
-    return obs_un, obs_rho, actions_rho, logprobs_rho, rewards_rho, dones_rho, values_rho, times_rho, dkl_rho_un, rate_dkl
+    return obs_un, obs_rho, actions_rho, logprobs_rho, rewards_rho, dones_rho, values_rho, times_rho, dkl_rho_un, rate_dkl, nb_rollouts_per_episode
 
 def select_best_rollout(obs_rho, classifier, args):
     list_mean_rollouts = []
@@ -351,12 +355,20 @@ if __name__ == "__main__":
     # RHO and UN: Storage setup
     # RHO 
     obs_rho = []
+    obs_rho_not_terminated = [ [] for _ in range(args.num_envs)]
     actions_rho = []
+    actions_rho_not_terminated = [ [] for _ in range(args.num_envs)]
     logprobs_rho = []
+    logprobs_rho_not_terminated = [ [] for _ in range(args.num_envs)]
     rewards_rho = []
+    rewards_rho_not_terminated = [ [] for _ in range(args.num_envs)]
     dones_rho = []
+    dones_rho_not_terminated = [ [] for _ in range(args.num_envs)]
     values_rho = []
+    values_rho_not_terminated = [ [] for _ in range(args.num_envs)]
     times_rho = []
+    times_rho_not_terminated = [ [] for _ in range(args.num_envs)]
+    nb_rollouts_per_episode = []
     # UN
     obs_un_train = torch.tensor(envs.envs[0].reset()[0], dtype=torch.float).unsqueeze(0).repeat(args.num_steps, 1, 1, 1)
     obs_un = obs_un_train.clone()
@@ -391,7 +403,6 @@ if __name__ == "__main__":
             optimizer.param_groups[0]["lr"] = lrnow
 
 
-        step = 0
         for step in range(0, args.num_steps):
         # while not np.all(terminations_episode):
             global_step += args.num_envs
@@ -417,26 +428,50 @@ if __name__ == "__main__":
                 for info in infos["final_info"]:
                     if info and "episode" in info:
                         print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
+                        print(f"global_step={global_step}, episodic_length={info['episode']['l']}")
                         writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
                         writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
-                # ADD RHO
-                idx_done = np.where(next_done.cpu().numpy())[0]
-                print('idx_done',idx_done)
-                print('last done for idx_done',dones[:(step+1),idx_done])
-                input()
-                for i in idx_done:
-                    obs_rho.append(obs[:(step+1),i].unsqueeze(0))
-                    actions_rho.append(actions[:(step+1),i].unsqueeze(0))
-                    logprobs_rho.append(logprobs[:(step+1),i].unsqueeze(0))
-                    rewards_rho.append(rewards[:(step+1),i].unsqueeze(0))
-                    dones_rho.append(dones[:(step+1),i].unsqueeze(0))
-                    values_rho.append(values[:(step+1),i].unsqueeze(0))
-                    times_rho.append(times[:(step+1),i].unsqueeze(0))
-            # step 
-            step += 1
-        print('times',times)
-        print('dones',dones)
-        input()
+                
+        # UPDATE RHO
+        idx_row, idx_column = torch.where(dones)
+        idx_row, idx_column = idx_row.cpu().numpy(), idx_column.cpu().numpy()
+        nb_ep = 0
+        idx_per_env = np.zeros(args.num_envs, dtype=int)
+        for (i,j) in zip(idx_row, idx_column):
+            idx_start = idx_per_env[j]
+            idx_end = i+1
+            if len(obs_rho_not_terminated[j]) > 0:
+                obs_rho.append(torch.cat([torch.cat(obs_rho_not_terminated[j]) , obs[idx_start:idx_end,j].clone().cpu()], dim=0))
+                actions_rho.append(torch.cat([torch.cat(actions_rho_not_terminated[j]) , actions[idx_start:idx_end,j].clone().cpu()], dim=0))
+                logprobs_rho.append(torch.cat([torch.cat(logprobs_rho_not_terminated[j]) , logprobs[idx_start:idx_end,j].clone().cpu()], dim=0))
+                rewards_rho.append(torch.cat([torch.cat(rewards_rho_not_terminated[j]) , rewards[idx_start:idx_end,j].clone().cpu()], dim=0))
+                dones_rho.append(torch.cat([torch.cat(dones_rho_not_terminated[j]) , dones[idx_start:idx_end,j].clone().cpu()], dim=0))
+                values_rho.append(torch.cat([torch.cat(values_rho_not_terminated[j]) , values[idx_start:idx_end,j].clone().cpu()], dim=0))
+                times_rho.append(torch.cat([torch.cat(times_rho_not_terminated[j]) , times[idx_start:idx_end,j].clone().cpu()], dim=0))
+                obs_rho_not_terminated[j] = []
+            else : 
+                obs_rho.append(obs[idx_start:idx_end,j].clone().cpu())
+                actions_rho.append(actions[idx_start:idx_end,j].clone().cpu())
+                logprobs_rho.append(logprobs[idx_start:idx_end,j].clone().cpu())
+                rewards_rho.append(rewards[idx_start:idx_end,j].clone().cpu())
+                dones_rho.append(dones[idx_start:idx_end,j].clone().cpu())
+                values_rho.append(values[idx_start:idx_end,j].clone().cpu())
+                times_rho.append(times[idx_start:idx_end,j].clone().cpu())
+            nb_ep += 1
+            idx_per_env[j] = idx_end + 1
+        for j in range(args.num_envs):
+            idx_start = idx_per_env[j]
+            idx_end = args.num_steps
+            obs_rho_not_terminated[j].append(obs[idx_start:idx_end,j].clone().cpu())
+            actions_rho_not_terminated[j].append(actions[idx_start:idx_end,j].clone().cpu())
+            logprobs_rho_not_terminated[j].append(logprobs[idx_start:idx_end,j].clone().cpu())
+            rewards_rho_not_terminated[j].append(rewards[idx_start:idx_end,j].clone().cpu())
+            dones_rho_not_terminated[j].append(dones[idx_start:idx_end,j].clone().cpu())
+            values_rho_not_terminated[j].append(values[idx_start:idx_end,j].clone().cpu())
+            times_rho_not_terminated[j].append(times[idx_start:idx_end,j].clone().cpu())
+        nb_rollouts_per_episode.append(nb_ep)
+       
+
         ######################################*** CLASSIFIER TRAINING ***######################################
         batch_obs_rho = obs.reshape(obs.shape[0]*obs.shape[1], obs.shape[2], obs.shape[3], obs.shape[4])
         batch_times_rho = times.reshape(times.shape[0]*times.shape[1]).unsqueeze(-1)
@@ -461,21 +496,27 @@ if __name__ == "__main__":
             log_rho_un = classifier(obs.reshape(obs.shape[0]*obs.shape[1], obs.shape[2], obs.shape[3], obs.shape[4]).to(device)).squeeze(-1).reshape(obs.shape[0], obs.shape[1])
         rewards = args.coef_intrinsic * log_rho_un + args.coef_extrinsic * rewards if args.keep_extrinsic_reward else args.coef_intrinsic * log_rho_un
         mask_pos = (log_rho_un > 0).float()
+        # UPDATE DKL average
+        dkl_rho_un = args.polyak * dkl_rho_un + (1-args.polyak) * log_rho_un.mean().item()
+        rate_dkl = (dkl_rho_un - last_dkl_rho_un)*(1-args.polyak_speed) + args.polyak_speed*rate_dkl
+        last_dkl_rho_un = dkl_rho_un
         ######################################*** UPDATE UN ***######################################
-        # obs_un, obs_rho, actions_rho, logprobs_rho, rewards_rho, dones_rho, values_rho, times_rho, dkl_rho_un, rate_dkl = add_to_un(obs_un, 
-        #                                                                                                                 obs, 
-        #                                                                                                                 obs_rho, 
-        #                                                                                                                 actions_rho, 
-        #                                                                                                                 logprobs_rho, 
-        #                                                                                                                 rewards, 
-        #                                                                                                                 dones, 
-        #                                                                                                                 values, 
-        #                                                                                                                 times, 
-        #                                                                                                                 dkl_rho_un, 
-        #                                                                                                                 rate_dkl,
-        #                                                                                                                 classifier,
-        #                                                                                                                 args, 
-        #                                                                                                                 iteration)
+        obs_un, obs_rho, actions_rho, logprobs_rho, rewards_rho, dones_rho, values_rho, times_rho,dkl_rho_un, rate_dkl, nb_rollouts_per_episode = add_to_un(obs_un, 
+                                                                                                                                                obs,
+                                                                                                                                                obs_rho, 
+                                                                                                                                                actions_rho, 
+                                                                                                                                                logprobs_rho, 
+                                                                                                                                                rewards_rho, 
+                                                                                                                                                dones_rho, 
+                                                                                                                                                values_rho, 
+                                                                                                                                                times_rho, 
+                                                                                                                                                dkl_rho_un,
+                                                                                                                                                rate_dkl,
+                                                                                                                                                classifier,
+                                                                                                                                                args, 
+                                                                                                                                                iteration, 
+                                                                                                                                                nb_rollouts_per_episode)
+        print('obs_un', obs_un.shape)
         ######################################*** UPDATE UN_TRAIN ***######################################
         # NO NEED FOR IMPORTANCE SAMPLING IN ATARI
         ######################################*** ADD BEST ROLLOUT ***######################################
@@ -586,6 +627,7 @@ if __name__ == "__main__":
         writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
         writer.add_scalar("losses/clipfrac", np.mean(clipfracs), global_step)
         writer.add_scalar("losses/explained_variance", explained_var, global_step)
+        print(f"DKL_RHO_UN: {dkl_rho_un}, RATE_DKL: {rate_dkl}")
         print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
