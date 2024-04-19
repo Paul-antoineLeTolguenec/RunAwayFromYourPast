@@ -390,7 +390,10 @@ if __name__ == "__main__":
             lrnow = frac * args.learning_rate
             optimizer.param_groups[0]["lr"] = lrnow
 
+
+        step = 0
         for step in range(0, args.num_steps):
+        # while not np.all(terminations_episode):
             global_step += args.num_envs
             obs[step] = next_obs
             positions[step] = torch.tensor(np.array([[infos['position'][i]['x'],infos['position'][i]['y']] for i in range(args.num_envs)])).to(device)
@@ -416,6 +419,24 @@ if __name__ == "__main__":
                         print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                         writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
                         writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+                # ADD RHO
+                idx_done = np.where(next_done.cpu().numpy())[0]
+                print('idx_done',idx_done)
+                print('last done for idx_done',dones[:(step+1),idx_done])
+                input()
+                for i in idx_done:
+                    obs_rho.append(obs[:(step+1),i].unsqueeze(0))
+                    actions_rho.append(actions[:(step+1),i].unsqueeze(0))
+                    logprobs_rho.append(logprobs[:(step+1),i].unsqueeze(0))
+                    rewards_rho.append(rewards[:(step+1),i].unsqueeze(0))
+                    dones_rho.append(dones[:(step+1),i].unsqueeze(0))
+                    values_rho.append(values[:(step+1),i].unsqueeze(0))
+                    times_rho.append(times[:(step+1),i].unsqueeze(0))
+            # step 
+            step += 1
+        print('times',times)
+        print('dones',dones)
+        input()
         ######################################*** CLASSIFIER TRAINING ***######################################
         batch_obs_rho = obs.reshape(obs.shape[0]*obs.shape[1], obs.shape[2], obs.shape[3], obs.shape[4])
         batch_times_rho = times.reshape(times.shape[0]*times.shape[1]).unsqueeze(-1)
@@ -456,7 +477,7 @@ if __name__ == "__main__":
         #                                                                                                                 args, 
         #                                                                                                                 iteration)
         ######################################*** UPDATE UN_TRAIN ***######################################
-
+        # NO NEED FOR IMPORTANCE SAMPLING IN ATARI
         ######################################*** ADD BEST ROLLOUT ***######################################
 
         ######################################*** PPO TRAINING ***######################################
