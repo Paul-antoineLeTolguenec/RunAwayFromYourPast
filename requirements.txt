@@ -41,7 +41,6 @@ debugpy==1.6.7.post1
 decorator==4.4.2
 defusedxml==0.7.1
 distlib==0.3.8
-dm-control2gym @ file:///home/p.le-tolguenec/installs/dm_control2gym
 dm-env==1.6
 dm-tree==0.1.8
 dm_control==1.0.17
