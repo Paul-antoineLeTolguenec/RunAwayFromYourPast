@@ -3,6 +3,8 @@ import numpy as np
 import gym, torch, os , imageio
 from src.utils.dash_utils_2d import initialize_figure_2d, add_frame_to_figure_2d, create_html_2d
 from src.utils.dash_utils_3d import initialize_figure_3d, add_frame_to_figure_3d, create_html_3d
+from envs.compatible_random_generator import CompatibleRandomGenerator
+import gymnasium
 import sys, signal
 
 class Wenv(gym.Env):
@@ -50,6 +52,14 @@ class Wenv(gym.Env):
                 self.figure = initialize_figure_2d(render_settings=render_settings)
             if self.coverage_idx.shape[0] == 3:
                 self.figure = initialize_figure_3d(render_settings=render_settings)
+        # specific for atari
+        if type_id == 'atari':
+            original_generator = self.env.unwrapped.np_random
+            compatible_generator = CompatibleRandomGenerator(original_generator)
+            self.env.unwrapped.np_random = compatible_generator
+            self.observation_space = gymnasium.spaces.Box(self.env.observation_space.low, self.env.observation_space.high, dtype=np.uint8)
+            self.action_space = gymnasium.spaces.Discrete(self.action_space.n)
+
 
     def set_all_seeds(self, seed):
         self.seed(seed)
@@ -61,7 +71,7 @@ class Wenv(gym.Env):
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
         
-    def reset(self, seed = 0):
+    def reset(self, seed = 0, options = None):
         # self.seed(seed)
         self.episode_length = 0
         self.episode_reward = 0
@@ -74,7 +84,7 @@ class Wenv(gym.Env):
         # update episode length and reward
         i['l'] = self.episode_length
         i['r'] = self.episode_reward
-        return obs, i
+        return obs, i #if not self.type_id == 'atari' else obs
     
 
     def step(self, action):
@@ -88,7 +98,7 @@ class Wenv(gym.Env):
         # update episode length and reward
         info['l'] = self.episode_length
         info['r'] = self.episode_reward
-        return obs, reward, done, trunc, info
+        return obs, reward, done, trunc, info #if not self.type_id == 'atari' else obs, reward, done, info
     
     def render(self):
         return self.env.render()
@@ -115,15 +125,18 @@ class Wenv(gym.Env):
             # data to plot
             data_to_plot = data_to_plot.detach().cpu().numpy()
             # Plotting the environment
-            self.ax.scatter(data_to_plot[:,self.coverage_idx[0]], data_to_plot[:,self.coverage_idx[1]], s=1, c = m_n, cmap='viridis')
+            # self.ax.scatter(data_to_plot[:,self.coverage_idx[0]], data_to_plot[:,self.coverage_idx[1]], s=1, c = m_n, cmap='viridis')
             # plot obs train
             # self.ax.scatter(data_to_plot[mask,self.coverage_idx[0]], data_to_plot[mask,self.coverage_idx[1]], s=1, c='g')
             # self.ax.scatter(data_to_plot[mask_z,self.coverage_idx[0]], data_to_plot[mask_z,self.coverage_idx[1]], s=1, c='r')
-            self.ax.scatter(obs_un_train[:,self.coverage_idx[0]].cpu(), obs_un_train[:,self.coverage_idx[1]].cpu(), s=1, c='b', alpha=0.5)
-            data_obs = obs.reshape(-1, *self.observation_space.shape).detach().cpu().numpy() if obs is not None else None
-            self.ax.scatter(data_obs[:,self.coverage_idx[0]], data_obs[:,self.coverage_idx[1]], s=1, c='black',alpha=0.1)  if obs is not None else None
             data_obs_rho = obs_rho.reshape(-1, *self.observation_space.shape).detach().cpu().numpy() if obs_rho is not None else None
             self.ax.scatter(data_obs_rho[:,self.coverage_idx[0]], data_obs_rho[:,self.coverage_idx[1]], s=1, c='red',alpha=0.1)  if obs_rho is not None else None
+            data_obs = obs.reshape(-1, *self.observation_space.shape).detach().cpu().numpy() if obs is not None else None
+            self.ax.scatter(data_obs[:,self.coverage_idx[0]], data_obs[:,self.coverage_idx[1]], s=1, c='black',alpha=0.1)  if obs is not None else None
+            self.ax.scatter(data_to_plot[:,self.coverage_idx[0]], data_to_plot[:,self.coverage_idx[1]], s=1, c = m_n, cmap='viridis')
+            self.ax.scatter(obs_un_train[:,self.coverage_idx[0]].cpu(), obs_un_train[:,self.coverage_idx[1]].cpu(), s=1, c='b', alpha=0.5)
+
+
 
         # Bounds
         self.ax.set_xlim([self.render_settings['x_lim'][0], self.render_settings['x_lim'][1]])
@@ -190,9 +203,11 @@ class Wenv(gym.Env):
     def parser_ram_atari(self): 
         ram = self.env.unwrapped.ale.getRAM()
         if 'Montezuma' in self.env_id : 
-            return {'x' : 2*((ram[42]/255)-0.5), 'y' : 2*((ram[43]/255)-0.5)}
+            return {'x' : 2*((ram[42]/255)-0.5), 'y' : 2*((ram[43]/255)-0.5), 'room' : ram[62]}
         elif 'Pitfall' in self.env_id : 
-            return {'x': 2*((ram[97]/255)-0.5), 'y': 2*((ram[105]/255)-0.5)}
+            # return {'x': 2*((ram[97]/255)-0.5), 'y': 2*((ram[105]/255)-0.5), 'room': ram[98]}
+            return {'x': ram[97], 'y': ram[105], 'room': ram[98]}
+
         else : 
             raise
 
@@ -200,6 +215,10 @@ class Wenv(gym.Env):
         # update coverage
         if info is None:
             self.matrix_coverage[:, i] = obs[ : , self.coverage_idx]
+    @property
+    def unwrapped(self):
+        return self.env.unwrapped
+    
 if __name__ == '__main__':
     import envs
     # Maze

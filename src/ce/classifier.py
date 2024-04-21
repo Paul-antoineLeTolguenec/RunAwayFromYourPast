@@ -5,6 +5,12 @@ import torch.nn.utils.spectral_norm as spectral_norm
 import numpy as np
 import torch    
 
+
+def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
+    torch.nn.init.orthogonal_(layer.weight, std)
+    torch.nn.init.constant_(layer.bias, bias_const)
+    return layer
+
 class Classifier(torch.nn.Module):
     def __init__(self, observation_space,device, env_max_steps, 
                 lipshitz= False, lim_down = -10, lim_up = 10, 
@@ -20,13 +26,13 @@ class Classifier(torch.nn.Module):
             self.fc2 = torch.nn.Linear(128, 64, device=device)
             self.fc3 = torch.nn.Linear(64, 1, device=device)
         elif lipshitz:
-            self.fc1 = spectral_norm(torch.nn.Linear(observation_space.shape[0], 128,device=device), n_power_iterations =iter_lip)
-            self.fc2 = spectral_norm(torch.nn.Linear(128, 64, device=device), n_power_iterations =iter_lip)
-            self.fc3 = spectral_norm(torch.nn.Linear(64, 1, device=device), n_power_iterations =iter_lip)
+            self.fc1 = spectral_norm(layer_init(torch.nn.Linear(observation_space.shape[0], 128)).to(device), n_power_iterations =iter_lip)
+            self.fc2 = spectral_norm(layer_init(torch.nn.Linear(128, 64)).to(device), n_power_iterations =iter_lip)
+            self.fc3 = spectral_norm(layer_init(torch.nn.Linear(64, 1)).to(device), n_power_iterations =iter_lip)
         else:
-            self.fc1 = torch.nn.Linear(observation_space.shape[0], 128,device=device)
-            self.fc2 = torch.nn.Linear(128, 64, device=device)
-            self.fc3 = torch.nn.Linear(64, 1, device=device)
+            self.fc1 = layer_init(torch.nn.Linear(observation_space.shape[0], 128)).to(device)
+            self.fc2 = layer_init(torch.nn.Linear(128, 64)).to(device)
+            self.fc3 = layer_init(torch.nn.Linear(64, 1)).to(device)
         self.relu = torch.nn.ReLU()
         self.env_max_steps = env_max_steps
         self.lim_down = lim_down
@@ -75,13 +81,6 @@ class Classifier(torch.nn.Module):
         p_z_i = torch.gather(p_z, 1, z)
         return -torch.mean(torch.log(p_z_i))
     
-    def spectral_loss(self):
-        penalty = 0.0
-        for name, param in self.named_parameters():
-            if 'weight' in name:  # only compute penalty for weights
-                norm = torch.linalg.norm(param, ord=2) 
-                penalty += torch.relu(norm - self.bound_spectral)**2
-        return penalty
 
     def ce_loss_ppo(self, batch_q, batch_p, batch_q_z = None, batch_p_z =None, relabeling = True, ratio = 1.0, return_log_and_prob = False):
         s_q = self(batch_q)
@@ -91,16 +90,12 @@ class Classifier(torch.nn.Module):
         # mask strategy q
         label_q = torch.ones_like(s_q)
         # mask strategy p
-        label_p = torch.ones_like(s_p) if not self.learn_z else self.mask_labels_p(s_p)
-        L = -((label_q*torch.log(s_q_p)).mean() +(label_p*torch.log(1 - s_p_p)).mean())
+        label_p = self.mask_labels_p(s_p)
+        L = -((label_q*torch.log(s_q_p)).mean() +(label_p*torch.log(1 - s_p_p)).mean()) #if not self.lipshitz else -((s_q - s_p)).mean()
         if self.learn_z:
             L += self.mlh_loss(batch_q, batch_q_z) + self.mlh_loss(batch_p, batch_p_z)
-        # if self.lipshitz:
-        #     L += self.spectral_coef * self.spectral_loss()
         return L 
-        #SAC specific
-        # if not return_log_and_prob else L, (s_q).mean().detach().cpu().numpy(), s_p_p.detach().cpu().numpy()
-    
+       
     def mask_labels_q(self, s_q, tau=0.5): #1.0
         with torch.no_grad():
             s_q_clip = torch.clamp(s_q, self.lim_down, 0)

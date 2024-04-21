@@ -166,7 +166,7 @@ config = {
     'type_id': 'atari',
     'kwargs': {'frameskip': 4, 
                'max_episode_steps': 10000, 
-               'render_mode': 'human'},
+               'render_mode': 'rgb_array'},
     'coverage_idx': np.array([0,1]),
     'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1]}
 },
@@ -175,7 +175,7 @@ config = {
     'type_id': 'atari',
     'kwargs': {'frameskip': 4,
                'max_episode_steps': 10000, 
-               'render_mode': 'human'},
+               'render_mode': 'rgb_array'},
     'coverage_idx': np.array([0,1]),
     'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1]}
 },

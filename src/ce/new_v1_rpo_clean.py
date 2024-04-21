@@ -24,7 +24,7 @@ class Args:
     # XP RECORD
     exp_name: str = os.path.basename(__file__)[: -len(".py")]
     """the name of this experiment"""
-    seed: int = 1
+    seed: int = 0
     """seed of the experiment"""
     torch_deterministic: bool = True
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
@@ -47,7 +47,7 @@ class Args:
     fig_frequency: int = 1
 
     # RPO SPECIFIC
-    env_id: str = "Hopper-v3"
+    env_id: str = "Swimmer-v3"
     """the id of the environment"""
     total_timesteps: int = 8000000
     """total timesteps of the experiments"""
@@ -79,7 +79,7 @@ class Args:
     """coefficient of the entropy"""
     ent_mask_coef: float = 0.05
     """coefficient of the entropy mask"""
-    vf_coef: float = 0.1
+    vf_coef: float = 0.5
     """coefficient of the value function"""
     max_grad_norm: float = 0.5
     """the maximum norm for the gradient clipping"""
@@ -97,7 +97,7 @@ class Args:
     """the batch size of the classifier"""
     feature_extractor: bool = False
     """if toggled, a feature extractor will be used"""
-    lipshitz: bool = True   
+    lipshitz: bool = True
     """if toggled, the classifier will be Lipshitz"""
     bound_spectral: float = 1.0
     """the spectral bound of the classifier"""
@@ -107,7 +107,7 @@ class Args:
     """the percentage of the time to use the classifier"""
     n_iter_lipshitz: int = 2 #1
     """the number of iterations for the Lipshitz constant"""
-    clip_lim: float = 50.0
+    clip_lim: float = 100.0
     """the clipping limit of the classifier"""
 
     # RHO SPECIFIC
@@ -127,6 +127,10 @@ class Args:
     """if toggled, the extrinsic reward will be kept"""
     start_explore: int = 4
     """the number of updates to start exploring"""
+    coef_intrinsic : float = 10.0
+    """the coefficient of the intrinsic reward"""
+    coef_extrinsic : float = 1.0
+    """the coefficient of the extrinsic reward"""
 
     # to be filled in runtime
     batch_size: int = 0
@@ -226,7 +230,7 @@ def add_to_un(obs_un,
               update,
               nb_rollouts_per_episode):
     # if dkl_rho_un > 0 or True:
-    if update > args.start_explore and dkl_rho_un >= 0 and rate_dkl >= 0:
+    if update > args.start_explore and dkl_rho_un >= 0 :
         # KEEP BEST ROLLOUTS
         list_mean_rollouts = []
         with torch.no_grad():
@@ -248,8 +252,8 @@ def add_to_un(obs_un,
         # UPDATE NB ROLLOUTS PER EPISODE
         nb_rollouts_per_episode.pop(0)
         # UPDATE DKL average
-        dkl_rho_un = 0
-        rate_dkl = 0
+        # dkl_rho_un = args.mean_re_init
+        # rate_dkl = 0
     return obs_un, obs_rho, actions_rho, logprobs_rho, rewards_rho, dones_rho, values_rho, times_rho, dkl_rho_un, rate_dkl, nb_rollouts_per_episode
 
 def select_best_rollout(obs_rho, classifier, args, device):
@@ -428,18 +432,20 @@ if __name__ == "__main__":
         nb_rollouts_per_episode.append(nb_ep)
         
         # CLASSIFIER TRAINING
-        # batch_obs_rho = torch.cat(obs_rho, dim=0)
-        # batch_times_rho = torch.cat(times_rho, dim=0)
-        batch_obs_rho = obs.reshape(-1, obs.shape[-1]) # if dkl_rho_un >= 0 and rate_dkl >= 0 else torch.cat(obs_rho, dim=0)
-        batch_times_rho = times.reshape(-1, times.shape[-1]) # if dkl_rho_un >= 0 and rate_dkl >= 0 else torch.cat(times_rho, dim=0)
+        batch_obs_rho = torch.cat(obs_rho, dim=0)
+        batch_times_rho = torch.cat(times_rho, dim=0)
+        # batch_obs_rho = obs.reshape(-1, obs.shape[-1]) # if dkl_rho_un >= 0 and rate_dkl >= 0 else torch.cat(obs_rho, dim=0)
+        # batch_times_rho = times.reshape(-1, times.shape[-1]) # if dkl_rho_un >= 0 and rate_dkl >= 0 else torch.cat(times_rho, dim=0)
         max_time = batch_times_rho.max()  
         mask_rho = (batch_times_rho >= max_time * args.percentage_time).float().squeeze(-1)
         batch_obs_rho = batch_obs_rho[mask_rho.bool()]
         for epoch in range(args.classifier_epochs):
             mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], args.classifier_batch_size)
-            mb_rho = batch_obs_rho[mb_rho_idx]
-            mb_un_idx = np.random.randint(0, obs_un_train.shape[0], args.classifier_batch_size) if dkl_rho_un >= 0 and rate_dkl >= 0 and not args.lipshitz else np.random.randint(0, obs_un.shape[0], args.classifier_batch_size)
-            mb_un = obs_un_train[mb_un_idx] if dkl_rho_un >= 0 and rate_dkl >= 0 and not args.lipshitz else obs_un[mb_un_idx]
+            mb_rho = batch_obs_rho[mb_rho_idx].to(device)
+            mb_un_idx = np.random.randint(0, obs_un_train.shape[0], args.classifier_batch_size) if dkl_rho_un >= 0 and not args.lipshitz  else np.random.randint(0, obs_un.shape[0], args.classifier_batch_size)
+            mb_un = obs_un_train[mb_un_idx] if dkl_rho_un >= 0 and not args.lipshitz  else obs_un[mb_un_idx]
+            # mb_un_idx = np.random.randint(0, obs_un.shape[0], args.classifier_batch_size)
+            # mb_un = obs_un[mb_un_idx]
             mb_un = mb_un.to(device)
             loss = classifier.ce_loss_ppo(mb_rho, mb_un)
             classifier_optimizer.zero_grad()
@@ -449,7 +455,7 @@ if __name__ == "__main__":
         # INTRINSIC REWARD
         with torch.no_grad():
             log_rho_un = classifier(obs)
-        rewards = rewards if args.keep_extrinsic_reward else log_rho_un
+        rewards = args.coef_extrinsic * rewards + args.coef_intrinsic * log_rho_un if args.keep_extrinsic_reward else args.coef_intrinsic * log_rho_un
         mask_pos = (log_rho_un > 0).float()
         # UPDATE DKL average
         dkl_rho_un = args.polyak * dkl_rho_un + (1-args.polyak) * log_rho_un.mean().item()
