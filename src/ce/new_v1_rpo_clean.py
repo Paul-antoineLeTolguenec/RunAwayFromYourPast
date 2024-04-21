@@ -77,7 +77,7 @@ class Args:
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
     ent_coef: float = 0.0
     """coefficient of the entropy"""
-    ent_mask_coef: float = 0.05
+    ent_mask_coef: float = 0.01
     """coefficient of the entropy mask"""
     vf_coef: float = 0.5
     """coefficient of the value function"""
@@ -127,7 +127,7 @@ class Args:
     """if toggled, the extrinsic reward will be kept"""
     start_explore: int = 4
     """the number of updates to start exploring"""
-    coef_intrinsic : float = 10.0
+    coef_intrinsic : float = 1.0
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
