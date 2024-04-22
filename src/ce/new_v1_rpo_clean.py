@@ -47,7 +47,7 @@ class Args:
     fig_frequency: int = 1
 
     # RPO SPECIFIC
-    env_id: str = "Swimmer-v3"
+    env_id: str = "Hopper-v3"
     """the id of the environment"""
     total_timesteps: int = 8000000
     """total timesteps of the experiments"""
@@ -77,7 +77,7 @@ class Args:
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
     ent_coef: float = 0.0
     """coefficient of the entropy"""
-    ent_mask_coef: float = 0.01
+    ent_mask_coef: float = 0.05
     """coefficient of the entropy mask"""
     vf_coef: float = 0.5
     """coefficient of the value function"""
@@ -238,19 +238,28 @@ def add_to_un(obs_un,
                 mean_rollout = torch.mean(classifier(obs_rho[i].to(device))).cpu().item()
                 list_mean_rollouts.append(mean_rollout)
         ranked_rollouts = np.argsort(list_mean_rollouts)
-        obs_un = torch.cat([obs_un, torch.cat([obs_rho[i].squeeze(1) for i in ranked_rollouts[:args.n_rollouts]],dim=0)], dim=0)
-        # DELETE WORST ROLLOUTS FROM RHO
-        # for idx in sorted(ranked_rollouts[:args.n_rollouts], reverse=True):
-        for idx in sorted(ranked_rollouts[:nb_rollouts_per_episode[0]], reverse=True):
-            obs_rho.pop(idx)
-            actions_rho.pop(idx)
-            logprobs_rho.pop(idx)
-            rewards_rho.pop(idx)
-            dones_rho.pop(idx)
-            values_rho.pop(idx)
-            times_rho.pop(idx)
-        # UPDATE NB ROLLOUTS PER EPISODE
-        nb_rollouts_per_episode.pop(0)
+        args_to_add = []
+        for i in ranked_rollouts[:nb_rollouts_per_episode[0]]: args_to_add.append(i) if 0 >= list_mean_rollouts[i]  else None
+        if len(args_to_add) > 0:
+            obs_un = torch.cat([obs_un, torch.cat([obs_rho[i].squeeze(1) for i in args_to_add],dim=0)], dim=0)
+            # obs_un = torch.cat([obs_un, torch.cat([obs_rho[i].squeeze(1) for i in ranked_rollouts[:nb_rollouts_per_episode[0]]],dim=0)], dim=0)
+            # DELETE WORST ROLLOUTS FROM RHO
+            # for idx in sorted(ranked_rollouts[:args.n_rollouts], reverse=True):
+            # for idx in sorted(ranked_rollouts[:nb_rollouts_per_episode[0]], reverse=True):
+            for idx in sorted(args_to_add, reverse=True):
+                obs_rho.pop(idx)
+                actions_rho.pop(idx)
+                logprobs_rho.pop(idx)
+                rewards_rho.pop(idx)
+                dones_rho.pop(idx)
+                values_rho.pop(idx)
+                times_rho.pop(idx)
+            # UPDATE NB ROLLOUTS PER EPISODE
+            if len(args_to_add) >= 0 :
+                nb_rollouts_per_episode.pop(0) 
+            else :
+                nb_rollouts_per_episode[0]-= len(args_to_add)
+    
         # UPDATE DKL average
         # dkl_rho_un = args.mean_re_init
         # rate_dkl = 0
