@@ -47,7 +47,7 @@ class Args:
     fig_frequency: int = 1
 
     # RPO SPECIFIC
-    env_id: str = "FetchSlide-v2"
+    env_id: str = "HalfCheetah-v3"
     """the id of the environment"""
     total_timesteps: int = 8000000
     """total timesteps of the experiments"""
@@ -95,17 +95,17 @@ class Args:
     """the batch size of the classifier"""
     feature_extractor: bool = False
     """if toggled, a feature extractor will be used"""
-    lipshitz: bool = False
+    lipshitz: bool = True
     """if toggled, the classifier will be Lipshitz"""
-    bound_spectral: float = 1.0
+    bound_spectral: float = 2.0
     """the spectral bound of the classifier"""
     frac_wash: float = 1/4
     """the fraction of the dataset to wash"""
     percentage_time: float = 0/4
     """the percentage of the time to use the classifier"""
-    n_iter_lipshitz: int = 1 #1
+    n_iter_lipshitz: int = 5 #5
     """the number of iterations for the Lipshitz constant"""
-    clip_lim: float = 10.0
+    clip_lim: float = 100.0
     """the clipping limit of the classifier"""
 
     # RHO SPECIFIC
@@ -119,13 +119,13 @@ class Args:
     """the polyak averaging coefficient"""
     polyak_speed: float = 0.75
     """ polyak averagieng coefficient for speed """
-    n_rollouts: int = 4
+    n_rollouts: int = 2
     """the number of rollouts"""
     keep_extrinsic_reward: bool = False
     """if toggled, the extrinsic reward will be kept"""
     start_explore: int = 4
     """the number of updates to start exploring"""
-    coef_intrinsic : float = 1.0
+    coef_intrinsic : float =  0.1
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
@@ -228,7 +228,7 @@ def add_to_un(obs_un,
               update,
               nb_rollouts_per_episode):
     # if dkl_rho_un > 0 or True:
-    if update > args.start_explore and dkl_rho_un >= 0 : # and rate_dkl >= 0:
+    if update > args.start_explore and dkl_rho_un >= args.clip_lim*0.75:
         # KEEP BEST ROLLOUTS
         list_mean_rollouts = []
         with torch.no_grad():
@@ -237,7 +237,7 @@ def add_to_un(obs_un,
                 list_mean_rollouts.append(mean_rollout)
         ranked_rollouts = np.argsort(list_mean_rollouts)
         args_to_add = []
-        for i in ranked_rollouts[:nb_rollouts_per_episode[0]]: args_to_add.append(i) #if 0 >= list_mean_rollouts[i]  else None
+        for i in ranked_rollouts[:len(obs_rho)//2]: args_to_add.append(i) #if 0 >= list_mean_rollouts[i]  else None
         if len(args_to_add) > 0:
             obs_un = torch.cat([obs_un, torch.cat([obs_rho[i].squeeze(1) for i in args_to_add],dim=0)], dim=0)
             # obs_un = torch.cat([obs_un, torch.cat([obs_rho[i].squeeze(1) for i in ranked_rollouts[:nb_rollouts_per_episode[0]]],dim=0)], dim=0)
@@ -453,10 +453,8 @@ if __name__ == "__main__":
         for epoch in range(args.classifier_epochs):
             mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], args.classifier_batch_size)
             mb_rho = batch_obs_rho[mb_rho_idx].to(device)
-            # mb_un_idx = np.random.randint(0, obs_un_train.shape[0], args.classifier_batch_size) if dkl_rho_un >= 0 and rate_dkl>= 0 and not args.lipshitz  else np.random.randint(0, obs_un.shape[0], args.classifier_batch_size)
-            # mb_un = obs_un_train[mb_un_idx]  if dkl_rho_un >= 0 and rate_dkl>= 0 and not args.lipshitz  else obs_un[mb_un_idx]
-            mb_un_idx = np.random.randint(0, obs_un.shape[0], args.classifier_batch_size)
-            mb_un = obs_un[mb_un_idx]
+            mb_un_idx = np.random.randint(0, obs_un_train.shape[0], args.classifier_batch_size) if not args.lipshitz  else np.random.randint(0, obs_un.shape[0], args.classifier_batch_size)
+            mb_un = obs_un_train[mb_un_idx]  if  not args.lipshitz  else obs_un[mb_un_idx]
             mb_un = mb_un.to(device)
             loss = classifier.ce_loss_ppo(mb_rho, mb_un)
             classifier_optimizer.zero_grad()
@@ -469,9 +467,11 @@ if __name__ == "__main__":
         rewards = args.coef_extrinsic * rewards + args.coef_intrinsic * log_rho_un if args.keep_extrinsic_reward else args.coef_intrinsic * log_rho_un
         mask_pos = (log_rho_un > 0).float()
         # UPDATE DKL average
-        dkl_rho_un = args.polyak * dkl_rho_un + (1-args.polyak) * log_rho_un.mean().item()
+        # dkl_rho_un = args.polyak * dkl_rho_un + (1-args.polyak) * log_rho_un.mean().item()
+        dkl_rho_un = log_rho_un.mean().item()
         rate_dkl = (dkl_rho_un - last_dkl_rho_un)*(1-args.polyak_speed) + args.polyak_speed*rate_dkl
         last_dkl_rho_un = dkl_rho_un
+        print(f'LOG RHO UN: {log_rho_un.mean().item()}')
         print(f"DKL_RHO_UN: {dkl_rho_un}, RATE_DKL: {rate_dkl}")
         # ent_mask_coef = 0.05 if dkl_rho_un >= 0 else 0.1
         # args.ent_coef = 0.0 if dkl_rho_un >= 0 else 0.2
@@ -492,7 +492,8 @@ if __name__ == "__main__":
                                                                                                                                                 update, 
                                                                                                                                                 nb_rollouts_per_episode)
         # UPDATE UN TRAIN
-        obs_un_train = update_train(obs_un, obs_un_train, classifier, device, args) if not args.lipshitz else obs_un_train
+        obs_un_train = update_train(obs_un, obs_un_train, classifier, device, args) #if not args.lipshitz else obs_un_train
+        print(f'UN SHAPE: {obs_un.shape}')
         # KEEP BEST ROLLOUTS TO AVOID DETACH 
         if args.n_best_rollout_to_keep > 0 and dkl_rho_un <= 0 and rate_dkl <= 0:
             best_rollouts = select_best_rollout(obs_rho, classifier, args, device)

@@ -81,7 +81,7 @@ class Args:
     """the target KL divergence threshold"""
 
     # CLASSIFIER SPECIFIC
-    classifier_lr: float = 1e-3
+    classifier_lr: float = 5e-4
     """the learning rate of the classifier"""
     classifier_epochs: int = 32
     """the number of epochs to train the classifier"""
@@ -255,7 +255,7 @@ def add_to_un(obs_un,
               update,
               nb_rollouts_per_episode):
     # if dkl_rho_un > 0 or True:
-    if update > args.start_explore and dkl_rho_un >= 0 and rate_dkl >= 0:
+    if update > args.start_explore and dkl_rho_un >= 0 and len(obs_rho) > 0:
         # KEEP BEST ROLLOUTS
         list_mean_rollouts = []
         with torch.no_grad():
@@ -277,8 +277,8 @@ def add_to_un(obs_un,
         # UPDATE NB ROLLOUTS PER EPISODE
         nb_rollouts_per_episode.pop(0)
         # UPDATE DKL average
-        dkl_rho_un = 0
-        rate_dkl = 0
+        # dkl_rho_un = 0
+        # rate_dkl = 0
     return obs_un, obs_rho, actions_rho, logprobs_rho, rewards_rho, dones_rho, values_rho, times_rho, dkl_rho_un, rate_dkl, nb_rollouts_per_episode
 
 def select_best_rollout(obs_rho, classifier, args):
@@ -348,6 +348,7 @@ if __name__ == "__main__":
                 feature_extractor = args.feature_extractor,
                 use_lstm = args.use_lstm).to(device)
     classifier_optimizer = optim.Adam(classifier.parameters(), lr=args.classifier_lr, eps=1e-5)
+
 
     # PPO Storage
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
@@ -476,25 +477,25 @@ if __name__ == "__main__":
        
 
         ######################################*** CLASSIFIER TRAINING ***######################################
-        batch_obs_rho = obs.reshape(obs.shape[0]*obs.shape[1], obs.shape[2], obs.shape[3], obs.shape[4])
-        batch_times_rho = times.reshape(times.shape[0]*times.shape[1]).unsqueeze(-1)
-        max_time = batch_times_rho.max()  
-        mask_rho = (batch_times_rho >= max_time * args.percentage_time).float().squeeze(-1)
-        batch_obs_rho = batch_obs_rho[mask_rho.bool()]
-        global_loss = 0
-        for epoch in range(args.classifier_epochs):
-            mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], args.classifier_batch_size)
-            mb_rho = batch_obs_rho[mb_rho_idx]
-            # mb_un_idx = np.random.randint(0, obs_un_train.shape[0], args.classifier_batch_size) if dkl_rho_un >= 0 and rate_dkl >= 0 else np.random.randint(0, obs_un.shape[0], args.classifier_batch_size)
-            # mb_un = obs_un_train[mb_un_idx] if dkl_rho_un >= 0 and rate_dkl >= 0 else obs_un[mb_un_idx]
-            mb_un_idx = np.random.randint(0, obs_un.shape[0], args.classifier_batch_size)
-            mb_un = obs_un[mb_un_idx]
-            # mb_un = obs_un[mb_un_idx]
-            loss = classifier.ce_loss_ppo(mb_rho.to(device), mb_un.to(device))
-            classifier_optimizer.zero_grad()
-            loss.backward()
-            classifier_optimizer.step()
-            global_loss += loss.item()
+        if iteration > args.start_explore:
+            batch_obs_rho = obs.reshape(obs.shape[0]*obs.shape[1], obs.shape[2], obs.shape[3], obs.shape[4])
+            batch_times_rho = times.reshape(times.shape[0]*times.shape[1]).unsqueeze(-1)
+            # max_time = batch_times_rho.max()  
+            # mask_rho = (batch_times_rho >= max_time * args.percentage_time).float().squeeze(-1)
+            # batch_obs_rho = batch_obs_rho[mask_rho.bool()]
+            global_loss = 0
+            for epoch in range(args.classifier_epochs):
+                mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], args.classifier_batch_size)
+                mb_rho = batch_obs_rho[mb_rho_idx]
+            
+                mb_un_idx = np.random.randint(0, obs_un.shape[0], args.classifier_batch_size)
+                mb_un = obs_un[mb_un_idx]
+                # mb_un = obs_un[mb_un_idx]
+                loss = classifier.ce_loss_ppo(mb_rho.to(device), mb_un.to(device))
+                classifier_optimizer.zero_grad()
+                loss.backward()
+                classifier_optimizer.step()
+                global_loss += loss.item()
 
         ######################################*** INTRINSIC REWARD ***######################################
         with torch.no_grad():
@@ -503,6 +504,7 @@ if __name__ == "__main__":
         mask_pos = (log_rho_un > 0).float()
         # UPDATE DKL average
         dkl_rho_un = args.polyak * dkl_rho_un + (1-args.polyak) * log_rho_un.mean().item()
+        print(f'DKL RHO UN : {dkl_rho_un}')
         rate_dkl = (dkl_rho_un - last_dkl_rho_un)*(1-args.polyak_speed) + args.polyak_speed*rate_dkl
         last_dkl_rho_un = dkl_rho_un
         ######################################*** UPDATE UN ***######################################
@@ -636,7 +638,7 @@ if __name__ == "__main__":
         print(f"DKL_RHO_UN: {dkl_rho_un}, RATE_DKL: {rate_dkl}")
         print("SPS:", int(global_step / (time.time() - start_time)))
         print('nb room:', env_check.get_rooms())
-        print('global_loss:', global_loss)
+        # print('global_loss:', global_loss)
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
     envs.close()

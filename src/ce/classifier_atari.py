@@ -37,15 +37,15 @@ class ClassifierAtari(torch.nn.Module):
                             layer_init(nn.Linear(64 * 7 * 7, 512)),
                             nn.ReLU(),
                             ).to(device)
-            if use_lstm:
-                self.fc1 = nn.LSTM(512, 128).to(device)
-                for name, param in self.fc1.named_parameters():
-                    if "bias" in name:
-                        nn.init.constant_(param, 0)
-                    elif "weight" in name:
-                        nn.init.orthogonal_(param, 1.0)
-            else :
-                self.fc1 = torch.nn.Linear(512, 128,device=device)
+            # if use_lstm:
+            #     self.fc1 = nn.LSTM(512, 128).to(device)
+            #     for name, param in self.fc1.named_parameters():
+            #         if "bias" in name:
+            #             nn.init.constant_(param, 0)
+            #         elif "weight" in name:
+            #             nn.init.orthogonal_(param, 1.0)
+            # else :
+            self.fc1 = torch.nn.Linear(512, 128,device=device)
         # predictor
         self.predictor = layer_init(nn.Linear(128, 1), std=0.01)
         
@@ -78,8 +78,8 @@ class ClassifierAtari(torch.nn.Module):
         
     def forward(self, x):
         # NOT LSTM FOR NOW
-        x = self.feature(x) if self.feature_extractor else x
-        x = self.relu(self.fc1(x)) if self.feature_extractor else self.relu(self.fc1(self.cnn(x)))
+        # x = self.feature(x) if self.feature_extractor else x
+        x = self.relu(self.fc1(self.cnn(x)))
         x = self.predictor(x)
         return torch.clamp(x, self.lim_down, self.lim_up)
     
@@ -106,9 +106,9 @@ class ClassifierAtari(torch.nn.Module):
         label_q = torch.ones_like(s_q)
         # mask strategy p
         label_p = torch.ones_like(s_p)
-        L = -((label_q*torch.log(s_q_p)).mean() +(label_p*torch.log(1 - s_p_p)).mean())
-        if self.learn_z:
-            L += self.mlh_loss(batch_q, batch_q_z) + self.mlh_loss(batch_p, batch_p_z)
+        L = -((label_q*torch.log(s_q_p)) +(label_p*torch.log(1 - s_p_p))).mean()
+        # if self.learn_z:
+        #     L += self.mlh_loss(batch_q, batch_q_z) + self.mlh_loss(batch_p, batch_p_z)
         return L 
     
     
