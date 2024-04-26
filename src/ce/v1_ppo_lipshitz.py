@@ -87,7 +87,7 @@ class Args:
     """the target KL divergence threshold"""
 
     # CLASSIFIER SPECIFIC
-    classifier_lr: float = 1e-4
+    classifier_lr: float = 5e-4
     """the learning rate of the classifier"""
     classifier_epochs: int = 32
     """the number of epochs to train the classifier"""
@@ -131,7 +131,7 @@ class Args:
     """if toggled, the extrinsic reward will be kept"""
     start_explore: int = 4
     """the number of updates to start exploring"""
-    coef_intrinsic : float = 1.0
+    coef_intrinsic : float = 0.1
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
@@ -235,7 +235,7 @@ def add_to_un(obs_un,
               update,
               nb_rollouts_per_episode):
     # if dkl_rho_un > 0 or True:
-    if update > args.start_explore and dkl_rho_un >= args.clip_lim*0.5: 
+    if update > args.start_explore and dkl_rho_un >= args.clip_lim*0.75: 
         # KEEP BEST ROLLOUTS
         list_mean_rollouts = []
         with torch.no_grad():
