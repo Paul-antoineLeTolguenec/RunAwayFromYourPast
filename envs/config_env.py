@@ -25,21 +25,21 @@ config = {
     'kwargs': {'render_mode': 'rgb_array', 
                'max_episode_steps': 50},
     'coverage_idx': np.array([0,1,2]),
-    'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1], 'z_lim': [0, 1]}
+    'render_settings': {'x_lim': [0, 2], 'y_lim': [-2, 2], 'z_lim': [0, 5]}
 },
 "FetchPush-v2": {
     'type_id': 'robotics',
     'kwargs': {'render_mode': 'rgb_array', 
                'max_episode_steps': 50},
     'coverage_idx': np.array([3,4]),
-    'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1], 'z_lim': [0, 1]}
+    'render_settings': {'x_lim': [0,2], 'y_lim': [0,2]}
 },
 "FetchSlide-v2": {
     'type_id': 'robotics',
     'kwargs': {'render_mode': 'rgb_array', 
                'max_episode_steps': 50},
     'coverage_idx': np.array([3,4]),
-    'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1], 'z_lim': [0, 1]}
+    'render_settings': {'x_lim': [0,2], 'y_lim': [0,2]}
 },
 ##########################       DMCS       ############################################
 #  Acrobot,
@@ -47,33 +47,33 @@ config = {
     'type_id': 'dmcs',
     'kwargs': {
         'render_mode': 'rgb_array', 
-        'max_episode_steps': 200},
-    'coverage_idx': np.array([0,1]),
-    'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1]}
+        'max_episode_steps': 100},
+    'coverage_idx': np.array([0,1,2,3]),
+    'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1], 'z_lim': [-1, 1], 'w_lim': [-1, 1]}
 },
 #  Ball-in-cup, 
 "DMCS-Ball-in-cup": {
     'type_id': 'dmcs',
     'kwargs': {'render_mode': 'rgb_array', 
-               'max_episode_steps': 200},
+               'max_episode_steps': 100},
     'coverage_idx': np.array([0,1,2,3]),
-    'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1]}
+    'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1], 'z_lim': [-1, 1], 'w_lim': [-1, 1]}
 },
 #  Cart-pole, 
 "DMCS-Cart-k-Pole": {
     'type_id': 'dmcs',
     'kwargs': {'render_mode': 'rgb_array', 
-               'max_episode_steps': 200},
-    'coverage_idx': np.array([0,1,2,3,4,5,6]),
-    'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1]}
+               'max_episode_steps': 100},
+    'coverage_idx': np.array([4,5,6,7]),
+    'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1], 'z_lim': [-1, 1], 'w_lim': [-1, 1]}
 },
 #  Finger, 
 "DMCS-Finger": {
     'type_id': 'dmcs',
     'kwargs': {'render_mode': 'rgb_array', 
-               'max_episode_steps': 200},
-    'coverage_idx': np.array([0,1]),
-    'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1]}
+               'max_episode_steps': 100},
+    'coverage_idx': np.array([2,3,4,5]),
+    'render_settings': {'x_lim': [-2.5, 2.5], 'y_lim': [-2.5, 2.5], 'z_lim': [-2.5, 2.5], 'w_lim': [-2.5, 2.5]}
 },
 #  Fish
 "DMCS-Fish": {
@@ -81,7 +81,7 @@ config = {
     'kwargs': {'render_mode': 'rgb_array', 
                'max_episode_steps': 200},
     'coverage_idx': np.array([0,1]),
-    'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1]}
+    'render_settings': {'x_lim': [-0.5, 0.5], 'y_lim': [-0.5, 0.5]}
 },
 
 ##########################       MUJOCO       ############################################
@@ -135,6 +135,7 @@ config = {
     'coverage_idx': np.array([0,1,2]),
     'render_settings': {'x_lim': [-5, 5], 'y_lim': [-5, 5], 'z_lim': [0, 2]}
 },
+
 "HumanoidStandup-v4": {
     'type_id': 'mujoco',
     'kwargs': {'render_mode': 'rgb_array', 

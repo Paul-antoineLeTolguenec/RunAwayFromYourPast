@@ -25,17 +25,19 @@ class Wenv(gym.Env):
         # load the environment
         self.env = gym.make(env_id, **kwargs)
         # observation space
-        self.observation_space = self.env.observation_space
+        self.observation_space = self.env.observation_space if not type_id == 'robotics' else self.env.observation_space['observation']
         # action space
         self.action_space = self.env.action_space
         # spec 
         self.spec = self.env.spec
         # metrics
         self.coverage_accuracy = coverage_accuracy
-        self.matrix_coverage = np.zeros((coverage_idx.shape[0], self.coverage_accuracy))
+        self.matrix_coverage = np.zeros((self.coverage_accuracy,)*coverage_idx.shape[0])
         self.coverage_idx = coverage_idx
+        self.rooms = []
         self.episode_length = 0
         self.episode_reward = 0
+        self.limits = list(render_settings.values())
         # figure 
         if render_bool_matplot:
             self.figure, self.ax = plt.subplots()
@@ -43,6 +45,7 @@ class Wenv(gym.Env):
             self.ax.set_xlim([render_settings['x_lim'][0], render_settings['x_lim'][1]])
             self.ax.set_ylim([render_settings['y_lim'][0], render_settings['y_lim'][1]])
             self.writer_gif = self.set_gif(xp_id)
+            self.obs_saved = []
         # plotly
         if render_bool_plotly:
             self.frame = 0
@@ -59,6 +62,7 @@ class Wenv(gym.Env):
             self.env.unwrapped.np_random = compatible_generator
             self.observation_space = gymnasium.spaces.Box(self.env.observation_space.low, self.env.observation_space.high, dtype=np.uint8)
             self.action_space = gymnasium.spaces.Discrete(self.action_space.n)
+            self.render_mode = kwargs['render_mode']
 
 
     def set_all_seeds(self, seed):
@@ -110,31 +114,39 @@ class Wenv(gym.Env):
         return self.env.__str__()
     
     def gif(self, obs_un, obs_un_train, obs, classifier, device , z_un = None, obs_rho = None):
-        with torch.no_grad():
-            # clear the plot
-            self.ax.clear()
-            # data  to plot
-            data_to_plot =torch.Tensor(obs_un.reshape(-1, *self.observation_space.shape)).to(device)
-            # Plotting measure 
-            m_n = classifier(data_to_plot)
-            # mask =torch.nonzero(m_n> 0, as_tuple=True)[0]
-            # mask_z =torch.nonzero(m_n< 0, as_tuple=True)[0]
-            m_n = m_n.detach().cpu().numpy().squeeze(-1)
-            # normalize
-            # m_n = (m_n - m_n.mean()) / m_n.std()
-            # data to plot
-            data_to_plot = data_to_plot.detach().cpu().numpy()
-            # Plotting the environment
-            # self.ax.scatter(data_to_plot[:,self.coverage_idx[0]], data_to_plot[:,self.coverage_idx[1]], s=1, c = m_n, cmap='viridis')
-            # plot obs train
-            # self.ax.scatter(data_to_plot[mask,self.coverage_idx[0]], data_to_plot[mask,self.coverage_idx[1]], s=1, c='g')
-            # self.ax.scatter(data_to_plot[mask_z,self.coverage_idx[0]], data_to_plot[mask_z,self.coverage_idx[1]], s=1, c='r')
-            data_obs_rho = obs_rho.reshape(-1, *self.observation_space.shape).detach().cpu().numpy() if obs_rho is not None else None
-            self.ax.scatter(data_obs_rho[:,self.coverage_idx[0]], data_obs_rho[:,self.coverage_idx[1]], s=1, c='red',alpha=0.1)  if obs_rho is not None else None
-            data_obs = obs.reshape(-1, *self.observation_space.shape).detach().cpu().numpy() if obs is not None else None
-            self.ax.scatter(data_obs[:,self.coverage_idx[0]], data_obs[:,self.coverage_idx[1]], s=1, c='black',alpha=0.1)  if obs is not None else None
-            self.ax.scatter(data_to_plot[:,self.coverage_idx[0]], data_to_plot[:,self.coverage_idx[1]], s=1, c = m_n, cmap='viridis')
-            self.ax.scatter(obs_un_train[:,self.coverage_idx[0]].cpu(), obs_un_train[:,self.coverage_idx[1]].cpu(), s=1, c='b', alpha=0.5)
+        if classifier is not None:
+            with torch.no_grad():
+                # clear the plot
+                self.ax.clear()
+                # data  to plot
+                # data_to_plot =torch.Tensor(obs_un.reshape(-1, *self.observation_space.shape)).to(device)
+                data_to_plot =torch.cat([torch.Tensor(obs_un.reshape(-1, *self.observation_space.shape)), torch.Tensor(obs_rho.reshape(-1, *self.observation_space.shape))], dim=0).to(device) if obs_rho is not None else torch.Tensor(obs_un.reshape(-1, *self.observation_space.shape)).to(device)
+                # Plotting measure 
+                m_n = classifier(data_to_plot)
+                # mask =torch.nonzero(m_n> 0, as_tuple=True)[0]
+                # mask_z =torch.nonzero(m_n< 0, as_tuple=True)[0]
+                m_n = m_n.detach().cpu().numpy().squeeze(-1)
+                # normalize
+                # m_n = (m_n - m_n.mean()) / m_n.std()
+                # data to plot
+                data_to_plot = data_to_plot.detach().cpu().numpy()
+                # Plotting the environment
+                # self.ax.scatter(data_to_plot[:,self.coverage_idx[0]], data_to_plot[:,self.coverage_idx[1]], s=1, c = m_n, cmap='viridis')
+                # plot obs train
+                # self.ax.scatter(data_to_plot[mask,self.coverage_idx[0]], data_to_plot[mask,self.coverage_idx[1]], s=1, c='g')
+                # self.ax.scatter(data_to_plot[mask_z,self.coverage_idx[0]], data_to_plot[mask_z,self.coverage_idx[1]], s=1, c='r')
+                # data_obs_rho = obs_rho.reshape(-1, *self.observation_space.shape).detach().cpu().numpy() if obs_rho is not None else None
+                # self.ax.scatter(data_obs_rho[:,self.coverage_idx[0]], data_obs_rho[:,self.coverage_idx[1]], s=1, c='red',alpha=0.1)  if obs_rho is not None else None
+                data_obs = obs.reshape(-1, *self.observation_space.shape).detach().cpu().numpy() if obs is not None else None
+                self.ax.scatter(data_to_plot[:,self.coverage_idx[0]], data_to_plot[:,self.coverage_idx[1]], s=1, c = m_n, cmap='viridis')
+                self.ax.scatter(data_obs[:,self.coverage_idx[0]], data_obs[:,self.coverage_idx[1]], s=1, c='black',alpha=0.1)  if obs is not None else None
+
+                self.ax.scatter(obs_un_train[:,self.coverage_idx[0]].cpu(), obs_un_train[:,self.coverage_idx[1]].cpu(), s=1, c='b', alpha=0.5)
+        else :
+            # self.obs_saved.append(obs.cpu())
+            # data_to_plot = torch.cat(self.obs_saved, dim=0).squeeze(1).cpu().numpy()
+            # self.ax.scatter(data_to_plot[:,self.coverage_idx[0]], data_to_plot[:,self.coverage_idx[1]], s=1, c='black',alpha=0.1)
+            self.ax.scatter(obs_un[:,self.coverage_idx[0]], obs_un[:,self.coverage_idx[1]], s=1, c='black', alpha=0.5)
 
 
 
@@ -203,18 +215,39 @@ class Wenv(gym.Env):
     def parser_ram_atari(self): 
         ram = self.env.unwrapped.ale.getRAM()
         if 'Montezuma' in self.env_id : 
-            return {'x' : 2*((ram[42]/255)-0.5), 'y' : 2*((ram[43]/255)-0.5), 'room' : ram[62]}
+            return {'x' : 2*((ram[42]/255)-0.5), 'y' : 2*((ram[43]/255)-0.5), 'room' : ram[57]}
         elif 'Pitfall' in self.env_id : 
             # return {'x': 2*((ram[97]/255)-0.5), 'y': 2*((ram[105]/255)-0.5), 'room': ram[98]}
-            return {'x': ram[97], 'y': ram[105], 'room': ram[98]}
+            return {'x': 2*((ram[97])/(255) - 0.5), 'y': 2*((ram[105])/(255)-0.5), 'room': ram[98]}
 
         else : 
             raise
 
-    def update_coverage(self, obs, info=None):
-        # update coverage
-        if info is None:
-            self.matrix_coverage[:, i] = obs[ : , self.coverage_idx]
+    def update_coverage(self, obs, infos=None):
+        if infos is not None:
+            coords = []
+            for info in infos['position']:
+                coords.append([info['x'], info['y']])
+                self.rooms.append(info['room']) if info['room'] not in self.rooms else None
+            coords = np.array(coords)
+        if infos is None:
+            coords = obs[: , self.coverage_idx].cpu().numpy()
+        coords_mat = np.zeros_like(coords, dtype=int)
+        for j in range(coords.shape[1]):
+            coords_mat[:, j] = np.floor((coords[:, j] - self.limits[j][0]) / (self.limits[j][1] - self.limits[j][0]) * self.coverage_accuracy)
+        coords_mat = tuple(coords_mat.T)
+        # check in bounds
+        coords_mat = np.clip(coords_mat, 0, self.coverage_accuracy-1)
+        self.matrix_coverage[coords_mat] = 1
+       
+            
+                
+            
+    def get_coverage(self):
+        return np.sum(self.matrix_coverage) 
+    def get_rooms(self):
+        return len(set(self.rooms))
+    
     @property
     def unwrapped(self):
         return self.env.unwrapped

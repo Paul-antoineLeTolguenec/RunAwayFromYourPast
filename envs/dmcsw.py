@@ -30,7 +30,7 @@ class DMCSWrapper(gym.Env):
         time_step = self.env.reset()
         self.num_steps = 0
         if 'finger' in self.domain_name:
-            return np.concatenate([self.env.physics.tip_position().tolist() + list(time_step.observation.values())]), {}
+            return np.concatenate([self.env.physics.tip_position().tolist() + np.concatenate(list(time_step.observation.values())).tolist()]), {}
         elif 'fish' in self.domain_name:
             return np.concatenate([self.env.physics.position().tolist() +np.concatenate([v if not 'upright' in k else np.array([v]) for k,v in time_step.observation.items()]).tolist()]), {}
         else :
@@ -40,7 +40,7 @@ class DMCSWrapper(gym.Env):
         self.num_steps += 1
         time_step = self.env.step(action)
         if 'finger' in self.domain_name:
-            obs = np.concatenate([self.env.physics.tip_position().tolist() + list(time_step.observation.values())])
+            obs = np.concatenate([self.env.physics.tip_position().tolist() + np.concatenate(list(time_step.observation.values())).tolist()])
         elif 'fish' in self.domain_name:
             obs = np.concatenate([self.env.physics.position().tolist() +np.concatenate([v if not 'upright' in k else np.array([v]) for k,v in time_step.observation.items()]).tolist()])
         else:

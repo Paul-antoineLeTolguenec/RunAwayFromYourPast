@@ -1,104 +1,115 @@
-# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_continuous_actionpy
-import argparse
+# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/rpo/#rpo_continuous_actionpy
 import os
 import random
 import time
-from distutils.util import strtobool
+from dataclasses import dataclass
 
-# import gymnasium as gym
 import gym
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torch.nn.functional as F
+import tyro
 from torch.distributions.normal import Normal
-from src.utils.custom_sampling import exp_dec
 from torch.utils.tensorboard import SummaryWriter
-# from stable_baselines3.common.buffers import ReplayBuffer
-from envs.continuous_maze import Maze
-# animation 
-import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
-import numpy as np
-import imageio
+import torch.nn.functional as F
+# import specific 
+from src.ce.classifier import Classifier
+from envs.wenv import Wenv
+from envs.config_env import config
 
 
-def parse_args():
-    # fmt: off
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"),
-        help="the name of this experiment")
-    parser.add_argument("--seed", type=int, default=0,
-        help="seed of the experiment")
-    parser.add_argument("--env-type", type=str, default="Maze")
-    parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="if toggled, `torch.backends.cudnn.deterministic=False`")
-    parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default= False, nargs="?", const=True,
-        help="if toggled, cuda will be enabled by default")
-    parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="if toggled, this experiment will be tracked with Weights and Biases")
-    parser.add_argument("--wandb-project-name", type=str, default="contrastive_exploration",
-        help="the wandb's project name")
-    parser.add_argument("--wandb-entity", type=str, default=None,
-        help="the entity (team) of wandb's project")
-    parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="whether to capture videos of the agent performances (check out `videos` folder)")
-    parser.add_argument("--fig_frequency", type=int, default=1)
-    parser.add_argument("--make-gif", type=bool, default=True)
-    parser.add_argument("--episodic-return", type=bool, default=True)
+@dataclass
+class Args:
+    # XP RECORD
+    exp_name: str = os.path.basename(__file__)[: -len(".py")]
+    """the name of this experiment"""
+    seed: int = 0
+    """seed of the experiment"""
+    torch_deterministic: bool = True
+    """if toggled, `torch.backends.cudnn.deterministic=False`"""
+    cuda: bool = True
+    """if toggled, cuda will be enabled by default"""
+    track: bool = False
+    """if toggled, this experiment will be tracked with Weights and Biases"""
+    wandb_project_name: str = "contrastive_exploration"
+    """the wandb's project name"""
+    wandb_entity: str = None
+    """the entity (team) of wandb's project"""
+    capture_video: bool = False
+    """whether to capture videos of the agent performances (check out `videos` folder)"""
 
-    # Algorithm specific arguments
-    parser.add_argument("--env-id", type=str, default="Ur",
-        help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=1000000,
-        help="total timesteps of the experiments")
-    parser.add_argument("--n-capacity", type=int, default=10**4,
-        help="the capacity of the replay buffer in terms of episodes")
-    parser.add_argument("--learning-rate", type=float, default=5e-4,
-        help="the learning rate of the optimizer")
-    parser.add_argument("--num-envs", type=int, default=1,
-        help="the number of parallel game environments")
-    parser.add_argument("--num-steps", type=int, default=2048,
-        help="the number of steps to run in each environment per policy rollout")
-    parser.add_argument("--num_rollouts", type=int, default=4,
-        help="the number of rollouts ")
-    parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="Toggle learning rate annealing for policy and value networks")
-    parser.add_argument("--gamma", type=float, default=0.99,
-        help="the discount factor gamma")
-    parser.add_argument("--gae-lambda", type=float, default=0.95,
-        help="the lambda for the general advantage estimation")
-    parser.add_argument("--num-minibatches", type=int, default=32,
-        help="the number of mini-batches")
-    parser.add_argument("--minibatch-size", type=int, default=128,
-                        help="the size of the mini-batch")
-    parser.add_argument("--update-epochs", type=int, default=16,
-        help="the K epochs to update the policy")
-    parser.add_argument("--norm-adv", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="Toggles advantages normalization")
-    parser.add_argument("--clip-coef", type=float, default=0.2,
-        help="the surrogate clipping coefficient")
-    parser.add_argument("--clip-coef-mask", type=float, default=0.2,
-        help="the surrogate clipping coefficient for mask")
-    parser.add_argument("--clip-vloss", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="Toggles whether or not to use a clipped loss for the value function, as per the paper.")
-    parser.add_argument("--ent-coef", type=float, default=0.1,
-        help="coefficient of the entropy")
-    parser.add_argument("--vf-coef", type=float, default=1.0,
-        help="coefficient of the value function")
-    parser.add_argument("--max-grad-norm", type=float, default=0.5,
-        help="the maximum norm for the gradient clipping")
-    parser.add_argument("--target-kl", type=float, default=None,
-        help="the target KL divergence threshold")
-    parser.add_argument("--icm-lr", type=float, default=5e-4)
-    parser.add_argument("--icm-frequency", type=int, default=1)
-    parser.add_argument("--beta", type=float, default=0.2)
-    parser.add_argument("--ratio-reward", type=float, default=1.0)
-    args = parser.parse_args()
-    # args.num_steps = args.num_steps // args.num_envs
-    # fmt: on
-    return args
+    # GIF
+    make_gif: bool = True
+    """if toggled, will make gif """
+    plotly: bool = False
+    """if toggled, will use plotly instead of matplotlib"""
+    fig_frequency: int = 1
+
+    # RPO SPECIFIC
+    env_id: str = "Swimmer-v3"
+    """the id of the environment"""
+    total_timesteps: int = 8000000
+    """total timesteps of the experiments"""
+    learning_rate: float = 5e-4
+    """the learning rate of the optimizer"""
+    num_envs: int = 1
+    # """the number of parallel game environments"""
+    # num_steps: int = 2048
+    """the number of steps to run in each environment per policy rollout"""
+    anneal_lr: bool = False
+    """Toggle learning rate annealing for policy and value networks"""
+    gamma: float = 0.99
+    """the discount factor gamma"""
+    gae_lambda: float = 0.95
+    """the lambda for the general advantage estimation"""
+    num_minibatches: int = 32
+    """the number of mini-batches"""
+    update_epochs: int = 10
+    """the K epochs to update the policy"""
+    norm_adv: bool = True
+    """Toggles advantages normalization"""
+    clip_coef: float = 0.2
+    """the surrogate clipping coefficient"""
+    clip_vloss: bool = False #True
+    """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
+    ent_coef: float = 0.01
+    """coefficient of the entropy"""
+    vf_coef: float = 0.5
+    """coefficient of the value function"""
+    max_grad_norm: float = 0.5
+    """the maximum norm for the gradient clipping"""
+    target_kl: float = None
+    """the target KL divergence threshold"""
+    rpo_alpha: float = 0.0
+    """the alpha parameter for RPO"""
+
+    # ICM SPECIFIC
+    icm_lr: float = 1e-3
+    """the learning rate of the intrinsic curiosity module"""
+    beta: float = 0.2
+    """the beta parameter for the intrinsic curiosity module"""
+    ratio_reward: float = 1.0
+    """the ratio of the intrinsic reward"""
+    episodic_return: bool = True
+    """if toggled, the episodic return will be used"""
+    n_rollouts: int = 2
+    """the number of rollouts"""
+    keep_extrinsic_reward: bool = False
+    """if toggled, the extrinsic reward will be kept"""
+    coef_intrinsic : float = 1.0
+    """the coefficient of the intrinsic reward"""
+    coef_extrinsic : float = 1.0
+    """the coefficient of the extrinsic reward"""
+    icm_epochs: int = 32
+
+    # to be filled in runtime
+    batch_size: int = 0
+    """the batch size (computed in runtime)"""
+    minibatch_size: int = 0
+    """the mini-batch size (computed in runtime)"""
+    num_iterations: int = 0
+    """the number of iterations (computed in runtime)"""
 
 
 class ICM(nn.Module):   
@@ -153,22 +164,15 @@ class ICM(nn.Module):
 
 
 
-def make_env(env_id, idx, capture_video, run_name, gamma, env_type = "gym"):
+def make_env(env_id, idx, capture_video, run_name):
     def thunk():
-        if capture_video:
-            env = gym.make(env_id, render_mode="rgb_array")
-        else:
-            env = gym.make(env_id) if env_type == "gym" else Maze(name=env_id)
+        env = Wenv(env_id=env_id, xp_id=run_name, **config[env_id])
         env = gym.wrappers.FlattenObservation(env)  # deal with dm_control's Dict observation space
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
             if idx == 0:
                 env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
         # env = gym.wrappers.ClipAction(env)
-        # env = gym.wrappers.NormalizeObservation(env)
-        # env = gym.wrappers.TransformObservation(env, lambda obs: np.clip(obs, -10, 10))
-        # env = gym.wrappers.NormalizeReward(env, gamma=gamma)
-        # env = gym.wrappers.TransformReward(env, lambda reward: np.clip(reward, -10, 10))
         return env
 
     return thunk
@@ -214,8 +218,31 @@ class Agent(nn.Module):
 
 
 if __name__ == "__main__":
-    args = parse_args()
-    run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
+    args = tyro.cli(Args)
+    run_name = f"{args.env_id}__{args.exp_name}__{args.seed}"
+    # PLOTTING
+    if args.make_gif:
+        env_plot = Wenv(env_id=args.env_id, 
+                        render_bool_matplot=True, 
+                        xp_id=run_name, 
+                        **config[args.env_id])
+    if args.plotly:
+        env_plot = Wenv(env_id=args.env_id, 
+                        render_bool_plotly=True, 
+                        xp_id=run_name, 
+                        **config[args.env_id])
+    # coverage check env 
+    env_check = Wenv(env_id=args.env_id,
+                    render_bool_matplot=False,
+                    xp_id=run_name,
+                    **config[args.env_id])
+    # MAX STEPS
+    max_steps = config[args.env_id]['kwargs']['max_episode_steps']
+    args.num_steps = max_steps * args.n_rollouts +1
+    # BATCH CALCULATION
+    args.batch_size = int(args.num_envs * args.num_steps)
+    args.minibatch_size = int(args.batch_size // args.num_minibatches)
+    args.num_iterations = args.total_timesteps // args.batch_size
     if args.track:
         import wandb
 
@@ -225,7 +252,7 @@ if __name__ == "__main__":
             sync_tensorboard=True,
             config=vars(args),
             name=run_name,
-            # monitor_gym=True, no longer works for gymnasium
+            monitor_gym=True,
             save_code=True,
         )
     writer = SummaryWriter(f"runs/{run_name}")
@@ -233,14 +260,7 @@ if __name__ == "__main__":
         "hyperparameters",
         "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
-    if args.make_gif:
-        # env to plot 
-        env_plot = Maze(name = args.env_id, fig = True)
-        # iter_plot 
-        iter_plot = 0
-        if not os.path.exists('gif'):
-            os.makedirs('gif')
-        writer_gif = imageio.get_writer('gif/icm_ppo.mp4', fps=2)
+
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
@@ -252,19 +272,9 @@ if __name__ == "__main__":
 
     # env setup
     envs = gym.vector.SyncVectorEnv(
-        [make_env(args.env_id, i, args.capture_video, run_name, args.gamma, args.env_type) for i in range(args.num_envs)]
+        [make_env(args.env_id, i, args.capture_video, run_name) for i in range(args.num_envs)]
     )
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
-    if args.episodic_return:
-        max_steps = envs.envs[0].max_steps
-        args.num_steps = max_steps * args.num_rollouts
-    # update batch size and minibatch size
-    args.batch_size = int(args.num_envs * args.num_steps)
-    # print('batch_size',args.batch_size)
-    args.num_mini_batch = args.batch_size // args.minibatch_size
-    print('batch_size',args.batch_size)
-    print('minibatch_size',args.minibatch_size)
-    print('num mini batch',args.num_minibatches)
     # Agent
     agent = Agent(envs).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
@@ -278,12 +288,7 @@ if __name__ == "__main__":
     rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
     dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    # # full replay buffer
-    # obs_un =  np.zeros((args.n_capacity,max_steps) + envs.single_observation_space.shape)
-    # probs_un = np.ones((args.n_capacity,max_steps,1))
-    # obs_un_train = np.zeros((args.classifier_memory,envs.single_observation_space.shape[0]))
-    # probs_un_train = np.zeros((args.classifier_memory,1))
-    # times_full = np.zeros((args.n_capacity,max_steps)+(1,))
+    
     # TRY NOT TO MODIFY: start the game
     global_step = 0
     start_time = time.time()
@@ -295,13 +300,12 @@ if __name__ == "__main__":
     video_filenames = set()
 
     for update in range(1, num_updates + 1):
-        # Annealing the rate if instructed to do so.
-        if args.anneal_lr:
-            frac = 1.0 - (update - 1.0) / num_updates
-            lrnow = frac * args.learning_rate
-            optimizer.param_groups[0]["lr"] = lrnow
+        
 
         for step in range(0, args.num_steps):
+            # coverage 
+            env_check.update_coverage(next_obs)
+            # step 
             global_step += 1 * args.num_envs
             obs[step] = next_obs
             dones[step] = next_done
@@ -323,33 +327,28 @@ if __name__ == "__main__":
             # Only print when at least 1 env is done
             if "final_info" not in infos:
                 continue
+
+        ########################### ICM UPDATE ###############################
+        for icm_update in range(args.icm_epochs):
+            icm_loss, inverse_loss, forward_loss = icm.loss(obs[:-1].reshape(-1, *envs.single_observation_space.shape), 
+                                                            obs[1:].reshape(-1, *envs.single_observation_space.shape), 
+                                                            actions[:-1].reshape(-1, *envs.single_action_space.shape), 
+                                                            dones[:-1].reshape(-1, 1))
+            optimizer_icm.zero_grad()
+            icm_loss.backward()
+            optimizer_icm.step()
             
            
         ############################ REWARD ##################################
         with torch.no_grad():
             # update the reward
-            rewards_nn = icm.loss(obs[:-1].reshape(-1, *envs.single_observation_space.shape), 
+            rewards_intrinsic = icm.loss(obs[:-1].reshape(-1, *envs.single_observation_space.shape), 
                                 obs[1:].reshape(-1, *envs.single_observation_space.shape), 
                                 actions[:-1].reshape(-1, *envs.single_action_space.shape), 
                                 dones[:-1].reshape(-1, 1),
-                                reduce=False)
-            rewards_nn = torch.cat((rewards_nn.reshape(args.num_steps-1, args.num_envs), 
-                                    torch.zeros(envs.observation_space.shape[0], args.num_envs).to(device)),0)
-            # normalize the intrinsic reward
-            rewards= (rewards_nn - rewards_nn.mean()) / (rewards_nn.std() + 1)
-
-        ########################### ICM UPDATE ###############################
-        icm_loss, inverse_loss, forward_loss = icm.loss(obs[:-1].reshape(-1, *envs.single_observation_space.shape), 
-                                                        obs[1:].reshape(-1, *envs.single_observation_space.shape), 
-                                                        actions[:-1].reshape(-1, *envs.single_action_space.shape), 
-                                                        dones[:-1].reshape(-1, 1))
-        optimizer_icm.zero_grad()
-        icm_loss.backward()
-        optimizer_icm.step()
-        
-        
-
-        
+                                reduce=False).unsqueeze(-1)
+            rewards_intrinsic = torch.cat([rewards_intrinsic, torch.zeros(1,1).to(device)], 0)
+        rewards = args.coef_extrinsic * rewards + args.coef_intrinsic*rewards_intrinsic  if args.keep_extrinsic_reward else args.coef_intrinsic * rewards_intrinsic
         ########################### PPO UPDATE ###############################
         # bootstrap value if not done
         with torch.no_grad():
@@ -446,11 +445,14 @@ if __name__ == "__main__":
         writer.add_scalar("losses/explained_variance", explained_var, global_step)
         writer.add_scalar("charts/advantages_mean", mb_advantages.mean(), global_step)
         writer.add_scalar("losses/icm_loss", icm_loss.item(), global_step)
+        # metrics 
+        writer.add_scalar("charts/coverage", env_check.get_coverage(), global_step)
 
         print("SPS:", int(global_step / (time.time() - start_time)))
         print(f"global_step={global_step}")
         print('update : ',update)
-        print('reward mean : ',rewards_nn.mean())
+        print('icm_loss : ',icm_loss.item())
+        print('reward intrinsic : ',rewards_intrinsic[0].mean())
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
         if args.track and args.capture_video:
@@ -458,22 +460,21 @@ if __name__ == "__main__":
                 if filename not in video_filenames and filename.endswith(".mp4"):
                     wandb.log({f"videos": wandb.Video(f"videos/{run_name}/{filename}")})
                     video_filenames.add(filename)
-        if update % args.fig_frequency == 0 and args.make_gif and global_step > 0:
-            # clear the plot
-            # env_plot.ax.clear()
-            # reset the limits
-            # env_plot.reset_lim_fig()
-            # data  to plot
-            obs = obs.reshape(-1, *envs.single_observation_space.shape)
-            # Plotting measure 
-            env_plot.ax.scatter(obs[:,0],obs[:,1],c='b',s=1)
+        if update % args.fig_frequency == 0  and global_step > 0:
+            if args.make_gif : 
+                env_plot.gif(obs_un = None,
+                obs_un_train = None,
+                obs=obs,
+                classifier = None,
+                device= device,
+                z_un = None,
+                obs_rho = None)
+            if args.plotly:
+                env_plot.plotly(obs_un = obs, 
+                                obs_un_train = None,
+                                classifier = None,
+                                device = device,
+                                z_un = None)
 
-            # save fig env_plot
-            env_plot.figure.canvas.draw()
-            image = np.frombuffer(env_plot.figure.canvas.tostring_rgb(), dtype='uint8')
-            image = image.reshape(env_plot.figure.canvas.get_width_height()[::-1] + (3,))
-            writer_gif.append_data(image)
-            # iter_plot
-            iter_plot += 1
     envs.close()
     writer.close()

@@ -47,7 +47,7 @@ register(
 register(
     id='DMCS-Fish',
     entry_point='envs.dmcsw:DMCSWrapper',
-    kwargs={'domain_name': 'fish', 'task_name': 'upright', 'max_episode_steps': 200, 'random': 0, 'render_mode': 'rgb_array'},
+    kwargs={'domain_name': 'fish', 'task_name': 'swim', 'max_episode_steps': 200, 'random': 0, 'render_mode': 'rgb_array'},
     max_episode_steps = 200
 )
 

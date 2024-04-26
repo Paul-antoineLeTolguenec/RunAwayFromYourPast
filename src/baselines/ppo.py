@@ -15,7 +15,6 @@ from torch.utils.tensorboard import SummaryWriter
 import torch.nn.functional as F
 # import specific 
 from src.ce.classifier import Classifier
-from src.ce.vector_encoding import VE
 from envs.wenv import Wenv
 from envs.config_env import config
 
@@ -48,7 +47,7 @@ class Args:
     fig_frequency: int = 1
 
     # RPO SPECIFIC
-    env_id: str = "Maze-Easy"
+    env_id: str = "Swimmer-v3"
     """the id of the environment"""
     total_timesteps: int = 8000000
     """total timesteps of the experiments"""
@@ -85,7 +84,7 @@ class Args:
     rpo_alpha: float = 0.0
     """the alpha parameter for RPO"""
 
-    # DIAYN SPECIFIC
+    # PPO SPECIFIC
     ratio_reward: float = 1.0
     """the ratio of the intrinsic reward"""
     episodic_return: bool = True
@@ -97,23 +96,6 @@ class Args:
     coef_intrinsic : float = 1.0
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
-    """ the coefficient of the extrinsic reward"""
-    classifier_lr: float = 1e-3
-    """the learning rate of the classifier"""
-    classifier_epochs: int = 16
-    """the number of epochs for the classifier"""
-    n_agent: int = 8
-    """the number of agents"""
-    classifier_batch_size: int = 256
-    """the batch size of the classifier"""
-    feature_extractor: bool = False
-    """if toggled, the feature extractor will be used"""
-    # VAE
-    vae_lr: float = 1e-3
-    """the learning rate of the VAE"""
-    vae_epochs: int = 16
-    """the number of epochs for the VAE"""
-    vae_latent_dim: int = 32
 
     # to be filled in runtime
     batch_size: int = 0
@@ -146,102 +128,19 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     torch.nn.init.constant_(layer.bias, bias_const)
     return layer
 
-class Classifier(torch.nn.Module):
-    def __init__(self, 
-                observation_space,
-                n_agent,
-                device,
-                env_id,
-                feature_extractor = False):
-        super(Classifier, self).__init__()
-        self.relu = torch.nn.ReLU()
-        self.n_agent = n_agent
-        self.env_id = env_id
-        self.feature_extractor = feature_extractor  
-        if feature_extractor:
-            self.fcz1 = torch.nn.Linear(config[env_id]['coverage_idx'].shape[0], 128,device=device)
-            self.fcz2 = torch.nn.Linear(128, 64, device=device)
-            self.fcz3 =  torch.nn.Linear(64, n_agent, device=device)
-        else:
-            self.fcz1 = torch.nn.Linear(observation_space.shape[0], 128,device=device)
-            self.fcz2 = torch.nn.Linear(128, 64, device=device)
-            self.fcz3 =  torch.nn.Linear(64, n_agent, device=device)
-        self.softmax = torch.nn.Softmax(dim=1)
 
-    
-    def forward_z(self, x):
-        x = self.feature(x) if self.feature_extractor else x
-        x = self.relu(self.fcz1(x))
-        x = self.relu(self.fcz2(x))
-        return self.fcz3(x)
-    
-    def mlh_loss(self, obs, z):
-        # change dtype to int
-        z = z.type(torch.int64)-1
-        p_z = self.softmax(self.forward_z(obs))
-        p_z_i = torch.gather(p_z, 1, z)
-        return -torch.mean(torch.log(p_z_i))
-    
-    def feature(self, x):
-        x=  x[:, :, config[self.env_id]['coverage_idx']] if x.dim() == 3 else x[:, config[self.env_id]['coverage_idx']]
-        return x
-
-class VAE(nn.Module):
-    def __init__(self, input_dim, latent_dim):
-        super().__init__()
-        self.encoder = nn.Sequential(
-            layer_init(nn.Linear(input_dim, 256)),
-            nn.ReLU(),
-            layer_init(nn.Linear(256, 256)),
-            nn.ReLU(),
-        )
-        self.mean_layer = layer_init(nn.Linear(256, latent_dim))
-        self.logstd_layer = layer_init(nn.Linear(256, latent_dim))
-
-        self.decoder = nn.Sequential(
-            layer_init(nn.Linear(latent_dim, 256)),
-            nn.ReLU(),
-            layer_init(nn.Linear(256, 256)),
-            nn.ReLU(),
-            layer_init(nn.Linear(256, input_dim)),
-        )
-
-    def encode(self, x):
-        x = self.encoder(x)
-        mean = self.mean_layer(x)
-        logstd = self.logstd_layer(x)
-        return mean, logstd
-
-    def decode(self, z):
-        return self.decoder(z)
-
-    def forward(self, x):
-        mean, logstd = self.encode(x)
-        z = mean + torch.randn_like(mean) * torch.exp(logstd)
-        x_recon = self.decode(z)
-        return x_recon, mean, logstd
-    
-    def loss(self, x, reduce=True):
-        x_recon, mean, logstd = self(x)
-        recon_loss = F.mse_loss(x_recon, x, reduction='none').sum(1)
-        kl_loss = -0.5 * (1 + 2 * logstd - mean ** 2 - torch.exp(2 * logstd)).sum(1)
-        loss = recon_loss + kl_loss
-        if reduce:
-            return loss.mean()
-        return loss
-    
 class Agent(nn.Module):
     def __init__(self, envs):
         super().__init__()
         self.critic = nn.Sequential(
-            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod() + 1, 64)),
+            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 1), std=1.0),
         )
         self.actor_mean = nn.Sequential(
-            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod() + 1, 64)),
+            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
@@ -249,19 +148,17 @@ class Agent(nn.Module):
         )
         self.actor_logstd = nn.Parameter(torch.zeros(1, np.prod(envs.single_action_space.shape)))
 
-    def get_value(self, x, z):
-        x = torch.cat([x, z], dim=-1)
+    def get_value(self, x):
         return self.critic(x)
 
-    def get_action_and_value(self, x, z, action=None):
-        x_extended = torch.cat([x, z], dim=-1)
-        action_mean = self.actor_mean(x_extended)
+    def get_action_and_value(self, x, action=None):
+        action_mean = self.actor_mean(x)
         action_logstd = self.actor_logstd.expand_as(action_mean)
         action_std = torch.exp(action_logstd)
         probs = Normal(action_mean, action_std)
         if action is None:
             action = probs.sample()
-        return action, probs.log_prob(action).sum(1), probs.entropy().sum(1), self.critic(x_extended)
+        return action, probs.log_prob(action).sum(1), probs.entropy().sum(1), self.critic(x)
 
 
 if __name__ == "__main__":
@@ -283,8 +180,6 @@ if __name__ == "__main__":
                     render_bool_matplot=False,
                     xp_id=run_name,
                     **config[args.env_id])
-    # NUM ENVS 
-    args.num_envs = args.n_agent
     # MAX STEPS
     max_steps = config[args.env_id]['kwargs']['max_episode_steps']
     args.num_steps = max_steps * args.n_rollouts +1
@@ -327,39 +222,28 @@ if __name__ == "__main__":
     # Agent
     agent = Agent(envs).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
-    classifier = Classifier(envs.single_observation_space, 
-                            args.n_agent,
-                            device,
-                            args.env_id,
-                            feature_extractor = args.feature_extractor).to(device)
-    optimizer_classifier = optim.Adam(classifier.parameters(), lr=args.classifier_lr, eps=1e-5)
-    vae = VAE(np.array(envs.single_observation_space.shape).prod(), args.vae_latent_dim).to(device)
-    optimizer_vae = optim.Adam(vae.parameters(), lr=args.vae_lr, eps=1e-5)
-    ve = VE(args.n_agent, device, torch.ones(args.n_agent)/args.n_agent)
     # ALGO Logic: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
     actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
+    times = torch.zeros((args.num_steps, args.num_envs) + (1,)).to(device)
     logprobs = torch.zeros((args.num_steps, args.num_envs)).to(device)
     rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
     dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    zs = torch.arange(1,args.n_agent+1).repeat(args.num_steps, 1).to(device)
-
-    # Full Replay 
-    obs_full = None
-    z_full = None
     
     # TRY NOT TO MODIFY: start the game
     global_step = 0
     start_time = time.time()
     next_obs, infos = envs.reset(seed=args.seed)
-    z = torch.arange(1,args.n_agent+1).unsqueeze(-1).to(device)
+    times[0] = torch.tensor(np.array([infos["l"]])).to(device)
     next_obs = torch.Tensor(next_obs).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
     num_updates = args.total_timesteps // args.batch_size
     video_filenames = set()
-    
+
     for update in range(1, num_updates + 1):
+        
+
         for step in range(0, args.num_steps):
             # coverage 
             env_check.update_coverage(next_obs)
@@ -371,60 +255,25 @@ if __name__ == "__main__":
             # if terminated, reset the env
             # ALGO LOGIC: action logic
             with torch.no_grad():
-                action, logprob, _, value = agent.get_action_and_value(next_obs, z)
+                action, logprob, _, value = agent.get_action_and_value(next_obs)
                 values[step] = value.flatten()
             actions[step] = action
             logprobs[step] = logprob
 
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, terminated, truncated, infos = envs.step(action.cpu().numpy())
+            times[step] = torch.tensor(np.array([infos["l"]])).to(device)
             done = np.logical_or(terminated, truncated)
             rewards[step] = torch.tensor(reward).to(device).view(-1)*args.ratio_reward
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)
             # Only print when at least 1 env is done
             if "final_info" not in infos:
                 continue
-
-        ########################### CLASSIFIER TRAINING ###############################
-        if obs_full is not None:
-            batch_obs = obs.view(-1, *obs.shape[2:])
-            batch_zs = zs.view(-1, *zs.shape[2:]).unsqueeze(-1)
-            for _ in range(args.classifier_epochs):
-                idx = torch.randint(0, batch_obs.shape[0], (args.classifier_batch_size,))
-                obs_batch = batch_obs[idx]
-                z_batch = batch_zs[idx]
-                optimizer_classifier.zero_grad()
-                loss = classifier.mlh_loss(obs_batch, z_batch)
-                loss.backward()
-                optimizer_classifier.step()
-        ########################### VAE UPDATE ###############################
-            for _ in range(args.vae_epochs):
-                idx = torch.randint(0, batch_obs.shape[0], (args.classifier_batch_size,))
-                obs_batch = batch_obs[idx]
-                vae_loss = vae.loss(obs_batch)
-                optimizer_vae.zero_grad()
-                vae_loss.backward()
-                optimizer_vae.step()
-        ########################### STORE UN ###############################
-        obs_full = np.concatenate((obs_full, obs.cpu().numpy().reshape(-1,obs.shape[-1])) , axis = 0) if obs_full is not None else obs.cpu().numpy().reshape(-1,obs.shape[-1])
-        z_full = np.concatenate((z_full, zs.cpu().numpy().reshape((-1,) + z.shape[-1:])) , axis = 0) if z_full is not None else zs.cpu().numpy().reshape((-1,) + z.shape[-1:])
-
-        ########################### REWARD ###############################
-        with torch.no_grad():
-            # classifier intrinsic reward
-            p_s_z = torch.gather(torch.softmax(classifier.forward_z(obs),dim=-1), -1, (zs-1).type(torch.int64).unsqueeze(-1)).squeeze(-1)
-            intrinsic_reward_classifier = torch.log(p_s_z+1e-8)
-            intrinsic_reward_classifier = intrinsic_reward_classifier.view(args.num_steps, args.num_envs)
-            # vae 
-            intrinsic_reward_vae = vae.loss(obs.reshape(-1, *envs.single_observation_space.shape), reduce = False).reshape(args.num_steps, args.num_envs)
-            # full intrinsic reward 
-            intrinsic_reward = intrinsic_reward_classifier + intrinsic_reward_vae
-            rewards = intrinsic_reward * args.coef_intrinsic + rewards * args.coef_extrinsic if args.keep_extrinsic_reward else intrinsic_reward*args.coef_intrinsic
-
+        
         ########################### PPO UPDATE ###############################
         # bootstrap value if not done
         with torch.no_grad():
-            next_value = agent.get_value(next_obs, z).reshape(1, -1)
+            next_value = agent.get_value(next_obs).reshape(1, -1)
             advantages = torch.zeros_like(rewards).to(device)
             lastgaelam = 0
             for t in reversed(range(args.num_steps)):
@@ -441,7 +290,6 @@ if __name__ == "__main__":
 
         # flatten the batch
         b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
-        b_zs = zs.reshape((-1,) + z.shape[-1:])
         b_logprobs = logprobs.reshape(-1)
         b_actions = actions.reshape((-1,) + envs.single_action_space.shape)
         b_advantages = advantages.reshape(-1)
@@ -457,7 +305,7 @@ if __name__ == "__main__":
                 end = start + args.minibatch_size
                 mb_inds = b_inds[start:end]
 
-                _, newlogprob, entropy, newvalue = agent.get_action_and_value(b_obs[mb_inds], b_zs[mb_inds] ,b_actions[mb_inds])
+                _, newlogprob, entropy, newvalue = agent.get_action_and_value(b_obs[mb_inds], b_actions[mb_inds])
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()
 
