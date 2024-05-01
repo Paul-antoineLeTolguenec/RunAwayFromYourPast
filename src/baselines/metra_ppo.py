@@ -47,7 +47,7 @@ class Args:
     fig_frequency: int = 1
 
     # RPO SPECIFIC
-    env_id: str = "HalfCheetah-v3"
+    env_id: str = "Maze-Easy"
     """the id of the environment"""
     total_timesteps: int = 8000000
     """total timesteps of the experiments"""
@@ -89,7 +89,7 @@ class Args:
     """the ratio of the intrinsic reward"""
     episodic_return: bool = True
     """if toggled, the episodic return will be used"""
-    n_rollouts: int = 4
+    n_rollouts: int = 2
     """the number of rollouts"""
     keep_extrinsic_reward: bool = False
     """if toggled, the extrinsic reward will be kept"""
@@ -99,9 +99,9 @@ class Args:
     """ the coefficient of the extrinsic reward"""
     discriminator_lr: float = 1e-3
     """the learning rate of the discriminator"""
-    discriminator_epochs: int = 16
+    discriminator_epochs: int = 64
     """the number of epochs for the discriminator"""
-    n_agent: int = 8
+    n_agent: int = 6
     """the number of agents"""
     discriminator_batch_size: int = 256
     """the batch size of the discriminator"""
@@ -333,8 +333,8 @@ if __name__ == "__main__":
                 continue
 
         ########################### discriminator TRAINING ###############################
-        # batch_obs = obs.view(-1, *obs.shape[2:])
-        # batch_zs = zs.view(-1, *zs.shape[2:]).unsqueeze(-1)
+        batch_obs = obs.view(-1, *obs.shape[2:])
+        batch_zs = zs.view(-1, *zs.shape[2:])
         if obs_full is not None:
             for _ in range(args.discriminator_epochs):
                 # lipshitz loss
@@ -342,6 +342,11 @@ if __name__ == "__main__":
                 obs_batch = torch.tensor(obs_full[idx], device=device)
                 next_obs_batch = torch.tensor(obs_full[idx+1], device=device)
                 z_batch = torch.tensor(z_full[idx], device=device)
+                # lipshitz loss
+                # idx = torch.randint(0, batch_obs.shape[0] - 1, (args.discriminator_batch_size,))
+                # obs_batch = batch_obs[idx]
+                # next_obs_batch =   batch_obs[idx+1]
+                # z_batch = batch_zs[idx]
                 optimizer_discriminator.zero_grad()
                 loss = discriminator.lipshitz_loss(obs_batch, next_obs_batch, z_batch)
                 loss.backward()
@@ -358,8 +363,10 @@ if __name__ == "__main__":
         z_full = np.concatenate((z_full, zs.cpu().numpy().reshape((-1,) + z.shape[-1:])) , axis = 0) if z_full is not None else zs.cpu().numpy().reshape((-1,) + z.shape[-1:])
         ########################### REWARD ###############################
         with torch.no_grad():
-            p_s_z = torch.softmax(discriminator.forward(obs),dim=-1)
-            intrinsic_reward = (p_s_z*z_one_hots).sum(dim=-1)
+            p_s_z = discriminator.forward(obs)
+            intrinsic_reward = (p_s_z*zs).sum(dim=-1)
+            # normalized 
+            # intrinsic_reward = (intrinsic_reward - intrinsic_reward.mean(dim=1, keepdim=True)) / (intrinsic_reward.std(dim=1, keepdim=True) + 1e-8)
             rewards = intrinsic_reward * args.coef_intrinsic + rewards * args.coef_extrinsic if args.keep_extrinsic_reward else intrinsic_reward*args.coef_intrinsic
 
         ########################### PPO UPDATE ###############################
@@ -379,7 +386,10 @@ if __name__ == "__main__":
                 # delta = rewards[t] + args.gamma * nextvalues * nextnonterminal 
                 advantages[t] = lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
             returns = advantages + values
-
+        # normalize advantages
+        if args.norm_adv:
+            # normalize advantages per skill
+            advantages = (advantages - advantages.mean(dim=1, keepdim=True)) / (advantages.std(dim=1, keepdim=True) + 1e-8)
         # flatten the batch
         b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
         b_zs = zs.reshape((-1,) + z.shape[-1:])
@@ -409,8 +419,8 @@ if __name__ == "__main__":
                     clipfracs += [((ratio - 1.0).abs() > args.clip_coef).float().mean().item()]
 
                 mb_advantages = b_advantages[mb_inds]
-                if args.norm_adv:
-                    mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
+                # if args.norm_adv:
+                #     mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
 
                 # Policy loss
                 pg_loss1 = -mb_advantages * ratio
@@ -474,12 +484,13 @@ if __name__ == "__main__":
                     video_filenames.add(filename)
         if update % args.fig_frequency == 0  and global_step > 0:
             if args.make_gif : 
-                env_plot.gif(obs_un = obs_full,
+                env_plot.gif(obs_un = None,
                 obs_un_train = None,
-                obs = None,
+                obs = obs,
                 classifier = None,
                 device = device,
                 z_un = None,
+                zs=zs,
                 obs_rho = None)
             if args.plotly:
                 env_plot.plotly(obs_un = obs_full, 

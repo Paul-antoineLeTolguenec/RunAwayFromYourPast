@@ -22,6 +22,7 @@ class Wenv(gym.Env):
         self.env_id = env_id
         self.xp_id = xp_id
         self.type_id = type_id
+        self.config = kwargs
         # load the environment
         self.env = gym.make(env_id, **kwargs)
         # observation space
@@ -46,6 +47,7 @@ class Wenv(gym.Env):
             self.ax.set_ylim([render_settings['y_lim'][0], render_settings['y_lim'][1]])
             self.writer_gif = self.set_gif(xp_id)
             self.obs_saved = []
+            self.random_colors = None
         # plotly
         if render_bool_plotly:
             self.frame = 0
@@ -113,14 +115,20 @@ class Wenv(gym.Env):
     def __str__(self):
         return self.env.__str__()
     
-    def gif(self, obs_un, obs_un_train, obs, classifier, device , z_un = None, obs_rho = None):
+    def gif(self, obs_un=None, obs_un_train=None, 
+            obs=None, classifier=None, 
+            device=None , z_un = None, 
+            zs = None, obs_rho = None):
+        # self.random_colors = [ np.random.rand(3,) for _ in range(z_un.shape[-1])] if (z_un is not None and self.random_colors is None) else self.random_colors
+        self.random_colors = [ np.random.rand(3,) for _ in range(zs.shape[-1])] if (zs is not None and self.random_colors is None) else self.random_colors
+
         if classifier is not None:
             with torch.no_grad():
                 # clear the plot
                 self.ax.clear()
                 # data  to plot
                 # data_to_plot =torch.Tensor(obs_un.reshape(-1, *self.observation_space.shape)).to(device)
-                data_to_plot =torch.cat([torch.Tensor(obs_un.reshape(-1, *self.observation_space.shape)), torch.Tensor(obs_rho.reshape(-1, *self.observation_space.shape))], dim=0).to(device) if obs_rho is not None else torch.Tensor(obs_un.reshape(-1, *self.observation_space.shape)).to(device)
+                data_to_plot =torch.cat([torch.Tensor(obs_un.reshape(-1, *self.observation_space.shape)).to(device), torch.Tensor(obs.reshape(-1, *self.observation_space.shape))], dim=0)
                 # Plotting measure 
                 m_n = classifier(data_to_plot)
                 # mask =torch.nonzero(m_n> 0, as_tuple=True)[0]
@@ -137,17 +145,27 @@ class Wenv(gym.Env):
                 # self.ax.scatter(data_to_plot[mask_z,self.coverage_idx[0]], data_to_plot[mask_z,self.coverage_idx[1]], s=1, c='r')
                 # data_obs_rho = obs_rho.reshape(-1, *self.observation_space.shape).detach().cpu().numpy() if obs_rho is not None else None
                 # self.ax.scatter(data_obs_rho[:,self.coverage_idx[0]], data_obs_rho[:,self.coverage_idx[1]], s=1, c='red',alpha=0.1)  if obs_rho is not None else None
-                data_obs = obs.reshape(-1, *self.observation_space.shape).detach().cpu().numpy() if obs is not None else None
-                self.ax.scatter(data_to_plot[:,self.coverage_idx[0]], data_to_plot[:,self.coverage_idx[1]], s=1, c = m_n, cmap='viridis')
-                self.ax.scatter(data_obs[:,self.coverage_idx[0]], data_obs[:,self.coverage_idx[1]], s=1, c='black',alpha=0.1)  if obs is not None else None
-
-                self.ax.scatter(obs_un_train[:,self.coverage_idx[0]].cpu(), obs_un_train[:,self.coverage_idx[1]].cpu(), s=1, c='b', alpha=0.5)
-        else :
-            # self.obs_saved.append(obs.cpu())
-            # data_to_plot = torch.cat(self.obs_saved, dim=0).squeeze(1).cpu().numpy()
-            # self.ax.scatter(data_to_plot[:,self.coverage_idx[0]], data_to_plot[:,self.coverage_idx[1]], s=1, c='black',alpha=0.1)
-            self.ax.scatter(obs_un[:,self.coverage_idx[0]], obs_un[:,self.coverage_idx[1]], s=1, c='black', alpha=0.5)
-
+                # data_obs = obs.reshape(-1, *self.observation_space.shape).detach().cpu().numpy() if obs is not None else None
+                sc = self.ax.scatter(data_to_plot[:,self.coverage_idx[0]], data_to_plot[:,self.coverage_idx[1]], s=1, c = m_n, cmap='viridis')
+                # self.ax.scatter(data_obs[:,self.coverage_idx[0]], data_obs[:,self.coverage_idx[1]], s=1, c='black',alpha=0.1)  if obs is not None else None
+                # self.ax.scatter(obs_un_train[:,self.coverage_idx[0]].cpu(), obs_un_train[:,self.coverage_idx[1]].cpu(), s=1, c='b', alpha=0.5)
+                if hasattr(self, 'cbar'):
+                    self.cbar.update_normal(sc)
+                else:
+                    self.cbar = self.figure.colorbar(sc, ax=self.ax)
+        # else :
+        #     # self.obs_saved.append(obs.cpu())
+        #     # data_to_plot = torch.cat(self.obs_saved, dim=0).squeeze(1).cpu().numpy()
+        #     # self.ax.scatter(data_to_plot[:,self.coverage_idx[0]], data_to_plot[:,self.coverage_idx[1]], s=1, c='black',alpha=0.1)
+        #     self.ax.scatter(obs_un[:,self.coverage_idx[0]], obs_un[:,self.coverage_idx[1]], s=1, c='black', alpha=0.5)
+        if zs is not None:
+            self.ax.clear()
+            for i in range(zs.shape[-1]):
+                # gather data
+                # data = obs_un[z_un[:,i] == 1]
+                data = obs[zs[:,i] == 1].cpu().numpy()
+                # self.ax.scatter(data[:,self.coverage_idx[0]], data[:,self.coverage_idx[1]], s=1, c=self.random_colors[i], alpha=0.5)
+                self.ax.scatter(data[:,self.coverage_idx[0]], data[:,self.coverage_idx[1]], s=1, c=self.random_colors[i], alpha=0.5)
 
 
         # Bounds

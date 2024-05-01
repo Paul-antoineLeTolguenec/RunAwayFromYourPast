@@ -96,10 +96,10 @@ class Classifier(torch.nn.Module):
         # mask strategy q
         label_q = torch.ones_like(s_q)
         # mask strategy p
-        # label_p = self.mask_labels_p(s_p) if self.learn_z else torch.ones_like(s_p)
-        label_p = self.mask_labels_p(s_p)
+        label_p = self.mask_labels_p(s_p) if self.learn_z else torch.ones_like(s_p)
+        # label_p = self.mask_labels_p(s_p)
         # label_p = torch.ones_like(s_p)
-        L = -((label_q*torch.log(s_q_p)).mean() +(label_p*torch.log(1 - s_p_p)).mean()) if not self.lipshitz else -((s_q - s_p)).mean()
+        L = -((label_q*torch.log(s_q_p)).mean() +(label_p*torch.log(1 - s_p_p)).mean()) 
         if self.learn_z:
             L += self.mlh_loss(batch_q, batch_q_z) + self.mlh_loss(batch_p, batch_p_z)
         return L 
@@ -142,8 +142,8 @@ class Classifier(torch.nn.Module):
         # label_p = self.mask_labels_p(s_p) if self.learn_z else torch.ones_like(s_p)
         label_p = torch.ones_like(s_p)
         # classification loss
-        # L = -((label_q*torch.log(s_q_p)).mean() +(label_p*torch.log(1 - s_p_p)).mean()) 
-        L =-((s_q - s_p)).mean()
+        L = -((label_q*torch.log(s_q_p)).mean() +(label_p*torch.log(1 - s_p_p)).mean()) 
+        # L =-((s_q - s_p)).mean()
         # lipshitz regularization
         lipshitz_loss = (self.lipshits_regu(q_batch_s, q_batch_next_s, q_dones.squeeze(-1)) + self.lipshits_regu(p_batch_s, p_batch_next_s, p_dones))
         # if self.learn_z:

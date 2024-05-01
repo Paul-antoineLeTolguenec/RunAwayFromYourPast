@@ -3,10 +3,11 @@
 #SBATCH --partition=huge
 #SBATCH --time=24:00:00
 #SBATCH --array=0-39
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=4
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=6  # Jusqu'à 6 tâches simultanées par nœud
+#SBATCH --ntasks=40
+#SBATCH --cpus-per-task=6
+#SBATCH --nodes=17  # Minimum de nœuds requis
+#SBATCH --ntasks-per-node=3  # Tâches par nœud ajustées pour couvrir toutes les tâches avec 17 nœuds
+#SBATCH --mem-per-cpu=4G  # Adaptez cette valeur si nécessaire
 
 
 # Chargement des modules

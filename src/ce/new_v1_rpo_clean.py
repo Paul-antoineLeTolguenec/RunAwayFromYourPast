@@ -53,7 +53,7 @@ class Args:
     """total timesteps of the experiments"""
     learning_rate: float = 5e-4
     """the learning rate of the optimizer"""
-    num_envs: int = 1
+    num_envs: int = 16
     # """the number of parallel game environments"""
     # num_steps: int = 2048
     """the number of steps to run in each environment per policy rollout"""
@@ -193,7 +193,8 @@ class Agent(nn.Module):
 
 def update_train(obs_un, obs_un_train, classifier, device, args):
     with torch.no_grad():
-        n_batch = int(args.classifier_batch_size)
+        # n_batch = int(args.classifier_batch_size)
+        n_batch = int(obs_un_train.shape[0])
         n_replace = int(n_batch*args.frac_wash)
         idx_un = np.random.randint(0, obs_un.shape[0], size = n_batch)
         batch_un = obs_un[idx_un]
@@ -213,6 +214,7 @@ def update_train(obs_un, obs_un_train, classifier, device, args):
 
 
 def add_to_un(obs_un, 
+            dones_un,
               obs,
               obs_rho, 
               actions_rho, 
@@ -228,22 +230,22 @@ def add_to_un(obs_un,
               update,
               nb_rollouts_per_episode):
     # if dkl_rho_un > 0 or True:
-    if update > args.start_explore and dkl_rho_un >= args.clip_lim*0.75:
+    if update > args.start_explore and dkl_rho_un >= 1.0: 
         # KEEP BEST ROLLOUTS
         list_mean_rollouts = []
         with torch.no_grad():
             for i in range(len(obs_rho)):
                 mean_rollout = torch.mean(classifier(obs_rho[i].to(device))).cpu().item()
                 list_mean_rollouts.append(mean_rollout)
+                print('obs_rho:', obs_rho[i].shape)
         ranked_rollouts = np.argsort(list_mean_rollouts)
         args_to_add = []
-        for i in ranked_rollouts[:len(obs_rho)//2]: args_to_add.append(i) #if 0 >= list_mean_rollouts[i]  else None
+        # for i in ranked_rollouts[:len(obs_rho)//2]: args_to_add.append(i) #if 0 >= list_mean_rollouts[i]  else None
+        for i in ranked_rollouts[:nb_rollouts_per_episode[0]]: args_to_add.append(i) 
+        print(len(args_to_add))
         if len(args_to_add) > 0:
-            obs_un = torch.cat([obs_un, torch.cat([obs_rho[i].squeeze(1) for i in args_to_add],dim=0)], dim=0)
-            # obs_un = torch.cat([obs_un, torch.cat([obs_rho[i].squeeze(1) for i in ranked_rollouts[:nb_rollouts_per_episode[0]]],dim=0)], dim=0)
-            # DELETE WORST ROLLOUTS FROM RHO
-            # for idx in sorted(ranked_rollouts[:args.n_rollouts], reverse=True):
-            # for idx in sorted(ranked_rollouts[:nb_rollouts_per_episode[0]], reverse=True):
+            obs_un = torch.cat([obs_un, torch.cat([obs_rho[i].squeeze(-1) for i in args_to_add],dim=0)], dim=0)
+            dones_un = torch.cat([dones_un, torch.cat([dones_rho[i].unsqueeze(-1) for i in args_to_add],dim=0)], dim=0)    
             for idx in sorted(args_to_add, reverse=True):
                 obs_rho.pop(idx)
                 actions_rho.pop(idx)
@@ -259,9 +261,10 @@ def add_to_un(obs_un,
                 nb_rollouts_per_episode[0]-= len(args_to_add)
     
         # UPDATE DKL average
-        # dkl_rho_un = args.mean_re_init
+        dkl_rho_un = args.mean_re_init
+        # dkl_rho_un = 
         # rate_dkl = 0
-    return obs_un, obs_rho, actions_rho, logprobs_rho, rewards_rho, dones_rho, values_rho, times_rho, dkl_rho_un, rate_dkl, nb_rollouts_per_episode
+    return obs_un, dones_un, obs_rho, actions_rho, logprobs_rho, rewards_rho, dones_rho, values_rho, times_rho, dkl_rho_un, rate_dkl, nb_rollouts_per_episode
 
 def select_best_rollout(obs_rho, classifier, args, device):
     list_mean_rollouts = []
@@ -369,8 +372,9 @@ if __name__ == "__main__":
     times_rho = []
     nb_rollouts_per_episode = []
     # UN
-    obs_un_train = torch.tensor(envs.envs[0].reset()[0], dtype=torch.float).unsqueeze(0).repeat(args.num_steps, 1)
+    obs_un_train = torch.tensor(envs.envs[0].reset()[0], dtype=torch.float).unsqueeze(0).repeat(args.num_steps*args.num_envs, 1)
     obs_un = obs_un_train.clone()
+    dones_un = torch.zeros((args.num_steps*args.num_envs, 1))
 
     # INIT DKL_RHO_UN
     dkl_rho_un = args.mean_re_init
@@ -401,20 +405,20 @@ if __name__ == "__main__":
             # ppo
             global_step += 1 * args.num_envs
             obs[step] = next_obs
-            dones[step] = next_done
+            dones[step] = next_done.unsqueeze(-1)
 
             # ALGO LOGIC: action logic
             with torch.no_grad():
                 action, logprob, _, value = agent.get_action_and_value(next_obs, action = None, dkl_rho_un = dkl_rho_un, rate_dkl = rate_dkl)
-                values[step] = value.flatten()
+                values[step] = value
             actions[step] = action
-            logprobs[step] = logprob
+            logprobs[step] = logprob.unsqueeze(-1)
 
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, terminations, truncations, infos = envs.step(action.cpu().numpy())
             times[step] = torch.tensor(np.array([infos["l"]])).transpose(0,1).to(device)
             done = np.logical_or(terminations, truncations)
-            rewards[step] = torch.tensor(reward).to(device).view(-1)
+            rewards[step] = torch.tensor(reward).to(device).unsqueeze(-1)
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)
             if "final_info" in infos:
                 for info in infos["final_info"]:
@@ -443,10 +447,10 @@ if __name__ == "__main__":
         nb_rollouts_per_episode.append(nb_ep)
         
         # CLASSIFIER TRAINING
-        batch_obs_rho = torch.cat(obs_rho, dim=0)
-        batch_times_rho = torch.cat(times_rho, dim=0)
-        # batch_obs_rho = obs.reshape(-1, obs.shape[-1]) # if dkl_rho_un >= 0 and rate_dkl >= 0 else torch.cat(obs_rho, dim=0)
-        # batch_times_rho = times.reshape(-1, times.shape[-1]) # if dkl_rho_un >= 0 and rate_dkl >= 0 else torch.cat(times_rho, dim=0)
+        # batch_obs_rho = torch.cat(obs_rho, dim=0)
+        # batch_times_rho = torch.cat(times_rho, dim=0)
+        batch_obs_rho = obs.reshape(-1, obs.shape[-1]) # if dkl_rho_un >= 0 and rate_dkl >= 0 else torch.cat(obs_rho, dim=0)
+        batch_times_rho = times.reshape(-1, times.shape[-1]) # if dkl_rho_un >= 0 and rate_dkl >= 0 else torch.cat(times_rho, dim=0)
         max_time = batch_times_rho.max()  
         mask_rho = (batch_times_rho >= max_time * args.percentage_time).float().squeeze(-1)
         batch_obs_rho = batch_obs_rho[mask_rho.bool()]
@@ -476,7 +480,8 @@ if __name__ == "__main__":
         # ent_mask_coef = 0.05 if dkl_rho_un >= 0 else 0.1
         # args.ent_coef = 0.0 if dkl_rho_un >= 0 else 0.2
         # UPDATE UN
-        obs_un, obs_rho, actions_rho, logprobs_rho, rewards_rho, dones_rho, values_rho, times_rho,dkl_rho_un, rate_dkl, nb_rollouts_per_episode = add_to_un(obs_un, 
+        obs_un, dones_un, obs_rho, actions_rho, logprobs_rho, rewards_rho, dones_rho, values_rho, times_rho,dkl_rho_un, rate_dkl, nb_rollouts_per_episode = add_to_un(obs_un,
+                                                                                                                                                dones_un, 
                                                                                                                                                 obs,
                                                                                                                                                 obs_rho, 
                                                                                                                                                 actions_rho, 
@@ -494,77 +499,47 @@ if __name__ == "__main__":
         # UPDATE UN TRAIN
         obs_un_train = update_train(obs_un, obs_un_train, classifier, device, args) #if not args.lipshitz else obs_un_train
         print(f'UN SHAPE: {obs_un.shape}')
-        # KEEP BEST ROLLOUTS TO AVOID DETACH 
-        if args.n_best_rollout_to_keep > 0 and dkl_rho_un <= 0 and rate_dkl <= 0:
-            best_rollouts = select_best_rollout(obs_rho, classifier, args, device)
-            obs_backup = torch.cat([obs_rho[i] for i in best_rollouts],dim=0).to(device)
-            actions_backup = torch.cat([actions_rho[i] for i in best_rollouts],dim=0).to(device)
-            logprobs_backup = torch.cat([logprobs_rho[i] for i in best_rollouts],dim=0).to(device)
-            rewards_backup = torch.cat([classifier(obs_rho[i].to(device)).detach() for i in best_rollouts],dim=0).to(device)
-            dones_backup = torch.cat([dones_rho[i] for i in best_rollouts],dim=0).to(device)
-            values_backup = torch.cat([agent.get_value(obs_rho[i].to(device)).detach()  for i in best_rollouts],dim=0).to(device)
-            # values_backup = torch.cat([values_rho[i] for i in best_rollouts],dim=0)
-            times_backup = torch.cat([times_rho[i] for i in best_rollouts],dim=0).to(device)
-            mask_pos_backup = (rewards_backup > 0).float().to(device)
-
-            obs_train = torch.cat([obs_backup, obs], dim=0)
-            actions_train = torch.cat([actions_backup, actions], dim=0)
-            logprobs_train = torch.cat([logprobs_backup, logprobs], dim=0)
-            rewards_train = torch.cat([rewards_backup, rewards], dim=0)
-            dones_train = torch.cat([dones_backup, dones], dim=0)
-            values_train = torch.cat([values_backup, values], dim=0)
-            times_train = torch.cat([times_backup, times], dim=0)
-            mask_pos_train = torch.cat([mask_pos_backup, mask_pos], dim=0)
-        else:
-            obs_train = obs
-            actions_train = actions
-            logprobs_train = logprobs
-            rewards_train = rewards
-            dones_train = dones
-            values_train = values
-            times_train = times
-            mask_pos_train = mask_pos
-
+        # UPDATE UN TRAIN
+        # obs_un_train = update_train(obs_un, obs_un_train, classifier, device, args)
         # bootstrap value if not done
         with torch.no_grad():
-            next_value = agent.get_value(next_obs).reshape(1, -1)
-            advantages_train = torch.zeros_like(rewards_train).to(device)
+            next_value = agent.get_value(next_obs)
+            advantages = torch.zeros_like(rewards).to(device)
             lastgaelam = 0
-            for t in reversed(range(obs_train.shape[0])):
-                if t == obs_train.shape[0] - 1:
-                    nextnonterminal = 1.0 - next_done
+            for t in reversed(range(obs.shape[0])):
+                if t == obs.shape[0] - 1:
+                    nextnonterminal = 1.0 - next_done.unsqueeze(-1)
                     nextvalues = next_value
                 else:
-                    nextnonterminal = 1.0 - dones_train[t + 1]
-                    nextvalues = values_train[t + 1]
-                delta = rewards_train[t] + args.gamma * nextvalues * nextnonterminal - values_train[t]
-                advantages_train[t] = lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
-            returns_train = advantages_train + values_train
-        print('mean advantages:', advantages_train.mean().item())
-        print('std advantages:', advantages_train.std().item())
-        print('max advantages:', advantages_train.max().item())
-        print('min advantages:', advantages_train.min().item())
-        print('max rewards:', rewards_train.max().item())
-        print('min rewards:', rewards_train.min().item())
-        print('mean rewards:', rewards_train.mean().item())
-        print('std rewards:', rewards_train.std().item())
+                    nextnonterminal = 1.0 - dones[t + 1]
+                    nextvalues = values[t + 1]
+                delta = rewards[t] + args.gamma * nextvalues * nextnonterminal - values[t]
+                advantages[t] = lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
+            returns = advantages + values
+        print('mean advantages:', advantages.mean().item())
+        print('std advantages:', advantages.std().item())
+        print('max advantages:', advantages.max().item())
+        print('min advantages:', advantages.min().item())
+        print('max rewards:', rewards.max().item())
+        print('min rewards:', rewards.min().item())
+        print('mean rewards:', rewards.mean().item())
+        print('std rewards:', rewards.std().item())
         # flatten the batch
-        b_obs = obs_train.reshape((-1,) + envs.single_observation_space.shape)
-        b_logprobs = logprobs_train.reshape(-1)
-        b_actions = actions_train.reshape((-1,) + envs.single_action_space.shape)
-        b_advantages = advantages_train.reshape(-1)
+        b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
+        b_logprobs = logprobs.reshape(-1)
+        b_actions = actions.reshape((-1,) + envs.single_action_space.shape)
+        b_advantages = advantages.reshape(-1)
         if args.norm_adv:
             b_advantages = (b_advantages - b_advantages.mean()) / (b_advantages.std() + 1e-1)
-            print('max advantages:', b_advantages.max().item())
-        b_returns = returns_train.reshape(-1)
-        b_values = values_train.reshape(-1)
-        b_mask_pos = mask_pos_train.reshape(-1)
+        b_returns = returns.reshape(-1)
+        b_values = values.reshape(-1)
+        b_mask_pos = mask_pos.reshape(-1)
         # Optimizing the policy and value network
-        b_inds = np.arange(obs_train.shape[0])
+        b_inds = np.arange(obs.shape[0])
         clipfracs = []
         for epoch in range(args.update_epochs):
             np.random.shuffle(b_inds)
-            for start in range(0, obs_train.shape[0], args.minibatch_size):
+            for start in range(0, obs.shape[0], args.minibatch_size):
                 end = start + args.minibatch_size
                 mb_inds = b_inds[start:end]
 
@@ -615,7 +590,6 @@ if __name__ == "__main__":
 
         y_pred, y_true = b_values.cpu().numpy(), b_returns.cpu().numpy()
         var_y = np.var(y_true)
-        # explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
