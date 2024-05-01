@@ -47,7 +47,7 @@ class Args:
     fig_frequency: int = 1
 
     # RPO SPECIFIC
-    env_id: str = "Hopper-v3"
+    env_id: str = "HalfCheetah-v3"
     """the id of the environment"""
     total_timesteps: int = 8_000_000
     """total timesteps of the experiments"""
@@ -89,7 +89,7 @@ class Args:
     # CLASSIFIER SPECIFIC
     classifier_lr: float = 1e-3
     """the learning rate of the classifier"""
-    classifier_epochs: int =4
+    classifier_epochs: int =8
     """the number of epochs to train the classifier"""
     classifier_batch_size: int = 256
     """the batch size of the classifier"""
@@ -99,8 +99,14 @@ class Args:
     """the fraction of the dataset to wash"""
     percentage_time: float = 2/4
     """the percentage of the time to use the classifier"""
-    clip_lim: float = 10.0
+    epsilon: float = 1e-3
+    """the epsilon of the classifier"""
+    lambda_init: float = 30.0
+    """the lambda of the classifier"""
+    bound_spectral: float = 1.0
+    clip_lim: float = 100.0
     """the clipping limit of the classifier"""
+    
 
     # RHO SPECIFIC
     episodic_return: bool = True
@@ -190,12 +196,16 @@ def update_probs(obs_un, classifier, device):
         batch_probs_un_norm = batch_probs_un/batch_probs_un.sum()
     return batch_probs_un_norm
 
-def update_un(obs_un, obs_reshaped, args):
+def update_un(obs_un, next_obs_un, dones_un, 
+              obs_reshaped, next_obs_reshaped, dones_reshaped, 
+              args):
     n_batch = int(obs_reshaped.shape[0]*args.beta_ratio)
     idx_un = np.random.randint(0, obs_un.shape[0], size = n_batch)
     idx_rho = np.random.randint(0, obs_reshaped.shape[0], size = n_batch)
     obs_un[idx_un] = obs_reshaped[idx_rho]
-    return obs_un
+    next_obs_un[idx_un] = next_obs_reshaped[idx_rho]
+    dones_un[idx_un] = dones_reshaped[idx_rho]
+    return obs_un, next_obs_un, dones_un
 
 if __name__ == "__main__":
     args = tyro.cli(Args)
@@ -269,7 +279,9 @@ if __name__ == "__main__":
                             lim_up = args.clip_lim,
                             lim_down = -args.clip_lim,
                             env_id=args.env_id, 
-                            lipshitz_regu=False).to(device)
+                            lipshitz_regu=True,
+                            bound_spectral=args.bound_spectral,
+                            ).to(device)
     classifier_optimizer = optim.Adam(classifier.parameters(), lr=args.classifier_lr)
     # RPO: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
@@ -282,7 +294,9 @@ if __name__ == "__main__":
 
     # UN
     obs_un = torch.tensor(envs.envs[0].reset()[0], dtype=torch.float).unsqueeze(0).repeat(args.num_steps*args.num_envs, 1).cpu().numpy()
-    dones_un = torch.zeros((args.num_steps*args.num_envs, 1)).cpu().numpy()
+    s1,_,_,_,_ = envs.envs[0].step(envs.envs[0].action_space.sample())
+    next_obs_un = torch.tensor(s1, dtype=torch.float).unsqueeze(0).repeat(args.num_steps*args.num_envs, 1).cpu().numpy()
+    dones_un = torch.zeros(args.num_steps*args.num_envs).cpu().numpy()
 
     # INIT DKL_RHO_UN
     dkl_rho_un = 0
@@ -345,16 +359,32 @@ if __name__ == "__main__":
             batch_obs_rho = batch_obs_rho[mask_time]
             batch_dones_rho = batch_dones_rho[mask_time]
             for epoch in range(args.classifier_epochs):
-                mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], args.classifier_batch_size)
-                mb_rho = batch_obs_rho[mb_rho_idx].to(device)
-                # mb 
+                # rho
+                mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0]-1, args.classifier_batch_size)
+                mb_obs_rho = batch_obs_rho[mb_rho_idx].to(device)
+                mb_next_obs_rho = batch_obs_rho[mb_rho_idx+1].to(device)
+                mb_rho_done = batch_dones_rho[mb_rho_idx+1].to(device)
+                # un
                 probs_un = update_probs(obs_un, classifier, device)
-                mb_un_idx = np.random.choice(np.arange(obs_un.shape[0]), args.classifier_batch_size, p=probs_un)
-                mb_un = torch.tensor(obs_un[mb_un_idx]).to(device)
+                idx_un = np.random.choice(np.arange(obs_un.shape[0]), args.classifier_batch_size, p=probs_un)
+                mb_obs_un = torch.tensor(obs_un[idx_un]).to(device)
+                mb_next_obs_un = torch.tensor(next_obs_un[idx_un]).to(device)
+                mb_done_un = torch.tensor(dones_un[idx_un]).to(device)
                 # classifier loss + lipshitz regularization
-                loss = classifier.ce_loss_ppo(batch_q=mb_rho, batch_p=mb_un)
+                loss, _ = classifier.lipshitz_loss_ppo(batch_q= mb_obs_rho, batch_p = mb_obs_un, 
+                                                        q_batch_s =  mb_obs_rho, q_batch_next_s = mb_next_obs_rho, q_dones = mb_rho_done,
+                                                        p_batch_s = mb_obs_un, p_batch_next_s = mb_next_obs_un, p_dones = mb_done_un)       
                 classifier_optimizer.zero_grad()
                 loss.backward()
+                classifier_optimizer.step()
+                # lambda loss
+                _, lipshitz_regu = classifier.lipshitz_loss_ppo(batch_q= mb_obs_rho, batch_p = mb_obs_un, 
+                                                        q_batch_s =  mb_obs_rho, q_batch_next_s = mb_next_obs_rho, q_dones = mb_rho_done,
+                                                        p_batch_s = mb_obs_un, p_batch_next_s = mb_next_obs_un, p_dones = mb_done_un)       
+                classifier_optimizer.zero_grad()
+                lambda_loss = classifier.lambda_lip*lipshitz_regu
+                classifier_optimizer.zero_grad()
+                lambda_loss.backward()
                 classifier_optimizer.step()
 
 
@@ -374,12 +404,19 @@ if __name__ == "__main__":
         print(f'UN SHAPE: {obs_un.shape}')
         
         # UPDATE UN
-        if ((log_rho_un>=0)*log_rho_un).mean() > args.clip_lim * 0.5:
-        # if log_rho_un.mean().item() > 0:
+        # if ((log_rho_un>=0)*log_rho_un).mean() > args.clip_lim * 0.5:
+        if log_rho_un.mean().item() > 0:
             obs_reshaped = obs.reshape(-1, obs.shape[-1]).cpu().numpy()
-            idx_rho = np.random.randint(0, obs_reshaped.shape[0], int(obs_reshaped.shape[0]*args.beta_ratio))
-            obs_un = np.concatenate((obs_un, obs_reshaped[idx_rho]), axis=0) if obs_un.shape[0] < args.nb_max_un*args.num_steps*args.num_envs else update_un(obs_un, obs_reshaped, args)
-
+            dones_reshaped = dones.reshape(-1).cpu().numpy()
+            idx_rho = np.random.randint(0, obs_reshaped.shape[0]-1, int(obs_reshaped.shape[0]*args.beta_ratio))
+            if obs_un.shape[0] < args.nb_max_un*args.num_steps*args.num_envs:
+                obs_un = np.concatenate((obs_un, obs_reshaped[idx_rho]), axis=0) 
+                next_obs_un = np.concatenate((next_obs_un, obs_reshaped[idx_rho+1]), axis=0)
+                dones_un = np.concatenate((dones_un, dones_reshaped[idx_rho+1]), axis=0)
+            else :
+                obs_un, next_obs_un, dones_un = update_un(obs_un, next_obs_un, dones_un,
+                                                        obs_reshaped[:-1], obs_reshaped[1:], dones_reshaped[1:],
+                                                        args)
 
         # bootstrap value if not done
         with torch.no_grad():
