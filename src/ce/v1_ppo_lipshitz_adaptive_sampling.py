@@ -47,7 +47,7 @@ class Args:
     fig_frequency: int = 1
 
     # RPO SPECIFIC
-    env_id: str = "HalfCheetah-v3"
+    env_id: str = "Hopper-v3"
     """the id of the environment"""
     total_timesteps: int = 8_000_000
     """total timesteps of the experiments"""
@@ -95,17 +95,21 @@ class Args:
     """the batch size of the classifier"""
     feature_extractor: bool = False
     """if toggled, a feature extractor will be used"""
-    frac_wash: float = 1/1
-    """the fraction of the dataset to wash"""
-    percentage_time: float = 2/4
+    percentage_time: float = 0/4
     """the percentage of the time to use the classifier"""
-    epsilon: float = 1e-3
+    epsilon: float = 1e-6
     """the epsilon of the classifier"""
-    lambda_init: float = 30.0
+    lambda_init: float = 1000.0
     """the lambda of the classifier"""
     bound_spectral: float = 1.0
+    """the bound spectral of the classifier"""
     clip_lim: float = 100.0
     """the clipping limit of the classifier"""
+    adaptive_sampling: bool = False
+    """if toggled, the sampling will be adaptive"""
+    lip_cte: float = 1.0
+    """the lip constant"""
+
     
 
     # RHO SPECIFIC
@@ -117,15 +121,15 @@ class Args:
     """the number of rollouts"""
     keep_extrinsic_reward: bool = False
     """if toggled, the extrinsic reward will be kept"""
-    start_explore: int = 4
+    start_explore: int = 1
     """the number of updates to start exploring"""
     coef_intrinsic : float = 1.0
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
-    beta_ratio: float = 1/8
+    beta_ratio: float = 1/128
     """the ratio of the beta"""
-    nb_max_un: int = 10
+    nb_max_un: int = 64
     """the number of un"""
 
     # to be filled in runtime
@@ -199,12 +203,12 @@ def update_probs(obs_un, classifier, device):
 def update_un(obs_un, next_obs_un, dones_un, 
               obs_reshaped, next_obs_reshaped, dones_reshaped, 
               args):
-    n_batch = int(obs_reshaped.shape[0]*args.beta_ratio)
+    n_batch = int(obs_un.shape[0]*args.beta_ratio)
     idx_un = np.random.randint(0, obs_un.shape[0], size = n_batch)
     idx_rho = np.random.randint(0, obs_reshaped.shape[0], size = n_batch)
-    obs_un[idx_un] = obs_reshaped[idx_rho]
-    next_obs_un[idx_un] = next_obs_reshaped[idx_rho]
-    dones_un[idx_un] = dones_reshaped[idx_rho]
+    obs_un[idx_un] = obs_reshaped[idx_rho].copy()
+    next_obs_un[idx_un] = next_obs_reshaped[idx_rho].copy()
+    dones_un[idx_un] = dones_reshaped[idx_rho].copy()
     return obs_un, next_obs_un, dones_un
 
 if __name__ == "__main__":
@@ -233,7 +237,13 @@ if __name__ == "__main__":
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
     args.num_iterations = args.total_timesteps // args.batch_size
-    args.classifier_epochs = (args.classifier_epochs*args.num_steps // args.classifier_batch_size) * args.classifier_epochs
+    print('args.num_steps:', args.num_steps)
+    print('args.num_envs:', args.num_envs)  
+    print('args.classifier_epochs:', args.classifier_epochs)
+    print('args.classifier_batch_size:', args.classifier_batch_size)
+    print('args.batch_size:', args.batch_size)
+    print('args.minibatch_size:', args.minibatch_size)
+    args.classifier_epochs = (args.num_steps*args.num_envs // args.classifier_batch_size) * args.classifier_epochs
     if args.track:
         import wandb
 
@@ -281,6 +291,9 @@ if __name__ == "__main__":
                             env_id=args.env_id, 
                             lipshitz_regu=True,
                             bound_spectral=args.bound_spectral,
+                            lip_cte=args.lip_cte,
+                            lambda_init=args.lambda_init,
+                            epsilon=args.epsilon,
                             ).to(device)
     classifier_optimizer = optim.Adam(classifier.parameters(), lr=args.classifier_lr)
     # RPO: Storage setup
@@ -356,20 +369,26 @@ if __name__ == "__main__":
             batch_dones_rho = dones.reshape(-1)
             batch_times_rho = times.reshape(-1)
             mask_time = (batch_times_rho > torch.max(batch_times_rho).item()*args.percentage_time).bool()
-            batch_obs_rho = batch_obs_rho[mask_time]
-            batch_dones_rho = batch_dones_rho[mask_time]
+            batch_obs_rho_masked = batch_obs_rho[mask_time]
+            batch_dones_rho_masked = batch_dones_rho[mask_time]
             for epoch in range(args.classifier_epochs):
-                # rho
-                mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0]-1, args.classifier_batch_size)
-                mb_obs_rho = batch_obs_rho[mb_rho_idx].to(device)
-                mb_next_obs_rho = batch_obs_rho[mb_rho_idx+1].to(device)
-                mb_rho_done = batch_dones_rho[mb_rho_idx+1].to(device)
+                # mb rho
+                mb_rho_idx = np.random.randint(0, batch_obs_rho_masked.shape[0]-1, args.classifier_batch_size)
+                mb_obs_rho = batch_obs_rho_masked[mb_rho_idx].to(device)
+                mb_next_obs_rho = batch_obs_rho_masked[mb_rho_idx+1].to(device)
+                mb_rho_done = batch_dones_rho_masked[mb_rho_idx+1].to(device)
+                # mb un 
+                # rho 
+                idx_rho_beta = np.random.randint(0, batch_obs_rho.shape[0]-1, int(args.classifier_batch_size*args.beta_ratio)+1)
                 # un
-                probs_un = update_probs(obs_un, classifier, device)
-                idx_un = np.random.choice(np.arange(obs_un.shape[0]), args.classifier_batch_size, p=probs_un)
-                mb_obs_un = torch.tensor(obs_un[idx_un]).to(device)
-                mb_next_obs_un = torch.tensor(next_obs_un[idx_un]).to(device)
-                mb_done_un = torch.tensor(dones_un[idx_un]).to(device)
+                if args.adaptive_sampling:
+                    probs_un = update_probs(obs_un, classifier, device)
+                    idx_un_beta = np.random.choice(np.arange(obs_un.shape[0]), args.classifier_batch_size, p=probs_un)
+                else:
+                    idx_un_beta = np.random.randint(0, obs_un.shape[0], int(args.classifier_batch_size*(1-args.beta_ratio))+1)
+                mb_obs_un = torch.cat([batch_obs_rho[idx_rho_beta], torch.tensor(obs_un[idx_un_beta]).to(device)])[:args.classifier_batch_size]
+                mb_next_obs_un = torch.cat([batch_obs_rho[idx_rho_beta+1], torch.tensor(next_obs_un[idx_un_beta]).to(device)])[:args.classifier_batch_size]
+                mb_done_un = torch.cat([batch_dones_rho[idx_rho_beta+1], torch.tensor(dones_un[idx_un_beta]).to(device)])[:args.classifier_batch_size]
                 # classifier loss + lipshitz regularization
                 loss, _ = classifier.lipshitz_loss_ppo(batch_q= mb_obs_rho, batch_p = mb_obs_un, 
                                                         q_batch_s =  mb_obs_rho, q_batch_next_s = mb_next_obs_rho, q_dones = mb_rho_done,
@@ -380,7 +399,7 @@ if __name__ == "__main__":
                 # lambda loss
                 _, lipshitz_regu = classifier.lipshitz_loss_ppo(batch_q= mb_obs_rho, batch_p = mb_obs_un, 
                                                         q_batch_s =  mb_obs_rho, q_batch_next_s = mb_next_obs_rho, q_dones = mb_rho_done,
-                                                        p_batch_s = mb_obs_un, p_batch_next_s = mb_next_obs_un, p_dones = mb_done_un)       
+                                                        p_batch_s = mb_obs_un, p_batch_next_s = mb_next_obs_un, p_dones = mb_done_un)    
                 classifier_optimizer.zero_grad()
                 lambda_loss = classifier.lambda_lip*lipshitz_regu
                 classifier_optimizer.zero_grad()
@@ -395,29 +414,27 @@ if __name__ == "__main__":
         rewards = args.coef_extrinsic * rewards + args.coef_intrinsic * log_rho_un if args.keep_extrinsic_reward else args.coef_intrinsic * log_rho_un
         mask_pos = (log_rho_un > 0).float()
         # UPDATE DKL average
-        dkl_rho_un = args.polyak * dkl_rho_un + (1-args.polyak) * log_rho_un.mean().item()
-        # rate_dkl = (dkl_rho_un - last_dkl_rho_un)*(1-args.polyak_speed) + args.polyak_speed*rate_dkl
-        last_dkl_rho_un = dkl_rho_un
+        dkl_rho_un = log_rho_un.mean().item()
         # dkl_rho_un = log_rho_un.mean().item()
         rate_dkl = (dkl_rho_un - last_dkl_rho_un)
         print(f"DKL_RHO_UN: {dkl_rho_un}, RATE_DKL: {rate_dkl}")
         print(f'UN SHAPE: {obs_un.shape}')
         
         # UPDATE UN
-        # if ((log_rho_un>=0)*log_rho_un).mean() > args.clip_lim * 0.5:
-        if log_rho_un.mean().item() > 0:
+        print('eval log_rho_un:', ((log_rho_un>=0)*log_rho_un).mean().item())
+        # if ((log_rho_un>=0)*log_rho_un).mean() > args.clip_lim * 0.01:
+        if log_rho_un.mean().item() > 0 :
             obs_reshaped = obs.reshape(-1, obs.shape[-1]).cpu().numpy()
             dones_reshaped = dones.reshape(-1).cpu().numpy()
-            idx_rho = np.random.randint(0, obs_reshaped.shape[0]-1, int(obs_reshaped.shape[0]*args.beta_ratio))
-            if obs_un.shape[0] < args.nb_max_un*args.num_steps*args.num_envs:
-                obs_un = np.concatenate((obs_un, obs_reshaped[idx_rho]), axis=0) 
-                next_obs_un = np.concatenate((next_obs_un, obs_reshaped[idx_rho+1]), axis=0)
-                dones_un = np.concatenate((dones_un, dones_reshaped[idx_rho+1]), axis=0)
-            else :
+            if obs_un.shape[0] >= args.num_steps*args.num_envs*args.nb_max_un:
                 obs_un, next_obs_un, dones_un = update_un(obs_un, next_obs_un, dones_un,
                                                         obs_reshaped[:-1], obs_reshaped[1:], dones_reshaped[1:],
                                                         args)
-
+            else: 
+                obs_un = np.concatenate([obs_un, obs_reshaped[:-1]])
+                next_obs_un = np.concatenate([next_obs_un, obs_reshaped[1:]])
+                dones_un = np.concatenate([dones_un, dones_reshaped[1:]])
+        last_dkl_rho_un = dkl_rho_un
         # bootstrap value if not done
         with torch.no_grad():
             next_value = agent.get_value(next_obs)

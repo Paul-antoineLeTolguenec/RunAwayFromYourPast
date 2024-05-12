@@ -47,7 +47,7 @@ class Args:
     fig_frequency: int = 1
 
     # RPO SPECIFIC
-    env_id: str = "Hopper-v3"
+    env_id: str = "Maze-Ur"
     """the id of the environment"""
     total_timesteps: int = 8_000_000
     """total timesteps of the experiments"""
@@ -67,7 +67,7 @@ class Args:
     """the number of mini-batches"""
     update_epochs: int = 10
     """the K epochs to update the policy"""
-    norm_adv: bool = False
+    norm_adv: bool = False  
     """Toggles advantages normalization"""
     clip_coef: float = 0.2
     """the surrogate clipping coefficient"""
@@ -89,38 +89,45 @@ class Args:
     # CLASSIFIER SPECIFIC
     classifier_lr: float = 1e-3
     """the learning rate of the classifier"""
-    classifier_epochs: int =4
+    classifier_epochs: int =8
     """the number of epochs to train the classifier"""
     classifier_batch_size: int = 256
     """the batch size of the classifier"""
     feature_extractor: bool = False
     """if toggled, a feature extractor will be used"""
-    frac_wash: float = 1/1
-    """the fraction of the dataset to wash"""
-    percentage_time: float = 2/4
+    percentage_time: float = 0/4
     """the percentage of the time to use the classifier"""
     clip_lim: float = 10.0
     """the clipping limit of the classifier"""
+    adaptive_sampling: bool = False
+    """if toggled, the sampling will be adaptive"""
 
     # RHO SPECIFIC
     episodic_return: bool = True
     """if toggled, the episodic return will be used"""
     polyak: float = 0.75
     """the polyak averaging coefficient"""
-    n_rollouts: int = 1
+    n_rollouts: int = 2
     """the number of rollouts"""
     keep_extrinsic_reward: bool = False
     """if toggled, the extrinsic reward will be kept"""
-    start_explore: int = 4
+    start_explore: int = 8
     """the number of updates to start exploring"""
     coef_intrinsic : float = 1.0
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
-    beta_ratio: float = 1/8
+    beta_ratio: float = 1/16
     """the ratio of the beta"""
-    nb_max_un: int = 10
+    nb_max_un: int = 8
     """the number of un"""
+
+    # DIAYN 
+    nb_skill : int = 4
+    """the number of skills"""
+    lambda_im: float = 0.5
+    """the lambda of the mutual information"""
+    lambda_ent: float = 1.0
 
     # to be filled in runtime
     batch_size: int = 0
@@ -152,18 +159,17 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
 
 
 class Agent(nn.Module):
-    def __init__(self, envs, rpo_alpha = 0.0):
+    def __init__(self, envs, n_agent=1):
         super().__init__()
-        self.rpo_alpha = rpo_alpha
         self.critic = nn.Sequential(
-            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)),
+            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod() + n_agent, 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 1), std=1.0),
         )
         self.actor_mean = nn.Sequential(
-            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)),
+            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod() + n_agent , 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
@@ -171,17 +177,17 @@ class Agent(nn.Module):
         )
         self.actor_logstd = nn.Parameter(torch.zeros(1, np.prod(envs.single_action_space.shape)))
 
-    def get_value(self, x):
-        return self.critic(x)
+    def get_value(self, x, z):
+        return self.critic(torch.cat([x, z], dim=-1))
 
-    def get_action_and_value(self, x, action=None):
-        action_mean = self.actor_mean(x)
+    def get_action_and_value(self, x, z, action=None):
+        action_mean = self.actor_mean(torch.cat([x, z], dim=-1))
         action_logstd = self.actor_logstd.expand_as(action_mean)
         action_std = torch.exp(action_logstd)
         probs = Normal(action_mean, action_std)
         if action is None:
             action = probs.sample()
-        return action, probs.log_prob(action).sum(1), probs.entropy().sum(1), self.critic(x)
+        return action, probs.log_prob(action).sum(1), probs.entropy().sum(1), self.critic(torch.cat([x, z], dim=-1))
 
 def update_probs(obs_un, classifier, device):
     with torch.no_grad():
@@ -190,12 +196,13 @@ def update_probs(obs_un, classifier, device):
         batch_probs_un_norm = batch_probs_un/batch_probs_un.sum()
     return batch_probs_un_norm
 
-def update_un(obs_un, obs_reshaped, args):
-    n_batch = int(obs_reshaped.shape[0]*args.beta_ratio)
+def update_un(obs_un, z_un, obs_reshaped, zs_reshaped, args):   
+    n_batch = int(obs_un.shape[0]*args.beta_ratio)
     idx_un = np.random.randint(0, obs_un.shape[0], size = n_batch)
     idx_rho = np.random.randint(0, obs_reshaped.shape[0], size = n_batch)
-    obs_un[idx_un] = obs_reshaped[idx_rho]
-    return obs_un
+    obs_un[idx_un] = obs_reshaped[idx_rho].copy()
+    z_un[idx_un] = zs_reshaped[idx_rho].copy()
+    return obs_un, z_un
 
 if __name__ == "__main__":
     args = tyro.cli(Args)
@@ -216,6 +223,9 @@ if __name__ == "__main__":
                     render_bool_matplot=False,
                     xp_id=run_name,
                     **config[args.env_id])
+    # DIAYN SPECIFIC 
+    args.num_envs = args.nb_skill
+    z = np.eye(args.nb_skill, dtype=np.float32) 
     # MAX STEPS
     max_steps = config[args.env_id]['kwargs']['max_episode_steps']
     args.num_steps = max_steps * args.n_rollouts +1
@@ -223,7 +233,10 @@ if __name__ == "__main__":
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
     args.num_iterations = args.total_timesteps // args.batch_size
-    args.classifier_epochs = (args.classifier_epochs*args.num_steps // args.classifier_batch_size) * args.classifier_epochs
+    print('args.num_steps:', args.num_steps)
+    print('args.num_envs:', args.num_envs)
+    print('args.batch_size:', args.batch_size)
+    args.classifier_epochs = ((args.num_steps*args.num_envs) // args.classifier_batch_size) * args.classifier_epochs
     if args.track:
         import wandb
 
@@ -257,19 +270,20 @@ if __name__ == "__main__":
     )
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
     # AGENT
-    agent = Agent(envs).to(device)
+    agent = Agent(envs, n_agent=args.nb_skill).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
     # CLASSIFIER
     classifier = Classifier(envs.single_observation_space, 
                             env_max_steps=max_steps,
                             device=device, 
-                            n_agent=1, 
+                            n_agent=args.nb_skill, 
                             lipshitz=False,
                             feature_extractor=args.feature_extractor, 
                             lim_up = args.clip_lim,
                             lim_down = -args.clip_lim,
                             env_id=args.env_id, 
-                            lipshitz_regu=False).to(device)
+                            lipshitz_regu=False, 
+                            learn_z=True).to(device)
     classifier_optimizer = optim.Adam(classifier.parameters(), lr=args.classifier_lr)
     # RPO: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
@@ -279,10 +293,11 @@ if __name__ == "__main__":
     dones = torch.zeros((args.num_steps, args.num_envs) + (1,)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)+ (1,)).to(device)
     times = torch.zeros((args.num_steps, args.num_envs)+ (1,)).to(device)
-
+    zs = torch.tensor(z).to(device).unsqueeze(0).repeat(args.num_steps, 1, 1)
     # UN
     obs_un = torch.tensor(envs.envs[0].reset()[0], dtype=torch.float).unsqueeze(0).repeat(args.num_steps*args.num_envs, 1).cpu().numpy()
     dones_un = torch.zeros((args.num_steps*args.num_envs, 1)).cpu().numpy()
+    z_un = torch.tensor(z).repeat(args.num_steps*args.num_envs, 1).cpu().numpy()
 
     # INIT DKL_RHO_UN
     dkl_rho_un = 0
@@ -316,7 +331,7 @@ if __name__ == "__main__":
 
             # ALGO LOGIC: action logic
             with torch.no_grad():
-                action, logprob, _, value = agent.get_action_and_value(next_obs, action = None)
+                action, logprob, _, value = agent.get_action_and_value(next_obs, torch.tensor(z).to(device), None)
                 # values[step] = value.flatten()
                 values[step] = value
 
@@ -336,54 +351,79 @@ if __name__ == "__main__":
                         writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
                         writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
        
-        if update > args.start_explore:
-            # CLASSIFIER TRAINING
-            batch_obs_rho = obs.reshape(-1, obs.shape[-1])
-            batch_dones_rho = dones.reshape(-1)
-            batch_times_rho = times.reshape(-1)
-            mask_time = (batch_times_rho > torch.max(batch_times_rho).item()*args.percentage_time).bool()
-            batch_obs_rho = batch_obs_rho[mask_time]
-            batch_dones_rho = batch_dones_rho[mask_time]
-            for epoch in range(args.classifier_epochs):
-                mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], args.classifier_batch_size)
-                mb_rho = batch_obs_rho[mb_rho_idx].to(device)
-                # mb 
+        # CLASSIFIER TRAINING
+        batch_obs_rho = obs.reshape(-1, obs.shape[-1])
+        batch_dones_rho = dones.reshape(-1)
+        batch_times_rho = times.reshape(-1)
+        batch_zs_rho = zs.reshape(-1, zs.shape[-1])
+        mask_time = (batch_times_rho > torch.max(batch_times_rho).item()*args.percentage_time).bool()
+        batch_obs_rho_masked = batch_obs_rho[mask_time]
+        batch_dones_rho_masked = batch_dones_rho[mask_time]
+        batch_zs_rho_masked = batch_zs_rho[mask_time]
+        print('classifier_epochs:', args.classifier_epochs)
+        for epoch in range(args.classifier_epochs):
+            # MB RHO
+            # obs
+            mb_rho_idx_masked = np.random.randint(0, batch_obs_rho_masked.shape[0], args.classifier_batch_size)
+            mb_rho_masked = batch_obs_rho_masked[mb_rho_idx_masked].to(device)
+            mb_rho_z_masked = batch_zs_rho_masked[mb_rho_idx_masked].to(device)
+            # masked 
+            mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], args.classifier_batch_size)
+            mb_rho = batch_obs_rho[mb_rho_idx].to(device)
+            mb_rho_z = batch_zs_rho[mb_rho_idx].to(device)
+            # MB UN
+            # un
+            if args.adaptive_sampling:
                 probs_un = update_probs(obs_un, classifier, device)
-                mb_un_idx = np.random.choice(np.arange(obs_un.shape[0]), args.classifier_batch_size, p=probs_un)
-                mb_un = torch.tensor(obs_un[mb_un_idx]).to(device)
-                # classifier loss + lipshitz regularization
-                loss = classifier.ce_loss_ppo(batch_q=mb_rho, batch_p=mb_un)
-                classifier_optimizer.zero_grad()
-                loss.backward()
-                classifier_optimizer.step()
+                beta_mb_un_idx = np.random.choice(np.arange(obs_un.shape[0]), int(args.classifier_batch_size), p=probs_un)
+            else:
+                beta_mb_un_idx = np.random.randint(0, obs_un.shape[0],int(args.classifier_batch_size))
+            mb_un = torch.tensor(obs_un[beta_mb_un_idx]).to(device)
+            mb_un_z = torch.tensor(z_un[beta_mb_un_idx]).to(device)
+            # classifier loss + lipshitz regularization
+            loss = classifier.ce_loss_ppo(batch_q=mb_rho_masked, batch_p=mb_un, 
+                                            batch_s_q=mb_rho, batch_s_p=mb_un,
+                                            batch_q_z=mb_rho_z, batch_p_z=mb_un_z)
+                                            
+            classifier_optimizer.zero_grad()
+            loss.backward()
+            classifier_optimizer.step()
 
 
 
         # INTRINSIC REWARD
         with torch.no_grad():
             log_rho_un = classifier(obs)
-        rewards = args.coef_extrinsic * rewards + args.coef_intrinsic * log_rho_un if args.keep_extrinsic_reward else args.coef_intrinsic * log_rho_un
+            log_p_z = torch.log((torch.softmax(classifier.forward_z(obs), dim=-1)*zs).sum(dim=-1)).unsqueeze(-1) - torch.log(torch.tensor(1/args.nb_skill).float())
+            reward_intrinsic = args.lambda_im * log_p_z if args.start_explore >= update else args.lambda_im * log_p_z +  log_rho_un * args.lambda_ent
+            print('LOG_RHO_UN:', log_rho_un.mean().item())  
+            print('LOG_P_Z:', log_p_z.mean().item())
+
+        rewards = args.coef_extrinsic * rewards + args.coef_intrinsic * reward_intrinsic if args.keep_extrinsic_reward else args.coef_intrinsic * reward_intrinsic
         mask_pos = (log_rho_un > 0).float()
+
         # UPDATE DKL average
-        dkl_rho_un = args.polyak * dkl_rho_un + (1-args.polyak) * log_rho_un.mean().item()
-        # rate_dkl = (dkl_rho_un - last_dkl_rho_un)*(1-args.polyak_speed) + args.polyak_speed*rate_dkl
+        dkl_rho_un = log_rho_un.mean().item()
+        rate_dkl_rho_un = dkl_rho_un - last_dkl_rho_un
         last_dkl_rho_un = dkl_rho_un
-        # dkl_rho_un = log_rho_un.mean().item()
-        rate_dkl = (dkl_rho_un - last_dkl_rho_un)
-        print(f"DKL_RHO_UN: {dkl_rho_un}, RATE_DKL: {rate_dkl}")
+        print(f"DKL_RHO_UN: {dkl_rho_un}, RATE: {rate_dkl_rho_un}")
         print(f'UN SHAPE: {obs_un.shape}')
         
         # UPDATE UN
-        if ((log_rho_un>=0)*log_rho_un).mean() > args.clip_lim * 0.5:
-        # if log_rho_un.mean().item() > 0:
+        # if ((log_rho_un>=0)*log_rho_un).mean() > args.clip_lim * 0.5:
+        if log_rho_un.mean().item() > 0:
             obs_reshaped = obs.reshape(-1, obs.shape[-1]).cpu().numpy()
-            idx_rho = np.random.randint(0, obs_reshaped.shape[0], int(obs_reshaped.shape[0]*args.beta_ratio))
-            obs_un = np.concatenate((obs_un, obs_reshaped[idx_rho]), axis=0) if obs_un.shape[0] < args.nb_max_un*args.num_steps*args.num_envs else update_un(obs_un, obs_reshaped, args)
-
+            zs_reshaped = zs.reshape(-1, zs.shape[-1]).cpu().numpy()
+            if obs_un.shape[0] < args.num_steps*args.num_envs*args.nb_max_un:
+                idx_rho = np.random.randint(0, obs_reshaped.shape[0], size = int(obs_un.shape[0]*args.beta_ratio))
+                obs_un = np.concatenate((obs_un, obs_reshaped[idx_rho]), axis=0)
+                z_un = np.concatenate((z_un, zs_reshaped[idx_rho]), axis=0)
+            else:
+                obs_un, z_un= update_un(obs_un, z_un, obs_reshaped, zs_reshaped, args)
 
         # bootstrap value if not done
         with torch.no_grad():
-            next_value = agent.get_value(next_obs)
+            next_value = agent.get_value(next_obs, torch.tensor(z).to(device))
             advantages = torch.zeros_like(rewards).to(device)
             lastgaelam = 0
             for t in reversed(range(obs.shape[0])):
@@ -408,9 +448,10 @@ if __name__ == "__main__":
         b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
         b_logprobs = logprobs.reshape(-1)
         b_actions = actions.reshape((-1,) + envs.single_action_space.shape)
+        b_zs = zs.reshape((-1,) + (args.nb_skill,))
         b_advantages = advantages.reshape(-1)
         if args.norm_adv:
-            b_advantages = (b_advantages - b_advantages.mean()) / (b_advantages.std() + 1e-1)
+            b_advantages = (b_advantages - b_advantages.mean(dim = -1, keepdim = True)) / (b_advantages.std(dim = -1, keepdim = True) + 1e-8)
         b_returns = returns.reshape(-1)
         b_values = values.reshape(-1)
         b_mask_pos = mask_pos.reshape(-1)
@@ -423,7 +464,7 @@ if __name__ == "__main__":
                 end = start + args.minibatch_size
                 mb_inds = b_inds[start:end]
 
-                _, newlogprob, entropy, newvalue = agent.get_action_and_value(b_obs[mb_inds], b_actions[mb_inds])
+                _, newlogprob, entropy, newvalue = agent.get_action_and_value(b_obs[mb_inds], b_zs[mb_inds], b_actions[mb_inds])
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()
 

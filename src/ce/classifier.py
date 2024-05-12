@@ -22,6 +22,7 @@ class Classifier(torch.nn.Module):
                 feature_extractor = False,
                 lipshitz_regu = False,
                 lambda_init = 30.0, 
+                lip_cte = 1.0,
                 epsilon = 1e-3):
         super(Classifier, self).__init__()
         if feature_extractor:
@@ -52,6 +53,7 @@ class Classifier(torch.nn.Module):
         self.lipshitz = lipshitz
         self.bound_spectral = bound_spectral
         self.env_id = env_id
+        self.lip_cte = lip_cte
         if learn_z : 
             if feature_extractor:
                 self.fcz1 = torch.nn.Linear(config[env_id]['coverage_idx'].shape[0], 128,device=device)
@@ -82,13 +84,13 @@ class Classifier(torch.nn.Module):
     
     def mlh_loss(self, obs, z):
         # change dtype to int
-        z = z.type(torch.int64)-1
-        p_z = self.softmax(self.forward_z(obs))
-        p_z_i = torch.gather(p_z, 1, z)
-        return -torch.mean(torch.log(p_z_i))
+        p_z = (self.softmax(self.forward_z(obs))*z).sum(dim=-1)
+        return -torch.mean(torch.log(p_z))
     
 
-    def ce_loss_ppo(self, batch_q, batch_p, batch_q_z = None, batch_p_z =None, relabeling = True, ratio = 1.0, return_log_and_prob = False):
+    def ce_loss_ppo(self, batch_q, batch_p, 
+                    batch_s_q = None, batch_s_p = None,
+                    batch_q_z = None, batch_p_z =None):
         s_q = self(batch_q)
         s_q_p = self.sigmoid(s_q)
         s_p = self(batch_p)
@@ -96,12 +98,10 @@ class Classifier(torch.nn.Module):
         # mask strategy q
         label_q = torch.ones_like(s_q)
         # mask strategy p
-        label_p = self.mask_labels_p(s_p) if self.learn_z else torch.ones_like(s_p)
-        # label_p = self.mask_labels_p(s_p)
-        # label_p = torch.ones_like(s_p)
+        label_p = torch.ones_like(s_p)
         L = -((label_q*torch.log(s_q_p)).mean() +(label_p*torch.log(1 - s_p_p)).mean()) 
         if self.learn_z:
-            L += self.mlh_loss(batch_q, batch_q_z) + self.mlh_loss(batch_p, batch_p_z)
+            L += self.mlh_loss(batch_s_q, batch_q_z) + self.mlh_loss(batch_s_p, batch_p_z)
         return L 
        
 
@@ -125,7 +125,7 @@ class Classifier(torch.nn.Module):
     def lipshits_regu(self, obs, next_obs, dones):
         o = self(obs)
         next_o = self(next_obs)
-        L = self.lambda_lip.detach()*(torch.min(self.epsilon,1-(o - next_o).pow(2))*(1-dones))
+        L = (torch.min(self.epsilon,self.lip_cte-torch.norm(o-next_o, dim=-1))*(1-dones))
         return -L.mean()
 
     def lipshitz_loss_ppo(self, 
@@ -139,13 +139,12 @@ class Classifier(torch.nn.Module):
         # mask strategy q
         label_q = torch.ones_like(s_q)
         # mask strategy p
-        # label_p = self.mask_labels_p(s_p) if self.learn_z else torch.ones_like(s_p)
         label_p = torch.ones_like(s_p)
         # classification loss
-        L = -((label_q*torch.log(s_q_p)).mean() +(label_p*torch.log(1 - s_p_p)).mean()) 
-        # L =-((s_q - s_p)).mean()
+        # L = -((label_q*torch.log(s_q_p)) +(label_p*torch.log(1 - s_p_p))).mean() 
+        L =-((s_q - s_p)).mean()
         # lipshitz regularization
         lipshitz_loss = (self.lipshits_regu(q_batch_s, q_batch_next_s, q_dones.squeeze(-1)) + self.lipshits_regu(p_batch_s, p_batch_next_s, p_dones))
         # if self.learn_z:
         #     L += self.mlh_loss(batch_q, batch_q_z) + self.mlh_loss(batch_p, batch_p_z)
-        return L+lipshitz_loss, -lipshitz_loss.detach() 
+        return L+lipshitz_loss*self.lambda_lip.detach(), -lipshitz_loss.detach()

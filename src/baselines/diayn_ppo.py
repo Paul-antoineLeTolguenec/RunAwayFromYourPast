@@ -14,7 +14,6 @@ from torch.distributions.normal import Normal
 from torch.utils.tensorboard import SummaryWriter
 import torch.nn.functional as F
 # import specific 
-from src.ce.classifier import Classifier
 from src.ce.vector_encoding import VE
 from envs.wenv import Wenv
 from envs.config_env import config
