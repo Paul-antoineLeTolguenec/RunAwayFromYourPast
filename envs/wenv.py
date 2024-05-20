@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import gym, torch, os , imageio
+import gym, torch, os , imageio, socket, subprocess
 from src.utils.dash_utils_2d import initialize_figure_2d, add_frame_to_figure_2d, create_html_2d
 from src.utils.dash_utils_3d import initialize_figure_3d, add_frame_to_figure_3d, create_html_3d
 from envs.compatible_random_generator import CompatibleRandomGenerator
@@ -41,6 +41,14 @@ class Wenv(gym.Env):
         self.limits = list(render_settings.values())
         # figure 
         if render_bool_matplot:
+            # check HOSTNAME
+            if 'bubo' in socket.gethostname():
+                self.path_gif = 'gif/'
+            elif 'pando' in socket.gethostname():
+                self.path_gif = '/scratch/disc/p.le-tolguenec/gif/'
+            elif 'olympe' in socket.gethostname():
+                self.path_gif = '/tmpdir/'+subprocess.run(['whoami'], stdout=subprocess.PIPE, text=True).stdout.strip()+'/gif/'
+            # SET UP
             self.figure, self.ax = plt.subplots()
             self.render_settings = render_settings
             self.ax.set_xlim([render_settings['x_lim'][0], render_settings['x_lim'][1]])
@@ -48,6 +56,7 @@ class Wenv(gym.Env):
             self.writer_gif = self.set_gif(xp_id)
             self.obs_saved = []
             self.random_colors = None
+            
         # plotly
         if render_bool_plotly:
             self.frame = 0
@@ -118,11 +127,19 @@ class Wenv(gym.Env):
     def gif(self, obs_un=None, obs_un_train=None, 
             obs=None, classifier=None, 
             device=None , z_un = None, 
-            zs = None, obs_rho = None):
+            zs = None, obs_rho = None, 
+            adv = None, obs_adv = None,):
         # self.random_colors = [ np.random.rand(3,) for _ in range(z_un.shape[-1])] if (z_un is not None and self.random_colors is None) else self.random_colors
         self.random_colors = [ np.random.rand(3,) for _ in range(zs.shape[-1])] if (zs is not None and self.random_colors is None) else self.random_colors
+        if adv is not None:
+            self.ax.clear()
+            sc = self.ax.scatter(obs_adv[:,self.coverage_idx[0]], obs_adv[:,self.coverage_idx[1]], s=1, c=adv, cmap='viridis')
+            if hasattr(self, 'cbar'):
+                self.cbar.update_normal(sc)
+            else:
+                self.cbar = self.figure.colorbar(sc, ax=self.ax)
 
-        if classifier is not None:
+        elif classifier is not None:
             with torch.no_grad():
                 # clear the plot
                 self.ax.clear()
@@ -158,7 +175,7 @@ class Wenv(gym.Env):
         #     # data_to_plot = torch.cat(self.obs_saved, dim=0).squeeze(1).cpu().numpy()
         #     # self.ax.scatter(data_to_plot[:,self.coverage_idx[0]], data_to_plot[:,self.coverage_idx[1]], s=1, c='black',alpha=0.1)
         #     self.ax.scatter(obs_un[:,self.coverage_idx[0]], obs_un[:,self.coverage_idx[1]], s=1, c='black', alpha=0.5)
-        if zs is not None:
+        elif zs is not None:
             self.ax.clear()
             for i in range(zs.shape[-1]):
                 # gather data
@@ -184,9 +201,9 @@ class Wenv(gym.Env):
 
     def set_gif(self,  name_id = None,render_settings={} ): 
             # gif 
-            if not os.path.exists('gif'):
-                os.makedirs('gif')
-            writer_gif = imageio.get_writer('gif/{}.mp4'.format(name_id), fps=1)
+            if not os.path.exists(self.path_gif):
+                os.makedirs(self.path_gif)
+            writer_gif = imageio.get_writer(self.path_gif + name_id + '.mp4', fps=1)
             return writer_gif
     
    

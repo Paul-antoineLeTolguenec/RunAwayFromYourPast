@@ -1,7 +1,8 @@
 import numpy as np
 import random
 import torch
-from src.utils.custom_sampling import affine_sample, exp_dec, tau_charac
+import numpy as np
+import socket, subprocess
 
 class SampleBatch:
     def __init__(self, observations, actions, next_observations, rewards, dones, times):
@@ -16,14 +17,11 @@ class SampleBatch:
 class ReplayBuffer:
     def __init__(self, 
                  capacity, 
-                 classifier_capacity, 
                  observation_space, 
                  action_space, 
                  device, 
-                 n_env):
+                 run_init_path = None):
         self.capacity = capacity
-        self.classifier_capacity = classifier_capacity
-        self.n_env  = n_env
         self.pos = 0
         self.full = False
         self.device = device
@@ -32,13 +30,17 @@ class ReplayBuffer:
         observation_shape = observation_space.shape
         action_shape = action_space.shape
         # Initialisation des buffers comme arrays NumPy avec la forme appropriée
-        self.observations = np.zeros((capacity, *observation_shape), dtype=np.float32)
-        self.actions = np.zeros((capacity, *action_shape), dtype=np.float32)
-        self.rewards = np.zeros((capacity, 1), dtype=np.float32)
-        self.next_observations = np.zeros((capacity, *observation_shape), dtype=np.float32)
-        self.dones = np.zeros((capacity, 1), dtype=np.bool_)
-        self.times= np.zeros((capacity, 1), dtype=np.int32)
-        self.probs = np.ones((capacity, 1), dtype=np.float32)
+        if run_init_path is not None:
+            self.observations, self.actions, self.next_observations, self.rewards, self.dones, self.times = self.load(run_init_path)
+            self.pos = len(self.observations)
+            self.full = True if self.pos >= self.capacity else False
+        else:
+            self.observations = np.zeros((capacity, *observation_shape), dtype=np.float32)
+            self.actions = np.zeros((capacity, *action_shape), dtype=np.float32)
+            self.rewards = np.zeros((capacity, 1), dtype=np.float32)
+            self.next_observations = np.zeros((capacity, *observation_shape), dtype=np.float32)
+            self.dones = np.zeros((capacity, 1), dtype=np.bool_)
+            self.times = np.zeros((capacity, 1), dtype=np.int32)
         
 
     def add(self, obs, next_obs, actions, rewards, dones, infos):
@@ -47,35 +49,15 @@ class ReplayBuffer:
         np.copyto(self.rewards[self.pos:self.pos + self.n_env], np.expand_dims(rewards, axis=1))
         np.copyto(self.next_observations[self.pos:self.pos + self.n_env], next_obs)
         np.copyto(self.dones[self.pos:self.pos + self.n_env], np.expand_dims(dones, axis=1))
-        np.copyto(self.times[self.pos:self.pos + self.n_env], infos['l'])
         self.pos = (self.pos + self.n_env) 
-        # if self.pos >= self.capacity:
-        #     self.remove_and_shift(self.window_t)
+        if self.pos >= self.capacity:
+            self.remove_and_shift(self.window_t)
         
 
     def sample(self, batch_size, pos_rho = 0):
         indices = np.random.randint(pos_rho,self.pos, size=batch_size) 
         return self._get_samples(indices)
 
-   
-
-    def sample_threshold(self, pos_rho, batch_size, per_add = 0.75):
-        # rho_dist
-        rho_times = self.times[pos_rho:self.pos]
-        max_time_rho = np.max(rho_times)
-        mask_rho = rho_times >= max_time_rho*per_add
-        rho_dist = self.observations[pos_rho:self.pos]
-        rho_dist = rho_dist[mask_rho[:,0]]
-        rho_indices = np.random.randint(0, len(rho_dist), size=batch_size)
-        rho_observations = torch.tensor(rho_dist[rho_indices], dtype=torch.float32, device=self.device)
-        # un_dist
-        probs = self.probs[:pos_rho]
-        # probs_normalized = probs/np.sum(probs)
-        # un_indices = np.random.choice(np.arange(pos_rho), size=batch_size, p=probs_normalized[:,0])
-        un_indices = np.random.randint(0, pos_rho, size=batch_size)
-        un_observations = torch.tensor(self.observations[un_indices], dtype=torch.float32, device=self.device)
-        return un_observations, rho_observations, un_indices, rho_indices
-    
    
 
     def _get_samples(self, indices):
@@ -121,3 +103,28 @@ class ReplayBuffer:
             dones=torch.tensor(self.dones[:self.pos], dtype=torch.float32, device=self.device),
             times=torch.tensor(self.times[:self.pos], dtype=torch.int32, device=self.device)
         )
+    
+
+    def save(self, run_id, obs, actions, next_obs, rewards, dones, infos):
+        # check HOSTNAME
+        if 'bubo' in socket.gethostname():
+            path_data = 'dataset/'
+        elif 'pando' in socket.gethostname():
+            path_data = '/scratch/disc/p.le-tolguenec/dataset/'
+        elif 'olympe' in socket.gethostname():
+            path_data = '/tmpdir/'+subprocess.run(['whoami'], stdout=subprocess.PIPE, text=True).stdout.strip()+'/dataset/'
+        # save the dataset
+        np.savez(path_data+'dataset_'+str(run_id)+'.npz', obs=obs, actions=actions, next_obs=next_obs, rewards=rewards, dones=dones, infos=infos)
+
+
+    def load(self, algo, env, seed) : 
+        # check HOSTNAME
+        if 'bubo' in socket.gethostname():
+            path_data = 'dataset/'
+        elif 'pando' in socket.gethostname():
+            path_data = '/scratch/disc/p.le-tolguenec/dataset/'
+        elif 'olympe' in socket.gethostname():
+            path_data = '/tmpdir/'+subprocess.run(['whoami'], stdout=subprocess.PIPE, text=True).stdout.strip()+'/dataset/'
+        # load the dataset
+        data = np.load(path_data+'dataset_'+env+'__'+algo+'__'+str(seed)+'.npz')
+        return data['obs'], data['actions'], data['next_obs'], data['rewards'], data['dones'], data['infos']

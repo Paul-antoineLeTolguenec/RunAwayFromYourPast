@@ -1,80 +1,25 @@
 # contrastive_exploration
 
+
+
+# XP 
+3 XP : 
+* -1 : (datasets, covergage, imgs, complexity)
+* -2 : offpolicy initialisation
+* -3 : local optimum escape 
+
 # FIRST THING TO DO
-* SAC V1 : 
-- check times classifier 
-- select last pho_n+1 properly
-- init un with \delta_0
-- adpative sample un 
-- remake criteria
-
- WARNING : Replay XP doesn't work properly
-* V1 RPO SIMPLE : 
--check 
-<!-- - sample rho adaptively
-- add rho only if success
-- stop sampling un adaptively
-- keeb  safe data properly -->
-
-
-* Reward for DUCB : Add Mutual Information reward (?)
-* Whopper check 
-* setup wenv then get back to baselines
+* check save dataset and sac working 
 
 
 
-## Exploration experiments
-* tabular experiment with gridworld (facultative)
-<!-- continuous action -->
-* Easy 
-* Ur
-* Hard 
-* Fetch_reach 
-* Ant
-* Humanoid
-* Hopper
-<!-- image base -->
-* vizdoom / Montezuma's revenge/ pitfall
 
-## Baselines
-* Random
-* RND sac 
-* ICM sac 
-* SSM sac 
-* APT ? TO DO 
-* LSD sac TODO ASAP
-* CSD sac TODO ASAP
-* METRA sac TODO ASAP
-* NGU  sac 
-* DIAYN sac 
-* RND PPO 
-* ICM PPO
-* NGU PPO
+
+
+
 
 ## Metrics 
 * Coverage 
 * Complexity
 
 
-## TIPS XP 
-* Maze : 
-exp_tau = 0.5
-clip_coef = 0.2
-clip_coef_mask = 0.4
-ent_coef = 0.2
-mask_q = None
-lipshitz = False
-update-epochs = 16
-frac = 1/4
-NOTE : Equilibrium easy to maintain without mask_q
-
-* MUJOCO :
-exp_tau = 0.5
-clip_coef = 0.2
-clip_coef_mask = 0.4
-ent_coef = 0.1
-mask_q = 0.5
-lipschitz = True
-update-epochs = 16
-frac = 1/8
-NOTE : Equilibrium in favor of q 

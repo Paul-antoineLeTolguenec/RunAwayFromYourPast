@@ -37,6 +37,9 @@ class Classifier(torch.nn.Module):
             self.fc1 = layer_init(torch.nn.Linear(observation_space.shape[0], 128)).to(device)
             self.fc2 = layer_init(torch.nn.Linear(128, 64)).to(device)
             self.fc3 = layer_init(torch.nn.Linear(64, 1)).to(device)
+            # self.fc1 =torch.nn.Linear(observation_space.shape[0], 128).to(device)
+            # self.fc2 =torch.nn.Linear(128, 64).to(device)
+            # self.fc3 =torch.nn.Linear(64, 1).to(device)
         self.lambda_lip = torch.nn.Parameter(torch.tensor(lambda_init, device=device))
         self.epsilon = torch.tensor(epsilon, device=device)
         self.lipshitz_regu = lipshitz_regu
@@ -131,7 +134,8 @@ class Classifier(torch.nn.Module):
     def lipshitz_loss_ppo(self, 
                         batch_q, batch_p, 
                         q_batch_s = None, q_batch_next_s = None, q_dones = None,
-                        p_batch_s = None, p_batch_next_s = None, p_dones = None):
+                        p_batch_s = None, p_batch_next_s = None, p_dones = None, 
+                        ratio = 1.0):
         s_q = self(batch_q)
         s_q_p = self.sigmoid(s_q)
         s_p = self(batch_p)

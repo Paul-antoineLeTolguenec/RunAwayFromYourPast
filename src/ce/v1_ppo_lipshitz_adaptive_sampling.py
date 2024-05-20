@@ -14,6 +14,7 @@ from torch.distributions.normal import Normal
 from torch.utils.tensorboard import SummaryWriter
 # import specific 
 from src.ce.classifier import Classifier
+from src.utils.replay_buffer import ReplayBuffer
 from envs.wenv import Wenv
 from envs.config_env import config
 
@@ -38,6 +39,8 @@ class Args:
     """the entity (team) of wandb's project"""
     capture_video: bool = False
     """whether to capture videos of the agent performances (check out `videos` folder)"""
+    save_data: bool = False
+    """whether to save the data of the experiment"""
 
     # GIF
     make_gif: bool = True
@@ -47,7 +50,7 @@ class Args:
     fig_frequency: int = 1
 
     # RPO SPECIFIC
-    env_id: str = "Hopper-v3"
+    env_id: str = "Maze-Ur"
     """the id of the environment"""
     total_timesteps: int = 8_000_000
     """total timesteps of the experiments"""
@@ -67,7 +70,7 @@ class Args:
     """the number of mini-batches"""
     update_epochs: int = 10
     """the K epochs to update the policy"""
-    norm_adv: bool = False
+    norm_adv: bool = True
     """Toggles advantages normalization"""
     clip_coef: float = 0.2
     """the surrogate clipping coefficient"""
@@ -89,7 +92,7 @@ class Args:
     # CLASSIFIER SPECIFIC
     classifier_lr: float = 1e-3
     """the learning rate of the classifier"""
-    classifier_epochs: int =8
+    classifier_epochs: int = 2
     """the number of epochs to train the classifier"""
     classifier_batch_size: int = 256
     """the batch size of the classifier"""
@@ -99,7 +102,7 @@ class Args:
     """the percentage of the time to use the classifier"""
     epsilon: float = 1e-6
     """the epsilon of the classifier"""
-    lambda_init: float = 1000.0
+    lambda_init: float = 50.0
     """the lambda of the classifier"""
     bound_spectral: float = 1.0
     """the bound spectral of the classifier"""
@@ -129,7 +132,7 @@ class Args:
     """the coefficient of the extrinsic reward"""
     beta_ratio: float = 1/128
     """the ratio of the beta"""
-    nb_max_un: int = 64
+    nb_max_un: int = 256
     """the number of un"""
 
     # to be filled in runtime
@@ -200,16 +203,19 @@ def update_probs(obs_un, classifier, device):
         batch_probs_un_norm = batch_probs_un/batch_probs_un.sum()
     return batch_probs_un_norm
 
-def update_un(obs_un, next_obs_un, dones_un, 
-              obs_reshaped, next_obs_reshaped, dones_reshaped, 
+def update_un(obs_un, next_obs_un, actions_un, rewards_un,  dones_un, times_un,
+              obs_reshaped, next_obs_reshaped, actions_reshaped, rewards_reshaped, dones_reshaped, times_reshaped,
               args):
     n_batch = int(obs_un.shape[0]*args.beta_ratio)
     idx_un = np.random.randint(0, obs_un.shape[0], size = n_batch)
     idx_rho = np.random.randint(0, obs_reshaped.shape[0], size = n_batch)
     obs_un[idx_un] = obs_reshaped[idx_rho].copy()
     next_obs_un[idx_un] = next_obs_reshaped[idx_rho].copy()
+    actions_un[idx_un] = actions_reshaped[idx_rho].copy()
+    rewards_un[idx_un] = rewards_reshaped[idx_rho].copy()
     dones_un[idx_un] = dones_reshaped[idx_rho].copy()
-    return obs_un, next_obs_un, dones_un
+    times_un[idx_un] = times_reshaped[idx_rho].copy()
+    return obs_un, next_obs_un, actions_un, rewards_un, dones_un, times_un
 
 if __name__ == "__main__":
     args = tyro.cli(Args)
@@ -237,13 +243,7 @@ if __name__ == "__main__":
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
     args.num_iterations = args.total_timesteps // args.batch_size
-    print('args.num_steps:', args.num_steps)
-    print('args.num_envs:', args.num_envs)  
-    print('args.classifier_epochs:', args.classifier_epochs)
-    print('args.classifier_batch_size:', args.classifier_batch_size)
-    print('args.batch_size:', args.batch_size)
-    print('args.minibatch_size:', args.minibatch_size)
-    args.classifier_epochs = (args.num_steps*args.num_envs // args.classifier_batch_size) * args.classifier_epochs
+    # args.classifier_epochs = (args.num_steps*args.num_envs // args.classifier_batch_size) * args.classifier_epochs
     if args.track:
         import wandb
 
@@ -296,6 +296,10 @@ if __name__ == "__main__":
                             epsilon=args.epsilon,
                             ).to(device)
     classifier_optimizer = optim.Adam(classifier.parameters(), lr=args.classifier_lr)
+    replay_buffer = ReplayBuffer(capacity= int(1e6),
+                                observation_space= envs.single_observation_space,
+                                action_space= envs.single_action_space,
+                                device=device)
     # RPO: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
     actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
@@ -306,10 +310,14 @@ if __name__ == "__main__":
     times = torch.zeros((args.num_steps, args.num_envs)+ (1,)).to(device)
 
     # UN
-    obs_un = torch.tensor(envs.envs[0].reset()[0], dtype=torch.float).unsqueeze(0).repeat(args.num_steps*args.num_envs, 1).cpu().numpy()
-    s1,_,_,_,_ = envs.envs[0].step(envs.envs[0].action_space.sample())
-    next_obs_un = torch.tensor(s1, dtype=torch.float).unsqueeze(0).repeat(args.num_steps*args.num_envs, 1).cpu().numpy()
-    dones_un = torch.zeros(args.num_steps*args.num_envs).cpu().numpy()
+    # obs_un = torch.tensor(envs.envs[0].reset()[0], dtype=torch.float).unsqueeze(0).repeat(args.num_steps*args.num_envs, 1).cpu().numpy()
+    # dones_un = torch.zeros((args.num_steps*args.num_envs, 1)).cpu().numpy()
+    obs_un = None
+    next_obs_un = None
+    action_un = None
+    rewards_un = None
+    dones_un = None
+    times_un = None
 
     # INIT DKL_RHO_UN
     dkl_rho_un = 0
@@ -365,41 +373,42 @@ if __name__ == "__main__":
        
         if update > args.start_explore:
             # CLASSIFIER TRAINING
-            batch_obs_rho = obs.reshape(-1, obs.shape[-1])
-            batch_dones_rho = dones.reshape(-1)
-            batch_times_rho = times.reshape(-1)
-            mask_time = (batch_times_rho > torch.max(batch_times_rho).item()*args.percentage_time).bool()
-            batch_obs_rho_masked = batch_obs_rho[mask_time]
-            batch_dones_rho_masked = batch_dones_rho[mask_time]
-            for epoch in range(args.classifier_epochs):
+            batch_obs_rho = obs.permute(1,0,2).reshape(-1, obs.shape[-1]).to(device)
+            batch_dones_rho = dones.permute(1,0,2).reshape(-1).to(device)
+            batch_times_rho = times.permute(1,0,2).reshape(-1).to(device)
+            prob_unorm = 1/torch.tensor(args.gamma).pow(batch_times_rho.cpu())
+            prob = prob_unorm[:-1]/prob_unorm[:-1].sum()
+            # classifier epoch 
+            classifier_epochs = max((obs_un.shape[0] // args.classifier_batch_size) * args.classifier_epochs, (batch_obs_rho.shape[0] // args.classifier_batch_size) * args.classifier_epochs)
+            print('classifier_epochs:', classifier_epochs)
+            for epoch in range(classifier_epochs):
                 # mb rho
-                mb_rho_idx = np.random.randint(0, batch_obs_rho_masked.shape[0]-1, args.classifier_batch_size)
-                mb_obs_rho = batch_obs_rho_masked[mb_rho_idx].to(device)
-                mb_next_obs_rho = batch_obs_rho_masked[mb_rho_idx+1].to(device)
-                mb_rho_done = batch_dones_rho_masked[mb_rho_idx+1].to(device)
-                # mb un 
-                # rho 
-                idx_rho_beta = np.random.randint(0, batch_obs_rho.shape[0]-1, int(args.classifier_batch_size*args.beta_ratio)+1)
-                # un
-                if args.adaptive_sampling:
-                    probs_un = update_probs(obs_un, classifier, device)
-                    idx_un_beta = np.random.choice(np.arange(obs_un.shape[0]), args.classifier_batch_size, p=probs_un)
-                else:
-                    idx_un_beta = np.random.randint(0, obs_un.shape[0], int(args.classifier_batch_size*(1-args.beta_ratio))+1)
-                mb_obs_un = torch.cat([batch_obs_rho[idx_rho_beta], torch.tensor(obs_un[idx_un_beta]).to(device)])[:args.classifier_batch_size]
-                mb_next_obs_un = torch.cat([batch_obs_rho[idx_rho_beta+1], torch.tensor(next_obs_un[idx_un_beta]).to(device)])[:args.classifier_batch_size]
-                mb_done_un = torch.cat([batch_dones_rho[idx_rho_beta+1], torch.tensor(dones_un[idx_un_beta]).to(device)])[:args.classifier_batch_size]
+                mb_rho_idx = np.random.choice(np.arange(batch_obs_rho.shape[0]-1), args.classifier_batch_size, p=prob.numpy())
+                mb_rho = batch_obs_rho[mb_rho_idx].to(device)
+                next_mb_rho = batch_obs_rho[mb_rho_idx+1].to(device)
+                done_mb_rho = batch_dones_rho[mb_rho_idx].to(device)
+                # mb un
+                beta_mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0]-1, int(args.classifier_batch_size*args.beta_ratio))
+                beta_mb_un_idx = np.random.randint(0, obs_un.shape[0],int(args.classifier_batch_size*(1-args.beta_ratio)))
+                mb_un = torch.tensor(np.concatenate((obs_un[beta_mb_un_idx], batch_obs_rho[beta_mb_rho_idx].cpu().numpy()), axis=0)).to(device)
+                next_mb_un = torch.tensor(np.concatenate((next_obs_un[beta_mb_un_idx], batch_obs_rho[beta_mb_rho_idx+1].cpu().numpy()), axis=0)).to(device)
+                done_mb_un = torch.tensor(np.concatenate((dones_un[beta_mb_un_idx], batch_dones_rho[beta_mb_rho_idx].cpu().numpy()), axis=0)).to(device)
                 # classifier loss + lipshitz regularization
-                loss, _ = classifier.lipshitz_loss_ppo(batch_q= mb_obs_rho, batch_p = mb_obs_un, 
-                                                        q_batch_s =  mb_obs_rho, q_batch_next_s = mb_next_obs_rho, q_dones = mb_rho_done,
-                                                        p_batch_s = mb_obs_un, p_batch_next_s = mb_next_obs_un, p_dones = mb_done_un)       
+                # loss = classifier.ce_loss_ppo(batch_q=mb_rho, batch_p=mb_un)
+                # classifier_optimizer.zero_grad()
+                # loss.backward()
+                # classifier_optimizer.step()
+                # classifier loss + lipshitz regularization
+                loss, _ = classifier.lipshitz_loss_ppo(batch_q= mb_rho, batch_p = mb_un, 
+                                                        q_batch_s =  mb_rho, q_batch_next_s = next_mb_rho, q_dones = done_mb_rho,
+                                                        p_batch_s = mb_un, p_batch_next_s = next_mb_un, p_dones = done_mb_un)       
                 classifier_optimizer.zero_grad()
                 loss.backward()
                 classifier_optimizer.step()
                 # lambda loss
-                _, lipshitz_regu = classifier.lipshitz_loss_ppo(batch_q= mb_obs_rho, batch_p = mb_obs_un, 
-                                                        q_batch_s =  mb_obs_rho, q_batch_next_s = mb_next_obs_rho, q_dones = mb_rho_done,
-                                                        p_batch_s = mb_obs_un, p_batch_next_s = mb_next_obs_un, p_dones = mb_done_un)    
+                _, lipshitz_regu = classifier.lipshitz_loss_ppo(batch_q= mb_rho, batch_p = mb_un, 
+                                                        q_batch_s =  mb_rho, q_batch_next_s = next_mb_rho, q_dones = done_mb_rho,
+                                                        p_batch_s = mb_un, p_batch_next_s = next_mb_un, p_dones = done_mb_un)    
                 classifier_optimizer.zero_grad()
                 lambda_loss = classifier.lambda_lip*lipshitz_regu
                 classifier_optimizer.zero_grad()
@@ -410,31 +419,57 @@ if __name__ == "__main__":
 
         # INTRINSIC REWARD
         with torch.no_grad():
-            log_rho_un = classifier(obs)
+            log_rho_un = classifier(obs) 
+            # log_rho_un = log_rho_un - torch.min(log_rho_un)
+            # log_rho_un = torch.cat([classifier(obs[1:])-classifier(obs[:-1]), torch.zeros(1, args.num_envs, 1).to(device)], dim=0)
         rewards = args.coef_extrinsic * rewards + args.coef_intrinsic * log_rho_un if args.keep_extrinsic_reward else args.coef_intrinsic * log_rho_un
         mask_pos = (log_rho_un > 0).float()
         # UPDATE DKL average
+        # dkl_rho_un = args.polyak * dkl_rho_un + (1-args.polyak) * log_rho_un.mean().item()
         dkl_rho_un = log_rho_un.mean().item()
-        # dkl_rho_un = log_rho_un.mean().item()
+        last_dkl_rho_un = dkl_rho_un
         rate_dkl = (dkl_rho_un - last_dkl_rho_un)
         print(f"DKL_RHO_UN: {dkl_rho_un}, RATE_DKL: {rate_dkl}")
-        print(f'UN SHAPE: {obs_un.shape}')
+        # print(f'UN SHAPE: {obs_un.shape}')
         
         # UPDATE UN
-        print('eval log_rho_un:', ((log_rho_un>=0)*log_rho_un).mean().item())
-        # if ((log_rho_un>=0)*log_rho_un).mean() > args.clip_lim * 0.01:
-        if log_rho_un.mean().item() > 0 :
-            obs_reshaped = obs.reshape(-1, obs.shape[-1]).cpu().numpy()
-            dones_reshaped = dones.reshape(-1).cpu().numpy()
-            if obs_un.shape[0] >= args.num_steps*args.num_envs*args.nb_max_un:
-                obs_un, next_obs_un, dones_un = update_un(obs_un, next_obs_un, dones_un,
-                                                        obs_reshaped[:-1], obs_reshaped[1:], dones_reshaped[1:],
-                                                        args)
-            else: 
-                obs_un = np.concatenate([obs_un, obs_reshaped[:-1]])
-                next_obs_un = np.concatenate([next_obs_un, obs_reshaped[1:]])
-                dones_un = np.concatenate([dones_un, dones_reshaped[1:]])
-        last_dkl_rho_un = dkl_rho_un
+        # if ((log_rho_un>=0)*log_rho_un).mean() > args.clip_lim * 0.5:
+        # if log_rho_un.mean().item() > 0:
+        # permute
+        obs_permute = obs.permute(1,0,2)
+        times_permute = times.permute(1,0,2)
+        actions_permute = actions.permute(1,0,2)
+        rewards_permute = rewards.permute(1,0,2)
+        dones_permute = dones.permute(1,0,2)
+        # reshape
+        obs_reshaped = obs.reshape(-1, obs_permute.shape[-1]).cpu().numpy()
+        actions_reshaped = actions_permute.reshape(-1, actions.shape[-1]).cpu().numpy()
+        rewards_reshaped = rewards_permute.reshape(-1).cpu().numpy()
+        dones_reshaped = dones_permute.reshape(-1).cpu().numpy()
+        times_reshaped = times_permute.reshape(-1).cpu().numpy()
+        # update un
+        idx_un = np.random.randint(0, obs_reshaped.shape[0]-1, int(args.beta_ratio*obs_reshaped.shape[0]))
+        if obs_un is None:
+                obs_un = obs_reshaped[idx_un]
+                next_obs_un = obs_reshaped[idx_un+1]
+                action_un = actions_reshaped[idx_un]
+                rewards_un = rewards_reshaped[idx_un]
+                dones_un = dones_reshaped[idx_un]
+                times_un = times_reshaped[idx_un]
+
+        elif obs_un.shape[0] >= args.num_steps*args.num_envs*args.nb_max_un:
+            obs_un, next_obs_un, actions_un, rewards_un, dones_un, times_un = update_un(obs_un, next_obs_un, actions_un, rewards_un, dones_un, times_un,
+                                                    obs_reshaped[:-1], obs_reshaped[1:], actions_reshaped[:-1], rewards_reshaped[:-1], dones_reshaped[:-1], times_reshaped[:-1], 
+                                                    args)
+            
+        else:
+            obs_un = np.concatenate([obs_un, obs_reshaped[idx_un]])
+            next_obs_un = np.concatenate([next_obs_un, obs_reshaped[idx_un+1]]) 
+            action_un = np.concatenate([actions_reshaped[idx_un]])
+            rewards_un = np.concatenate([rewards_reshaped[idx_un]]) 
+            dones_un = np.concatenate([dones_un, dones_reshaped[idx_un]])
+            times_un = np.concatenate([times_un, times_reshaped[idx_un]])   
+
         # bootstrap value if not done
         with torch.no_grad():
             next_value = agent.get_value(next_obs)
@@ -463,13 +498,13 @@ if __name__ == "__main__":
         b_logprobs = logprobs.reshape(-1)
         b_actions = actions.reshape((-1,) + envs.single_action_space.shape)
         b_advantages = advantages.reshape(-1)
-        if args.norm_adv:
-            b_advantages = (b_advantages - b_advantages.mean()) / (b_advantages.std() + 1e-1)
+        # if args.norm_adv:
+        #     b_advantages = (b_advantages - b_advantages.mean()) / (b_advantages.std() + 1e-1)
         b_returns = returns.reshape(-1)
         b_values = values.reshape(-1)
         b_mask_pos = mask_pos.reshape(-1)
         # Optimizing the policy and value network
-        b_inds = np.arange(obs.shape[0])
+        b_inds = np.arange(b_obs.shape[0])
         clipfracs = []
         for epoch in range(args.update_epochs):
             np.random.shuffle(b_inds)
@@ -488,6 +523,8 @@ if __name__ == "__main__":
                     clipfracs += [((ratio - 1.0).abs() > args.clip_coef).float().mean().item()]
 
                 mb_advantages = b_advantages[mb_inds]
+                if args.norm_adv:
+                    mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
                 # Policy loss
                 pg_loss1 = -mb_advantages * ratio
                 pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - args.clip_coef, 1 + args.clip_coef)
@@ -543,6 +580,7 @@ if __name__ == "__main__":
                 env_plot.gif(obs_un=obs_un, obs=obs, classifier=classifier, device=device)
             if args.plotly:
                 env_plot.plotly(obs_un,  classifier, device)
-
+    if args.save_data:
+        replay_buffer.save(run_id=run_name, obs=obs_un, next_obs=next_obs_un, actions=actions_un, rewards=rewards_un, dones=dones_un, times=times_un)
     envs.close()
     writer.close()

@@ -9,7 +9,7 @@ import copy
 
 
 class Maze(gym.Env):
-        def __init__(self, name = None, target = [0.0,-0.5],
+        def __init__(self, name = None, target = [0.5,0.5],
                      max_episode_steps = 200, seed = 0):
             super(Maze, self).__init__()
             self.x=0
@@ -48,7 +48,7 @@ class Maze(gym.Env):
             r = self.d-d_next
             self.d = d_next.copy()
             # return r*10.0
-            return 0.0
+            return r
 
         def reset(self, seed =0):
             self.x=self.x_init
