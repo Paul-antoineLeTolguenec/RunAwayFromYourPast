@@ -423,12 +423,12 @@ if __name__ == "__main__":
                 next_obs_un = obs_reshaped[idx_un+1]
                 action_un = actions_reshaped[idx_un]
                 rewards_un = rewards_reshaped[idx_un]
-                dones_un = dones_reshaped[idx_un+1]
+                dones_un = dones_reshaped[idx_un]
                 times_un = times_reshaped[idx_un]
 
         elif obs_un.shape[0] >= args.num_steps*args.num_envs*args.nb_max_un:
             obs_un, next_obs_un, actions_un, rewards_un, dones_un, times_un = update_un(obs_un, next_obs_un, actions_un, rewards_un, dones_un, times_un,
-                                                    obs_reshaped[:-1], obs_reshaped[1:], actions_reshaped[:-1], rewards_reshaped[:-1], dones_reshaped[1:], times_reshaped[:-1], 
+                                                    obs_reshaped[:-1], obs_reshaped[1:], actions_reshaped[:-1], rewards_reshaped[:-1], dones_reshaped[:-1], times_reshaped[:-1], 
                                                     args)
             
         else:
@@ -436,7 +436,7 @@ if __name__ == "__main__":
             next_obs_un = np.concatenate([next_obs_un, obs_reshaped[idx_un+1]]) 
             action_un = np.concatenate([actions_reshaped[idx_un]])
             rewards_un = np.concatenate([rewards_reshaped[idx_un]]) 
-            dones_un = np.concatenate([dones_un, dones_reshaped[idx_un+1]])
+            dones_un = np.concatenate([dones_un, dones_reshaped[idx_un]])
             times_un = np.concatenate([times_un, times_reshaped[idx_un]])   
 
         # bootstrap value if not done

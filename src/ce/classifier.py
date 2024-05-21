@@ -93,7 +93,8 @@ class Classifier(torch.nn.Module):
 
     def ce_loss_ppo(self, batch_q, batch_p, 
                     batch_s_q = None, batch_s_p = None,
-                    batch_q_z = None, batch_p_z =None):
+                    batch_q_z = None, batch_p_z =None, 
+                    beta = 0.5):
         s_q = self(batch_q)
         s_q_p = self.sigmoid(s_q)
         s_p = self(batch_p)
@@ -104,7 +105,7 @@ class Classifier(torch.nn.Module):
         label_p = torch.ones_like(s_p)
         L = -((label_q*torch.log(s_q_p)).mean() +(label_p*torch.log(1 - s_p_p)).mean()) 
         if self.learn_z:
-            L += self.mlh_loss(batch_s_q, batch_q_z) + self.mlh_loss(batch_s_p, batch_p_z)
+            L += beta*self.mlh_loss(batch_s_q, batch_q_z) + (1-beta)*self.mlh_loss(batch_s_p, batch_p_z)
         return L 
        
 

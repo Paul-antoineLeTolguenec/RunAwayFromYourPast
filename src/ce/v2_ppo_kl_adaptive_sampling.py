@@ -14,6 +14,7 @@ from torch.distributions.normal import Normal
 from torch.utils.tensorboard import SummaryWriter
 # import specific 
 from src.ce.classifier import Classifier
+from src.utils.replay_buffer import ReplayBuffer
 from envs.wenv import Wenv
 from envs.config_env import config
 
@@ -38,7 +39,9 @@ class Args:
     """the entity (team) of wandb's project"""
     capture_video: bool = False
     """whether to capture videos of the agent performances (check out `videos` folder)"""
-
+    save_data : bool = False
+    """if toggled, the data will be saved"""
+    
     # GIF
     make_gif: bool = True
     """if toggled, will make gif """
@@ -111,13 +114,13 @@ class Args:
     """the number of rollouts"""
     keep_extrinsic_reward: bool = False
     """if toggled, the extrinsic reward will be kept"""
-    start_explore: int = 16
+    start_explore: int = 8
     """the number of updates to start exploring"""
     coef_intrinsic : float = 1.0
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
-    beta_ratio: float = 1/32
+    beta_ratio: float = 1/128
     """the ratio of the beta"""
     nb_max_un: int = 256
     """the number of un"""
@@ -294,6 +297,10 @@ if __name__ == "__main__":
                             lipshitz_regu=False, 
                             learn_z=True).to(device)
     classifier_optimizer = optim.Adam(classifier.parameters(), lr=args.classifier_lr)
+    replay_buffer = ReplayBuffer(capacity= int(1e6),
+                                observation_space= envs.single_observation_space,
+                                action_space= envs.single_action_space,
+                                device=device)
     # RPO: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
     actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
@@ -304,12 +311,13 @@ if __name__ == "__main__":
     times = torch.zeros((args.num_steps, args.num_envs)+ (1,)).to(device)
     zs = torch.tensor(z).to(device).unsqueeze(0).repeat(args.num_steps, 1, 1)
     # UN
-    # obs_un = torch.tensor(envs.envs[0].reset()[0], dtype=torch.float).unsqueeze(0).repeat(args.num_steps*args.num_envs, 1).cpu().numpy()
-    # dones_un = torch.zeros((args.num_steps*args.num_envs, 1)).cpu().numpy()
-    # z_un = torch.tensor(z).repeat(args.num_steps*args.num_envs, 1).cpu().numpy()
     obs_un = None
-    z_un = None
+    next_obs_un = None
+    action_un = None
+    rewards_un = None
     dones_un = None
+    times_un = None
+
 
     # INIT DKL_RHO_UN
     dkl_rho_un = 0
@@ -369,7 +377,7 @@ if __name__ == "__main__":
             batch_dones_rho = dones.reshape(-1)
             batch_times_rho = times.reshape(-1)
             batch_zs_rho = zs.reshape(-1, zs.shape[-1])
-            prob_unorm = (1/torch.tensor(args.gamma-args.gamma_cte).pow(batch_times_rho.cpu())).cpu().numpy()
+            prob_unorm = (1/torch.tensor(args.gamma).pow(batch_times_rho.cpu())).cpu().numpy()
             prob = (prob_unorm/prob_unorm.sum())
             # classifier epoch 
             classifier_epochs = max((obs_un.shape[0] // args.classifier_batch_size) * args.classifier_epochs, (batch_obs_rho.shape[0] // args.classifier_batch_size) * args.classifier_epochs)
@@ -393,7 +401,8 @@ if __name__ == "__main__":
                 # classifier loss + lipshitz regularization
                 loss = classifier.ce_loss_ppo(batch_q=mb_rho, batch_p=mb_un, 
                                                 batch_s_q=mb_rho, batch_s_p=mb_un,
-                                                batch_q_z=mb_rho_z, batch_p_z=mb_un_z)
+                                                batch_q_z=mb_rho_z, batch_p_z=mb_un_z, 
+                                                beta=0.5)
                                                 
                 classifier_optimizer.zero_grad()
                 loss.backward()
@@ -443,13 +452,13 @@ if __name__ == "__main__":
                 next_obs_un = obs_reshaped[idx_un+1]
                 action_un = actions_reshaped[idx_un]
                 rewards_un = rewards_reshaped[idx_un]
-                dones_un = dones_reshaped[idx_un+1]
+                dones_un = dones_reshaped[idx_un]
                 times_un = times_reshaped[idx_un]
                 z_un = zs_reshaped[idx_un]
 
         elif obs_un.shape[0] >= args.num_steps*args.num_envs*args.nb_max_un:
             obs_un, next_obs_un, actions_un, rewards_un, dones_un, times_un, z_un = update_un(obs_un, next_obs_un, actions_un, rewards_un, dones_un, times_un, z_un,
-                                                                                            obs_reshaped[:-1], obs_reshaped[1:], actions_reshaped[:-1], rewards_reshaped[:-1], dones_reshaped[1:], times_reshaped[:-1], zs_reshaped[:-1],
+                                                                                            obs_reshaped[:-1], obs_reshaped[1:], actions_reshaped[:-1], rewards_reshaped[:-1], dones_reshaped[:-1], times_reshaped[:-1], zs_reshaped[:-1],
                                                                                             args)
             
         else:
@@ -457,7 +466,7 @@ if __name__ == "__main__":
             next_obs_un = np.concatenate([next_obs_un, obs_reshaped[idx_un+1]]) 
             action_un = np.concatenate([actions_reshaped[idx_un]])
             rewards_un = np.concatenate([rewards_reshaped[idx_un]]) 
-            dones_un = np.concatenate([dones_un, dones_reshaped[idx_un+1]])
+            dones_un = np.concatenate([dones_un, dones_reshaped[idx_un]])
             times_un = np.concatenate([times_un, times_reshaped[idx_un]])   
             z_un = np.concatenate([z_un, zs_reshaped[idx_un]])
 
@@ -570,6 +579,7 @@ if __name__ == "__main__":
                 env_plot.gif(obs_un=obs_un, obs=obs, classifier=classifier, device=device)
             if args.plotly:
                 env_plot.plotly(obs_un,  classifier, device)
-
+    if args.save_data:
+        replay_buffer.save(run_id=run_name, obs=obs_un, next_obs=next_obs_un, actions=actions_un, rewards=rewards_un, dones=dones_un, times=times_un)
     envs.close()
     writer.close()

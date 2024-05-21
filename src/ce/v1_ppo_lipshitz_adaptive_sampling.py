@@ -25,7 +25,7 @@ class Args:
     # XP RECORD
     exp_name: str = os.path.basename(__file__)[: -len(".py")]
     """the name of this experiment"""
-    seed: int = 0
+    seed: int = 2
     """seed of the experiment"""
     torch_deterministic: bool = True
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
@@ -50,7 +50,7 @@ class Args:
     fig_frequency: int = 1
 
     # RPO SPECIFIC
-    env_id: str = "Maze-Ur"
+    env_id: str = "HalfCheetah-v3"
     """the id of the environment"""
     total_timesteps: int = 8_000_000
     """total timesteps of the experiments"""
@@ -100,9 +100,9 @@ class Args:
     """if toggled, a feature extractor will be used"""
     percentage_time: float = 0/4
     """the percentage of the time to use the classifier"""
-    epsilon: float = 1e-6
+    epsilon: float = 1e-3
     """the epsilon of the classifier"""
-    lambda_init: float = 50.0
+    lambda_init: float = 200.0 #50 in mazes
     """the lambda of the classifier"""
     bound_spectral: float = 1.0
     """the bound spectral of the classifier"""
@@ -130,10 +130,12 @@ class Args:
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
-    beta_ratio: float = 1/128
+    beta_ratio: float = 1/256
     """the ratio of the beta"""
     nb_max_un: int = 256
     """the number of un"""
+    cte_gamma: float = 0.1
+    """the constant gamma"""
 
     # to be filled in runtime
     batch_size: int = 0
@@ -376,7 +378,7 @@ if __name__ == "__main__":
             batch_obs_rho = obs.permute(1,0,2).reshape(-1, obs.shape[-1]).to(device)
             batch_dones_rho = dones.permute(1,0,2).reshape(-1).to(device)
             batch_times_rho = times.permute(1,0,2).reshape(-1).to(device)
-            prob_unorm = 1/torch.tensor(args.gamma).pow(batch_times_rho.cpu())
+            prob_unorm = 1/torch.tensor(args.gamma-args.cte_gamma).pow(batch_times_rho.cpu())
             prob = prob_unorm[:-1]/prob_unorm[:-1].sum()
             # classifier epoch 
             classifier_epochs = max((obs_un.shape[0] // args.classifier_batch_size) * args.classifier_epochs, (batch_obs_rho.shape[0] // args.classifier_batch_size) * args.classifier_epochs)
@@ -384,6 +386,7 @@ if __name__ == "__main__":
             for epoch in range(classifier_epochs):
                 # mb rho
                 mb_rho_idx = np.random.choice(np.arange(batch_obs_rho.shape[0]-1), args.classifier_batch_size, p=prob.numpy())
+                # mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0]-1, args.classifier_batch_size)
                 mb_rho = batch_obs_rho[mb_rho_idx].to(device)
                 next_mb_rho = batch_obs_rho[mb_rho_idx+1].to(device)
                 done_mb_rho = batch_dones_rho[mb_rho_idx].to(device)
@@ -393,11 +396,6 @@ if __name__ == "__main__":
                 mb_un = torch.tensor(np.concatenate((obs_un[beta_mb_un_idx], batch_obs_rho[beta_mb_rho_idx].cpu().numpy()), axis=0)).to(device)
                 next_mb_un = torch.tensor(np.concatenate((next_obs_un[beta_mb_un_idx], batch_obs_rho[beta_mb_rho_idx+1].cpu().numpy()), axis=0)).to(device)
                 done_mb_un = torch.tensor(np.concatenate((dones_un[beta_mb_un_idx], batch_dones_rho[beta_mb_rho_idx].cpu().numpy()), axis=0)).to(device)
-                # classifier loss + lipshitz regularization
-                # loss = classifier.ce_loss_ppo(batch_q=mb_rho, batch_p=mb_un)
-                # classifier_optimizer.zero_grad()
-                # loss.backward()
-                # classifier_optimizer.step()
                 # classifier loss + lipshitz regularization
                 loss, _ = classifier.lipshitz_loss_ppo(batch_q= mb_rho, batch_p = mb_un, 
                                                         q_batch_s =  mb_rho, q_batch_next_s = next_mb_rho, q_dones = done_mb_rho,
@@ -409,7 +407,6 @@ if __name__ == "__main__":
                 _, lipshitz_regu = classifier.lipshitz_loss_ppo(batch_q= mb_rho, batch_p = mb_un, 
                                                         q_batch_s =  mb_rho, q_batch_next_s = next_mb_rho, q_dones = done_mb_rho,
                                                         p_batch_s = mb_un, p_batch_next_s = next_mb_un, p_dones = done_mb_un)    
-                classifier_optimizer.zero_grad()
                 lambda_loss = classifier.lambda_lip*lipshitz_regu
                 classifier_optimizer.zero_grad()
                 lambda_loss.backward()
@@ -498,8 +495,6 @@ if __name__ == "__main__":
         b_logprobs = logprobs.reshape(-1)
         b_actions = actions.reshape((-1,) + envs.single_action_space.shape)
         b_advantages = advantages.reshape(-1)
-        # if args.norm_adv:
-        #     b_advantages = (b_advantages - b_advantages.mean()) / (b_advantages.std() + 1e-1)
         b_returns = returns.reshape(-1)
         b_values = values.reshape(-1)
         b_mask_pos = mask_pos.reshape(-1)
