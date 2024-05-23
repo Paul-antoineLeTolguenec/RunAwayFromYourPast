@@ -14,6 +14,7 @@ from torch.distributions.normal import Normal
 from torch.utils.tensorboard import SummaryWriter
 import torch.nn.functional as F
 from src.utils.replay_buffer import ReplayBuffer
+from src.utils.wandb_utils import send_video, send_matrix, send_dataset
 
 # import specific 
 from src.ce.vector_encoding import VE
@@ -32,7 +33,7 @@ class Args:
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
     cuda: bool = True
     """if toggled, cuda will be enabled by default"""
-    track: bool = False
+    track: bool = True
     """if toggled, this experiment will be tracked with Weights and Biases"""
     wandb_project_name: str = "contrastive_exploration"
     """the wandb's project name"""
@@ -53,7 +54,7 @@ class Args:
     # RPO SPECIFIC
     env_id: str = "Maze-Easy"
     """the id of the environment"""
-    total_timesteps: int = 8000000
+    total_timesteps: int = 10_000
     """total timesteps of the experiments"""
     learning_rate: float = 5e-4
     """the learning rate of the optimizer"""
@@ -297,8 +298,6 @@ if __name__ == "__main__":
                     render_bool_matplot=False,
                     xp_id=run_name,
                     **config[args.env_id])
-    # NUM ENVS 
-    args.num_envs = args.n_agent
     # MAX STEPS
     max_steps = config[args.env_id]['kwargs']['max_episode_steps']
     args.num_steps = max_steps * args.n_rollouts +1
@@ -318,12 +317,6 @@ if __name__ == "__main__":
             monitor_gym=True,
             save_code=True,
         )
-    writer = SummaryWriter(f"runs/{run_name}")
-    writer.add_text(
-        "hyperparameters",
-        "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
-    )
-
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
@@ -350,6 +343,11 @@ if __name__ == "__main__":
     
     optimizer_encoder = optim.Adam(encoder.parameters(), lr=args.encoder_lr, eps=1e-5)
     ve = VE(args.n_agent, device, torch.ones(args.n_agent)/args.n_agent)
+    # rb
+    replay_buffer = ReplayBuffer(capacity= int(1e6),
+                                observation_space= envs.single_observation_space,
+                                action_space= envs.single_action_space,
+                                device=device)
     # ALGO Logic: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
     actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
@@ -371,11 +369,10 @@ if __name__ == "__main__":
     global_step = 0
     start_time = time.time()
     next_obs, infos = envs.reset(seed=args.seed)
-    z = torch.arange(1,args.n_agent+1).unsqueeze(-1).to(device)
     next_obs = torch.Tensor(next_obs).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
     num_updates = args.total_timesteps // args.batch_size
-    video_filenames = set()
+    times[0] = torch.tensor(np.array([infos["l"]])).transpose(0,1).to(device)
     
     for update in range(1, num_updates + 1):
         if args.episodic_return:
@@ -421,8 +418,7 @@ if __name__ == "__main__":
                 for info in infos["final_info"]:
                     if info and "episode" in info:
                         # print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-                        writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                        writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+                        wandb.log({"specific/episodic_return": info["episode"]["r"], "specific/episodic_length": info["episode"]["l"], "global_step": global_step})
    
 
         ########################### ENCODER TRAINING ###############################
@@ -558,44 +554,43 @@ if __name__ == "__main__":
         y_pred, y_true = b_values.cpu().numpy(), b_returns.cpu().numpy()
         var_y = np.var(y_true)
         explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
-        # TRY NOT TO MODIFY: record rewards for plotting purposes
-        writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
-        writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
-        writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
-        writer.add_scalar("losses/entropy", entropy_loss.item(), global_step)
-        writer.add_scalar("losses/old_approx_kl", old_approx_kl.item(), global_step)
-        writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
-        writer.add_scalar("losses/clipfrac", np.mean(clipfracs), global_step)
-        writer.add_scalar("losses/explained_variance", explained_var, global_step)
-        writer.add_scalar("charts/advantages_mean", mb_advantages.mean(), global_step)
-        # metrics 
-        writer.add_scalar("charts/coverage", env_check.get_coverage(), global_step)
-
+       
+       # metric
+        wandb.log({
+            "losses/value_loss": v_loss.item(),
+            "losses/policy_loss": pg_loss.item(),
+            "losses/entropy": entropy_loss.item(),
+            "losses/old_approx_kl": old_approx_kl.item(),
+            "losses/approx_kl": approx_kl.item(),
+            "losses/clipfrac": np.mean(clipfracs),
+            "losses/explained_variance": explained_var,
+            "charts/advantages_mean": mb_advantages.mean(),
+            "specific/coverage": env_check.get_coverage(),
+            "specific/shanon_entropy": env_check.shanon_entropy(),
+            "charts/SPS": int(global_step / (time.time() - start_time)),
+        })
+        # coverage matrix
+        normalized_matrix = (env_check.matrix_coverage - env_check.matrix_coverage.min()) / (env_check.matrix_coverage.max() - env_check.matrix_coverage.min()) * 255
+        send_matrix(wandb, np.rot90(normalized_matrix), "coverage", global_step)
+        # log 
+        print('shanon : ', env_check.shanon_entropy())
         print("SPS:", int(global_step / (time.time() - start_time)))
         print(f"global_step={global_step}")
         print('update : ',update)
-        writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
+        print('coverage : ', env_check.get_coverage())  
 
-        if args.track and args.capture_video:
-            for filename in os.listdir(f"videos/{run_name}"):
-                if filename not in video_filenames and filename.endswith(".mp4"):
-                    wandb.log({f"videos": wandb.Video(f"videos/{run_name}/{filename}")})
-                    video_filenames.add(filename)
         if update % args.fig_frequency == 0  and global_step > 0:
             if args.make_gif : 
-                env_plot.gif(obs_un = None,
-                obs_un_train = None,
-                obs=obs,
-                classifier = None,
-                device= device,
-                z_un = None,
-                obs_rho = None)
+                image = env_plot.gif(obs_un = obs_un,
+                                obs=obs,
+                                    classifier = None,
+                                    device= device)
+                send_matrix(wandb, image, "gif", global_step)
             if args.plotly:
-                env_plot.plotly(obs_un = obs, 
-                                obs_un_train = None,
+                env_plot.plotly(obs_un = obs_un, 
                                 classifier = None,
-                                device = device,
-                                z_un = None)
-
+                                device = device)
+    if args.save_data:
+        # dataset
+        send_dataset(wandb, obs_un, actions_un, rewards_un, next_obs_un, dones_un, times_un, "dataset", global_step)
     envs.close()
-    writer.close()

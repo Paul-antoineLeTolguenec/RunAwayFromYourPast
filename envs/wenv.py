@@ -19,7 +19,8 @@ class Wenv(gym.Env):
                  plotly_sample_per_episode = 2000,
                  render_settings = {'x_lim': [-1, 1], 'y_lim': [-1, 1]},
                  xp_id = None, 
-                 type_id = 'Maze'):
+                 type_id = 'Maze', 
+                 set_gif = False):
         super(Wenv, self).__init__()
         self.env_id = env_id
         self.xp_id = xp_id
@@ -56,9 +57,10 @@ class Wenv(gym.Env):
             self.render_settings = render_settings
             self.ax.set_xlim([render_settings['x_lim'][0], render_settings['x_lim'][1]])
             self.ax.set_ylim([render_settings['y_lim'][0], render_settings['y_lim'][1]])
-            self.writer_gif = self.set_gif(xp_id)
+            self.writer_gif = self.set_gif(xp_id) if set_gif else None
             self.obs_saved = []
             self.random_colors = None
+            self.frames_np = None
             
         # plotly
         if render_bool_plotly:
@@ -127,69 +129,32 @@ class Wenv(gym.Env):
     def __str__(self):
         return self.env.__str__()
     
-    def gif(self, obs_un=None, obs_un_train=None, 
-            obs=None, classifier=None, 
-            device=None , z_un = None, 
-            zs = None, obs_rho = None, 
-            adv = None, obs_adv = None,):
-        # self.random_colors = [ np.random.rand(3,) for _ in range(z_un.shape[-1])] if (z_un is not None and self.random_colors is None) else self.random_colors
-        self.random_colors = [ np.random.rand(3,) for _ in range(zs.shape[-1])] if (zs is not None and self.random_colors is None) else self.random_colors
-        if adv is not None:
+    def gif(self, 
+            obs_un=None, 
+            obs=None,
+            classifier=None, 
+            device=None ):
+        with torch.no_grad():
+            # clear the plot
             self.ax.clear()
-            sc = self.ax.scatter(obs_adv[:,self.coverage_idx[0]], obs_adv[:,self.coverage_idx[1]], s=1, c=adv, cmap='viridis')
-            if hasattr(self, 'cbar'):
-                self.cbar.update_normal(sc)
-            else:
-                self.cbar = self.figure.colorbar(sc, ax=self.ax)
-
-        elif classifier is not None:
-            with torch.no_grad():
-                # clear the plot
-                self.ax.clear()
-                # data  to plot
-                # data_to_plot =torch.Tensor(obs_un.reshape(-1, *self.observation_space.shape)).to(device)
-                data_to_plot =torch.cat([torch.Tensor(obs_un.reshape(-1, *self.observation_space.shape)).to(device), torch.Tensor(obs.reshape(-1, *self.observation_space.shape))], dim=0)
-                # Plotting measure 
-                m_n = classifier(data_to_plot)
-                # mask =torch.nonzero(m_n> 0, as_tuple=True)[0]
-                # mask_z =torch.nonzero(m_n< 0, as_tuple=True)[0]
-                m_n = m_n.detach().cpu().numpy().squeeze(-1)
-                # normalize
-                # m_n = (m_n - m_n.mean()) / m_n.std()
-                # data to plot
-                data_to_plot = data_to_plot.detach().cpu().numpy()
-                # Plotting the environment
-                # self.ax.scatter(data_to_plot[:,self.coverage_idx[0]], data_to_plot[:,self.coverage_idx[1]], s=1, c = m_n, cmap='viridis')
-                # plot obs train
-                # self.ax.scatter(data_to_plot[mask,self.coverage_idx[0]], data_to_plot[mask,self.coverage_idx[1]], s=1, c='g')
-                # self.ax.scatter(data_to_plot[mask_z,self.coverage_idx[0]], data_to_plot[mask_z,self.coverage_idx[1]], s=1, c='r')
-                # data_obs_rho = obs_rho.reshape(-1, *self.observation_space.shape).detach().cpu().numpy() if obs_rho is not None else None
-                # self.ax.scatter(data_obs_rho[:,self.coverage_idx[0]], data_obs_rho[:,self.coverage_idx[1]], s=1, c='red',alpha=0.1)  if obs_rho is not None else None
-                # data_obs = obs.reshape(-1, *self.observation_space.shape).detach().cpu().numpy() if obs is not None else None
-                sc = self.ax.scatter(data_to_plot[:,self.coverage_idx[0]], data_to_plot[:,self.coverage_idx[1]], s=1, c = m_n, cmap='viridis')
-                # self.ax.scatter(data_obs[:,self.coverage_idx[0]], data_obs[:,self.coverage_idx[1]], s=1, c='black',alpha=0.1)  if obs is not None else None
-                # self.ax.scatter(obs_un_train[:,self.coverage_idx[0]].cpu(), obs_un_train[:,self.coverage_idx[1]].cpu(), s=1, c='b', alpha=0.5)
+            # data  to plot
+            data_to_plot =torch.cat([torch.Tensor(obs_un.reshape(-1, *self.observation_space.shape)).to(device), torch.Tensor(obs.reshape(-1, *self.observation_space.shape))], dim=0)
+            # Plotting measure 
+            m_n = classifier(data_to_plot).detach().cpu().numpy().squeeze(-1)if classifier is not None else None
+            # normalize
+            # data to plot
+            data_to_plot = data_to_plot.detach().cpu().numpy()
+            # Plotting the environment
+            if classifier is None:
+                self.ax.scatter(data_to_plot[:,self.coverage_idx[0]], data_to_plot[:,self.coverage_idx[1]], s=1)
+            else : 
+                sc = self.ax.scatter(data_to_plot[:,self.coverage_idx[0]], data_to_plot[:,self.coverage_idx[1]], s=1, c = m_n, cmap='viridis') 
+                # Colorbar
                 if hasattr(self, 'cbar'):
                     self.cbar.update_normal(sc)
                 else:
                     self.cbar = self.figure.colorbar(sc, ax=self.ax)
-        # else :
-        #     # self.obs_saved.append(obs.cpu())
-        #     # data_to_plot = torch.cat(self.obs_saved, dim=0).squeeze(1).cpu().numpy()
-        #     # self.ax.scatter(data_to_plot[:,self.coverage_idx[0]], data_to_plot[:,self.coverage_idx[1]], s=1, c='black',alpha=0.1)
-        #     self.ax.scatter(obs_un[:,self.coverage_idx[0]], obs_un[:,self.coverage_idx[1]], s=1, c='black', alpha=0.5)
-        elif zs is not None:
-            self.ax.clear()
-            for i in range(zs.shape[-1]):
-                # gather data
-                # data = obs_un[z_un[:,i] == 1]
-                data = obs[zs[:,i] == 1].cpu().numpy()
-                # self.ax.scatter(data[:,self.coverage_idx[0]], data[:,self.coverage_idx[1]], s=1, c=self.random_colors[i], alpha=0.5)
-                self.ax.scatter(data[:,self.coverage_idx[0]], data[:,self.coverage_idx[1]], s=1, c=self.random_colors[i], alpha=0.5)
-
-        elif obs_un is not None : 
-            self.ax.scatter(obs_un[:,self.coverage_idx[0]], obs_un[:,self.coverage_idx[1]], s=1, c='b', alpha=0.5)
-
+        
         # Bounds
         self.ax.set_xlim([self.render_settings['x_lim'][0], self.render_settings['x_lim'][1]])
         self.ax.set_ylim([self.render_settings['y_lim'][0], self.render_settings['y_lim'][1]])
@@ -202,7 +167,10 @@ class Wenv(gym.Env):
         self.figure.canvas.draw()
         image = np.frombuffer(self.figure.canvas.tostring_rgb(), dtype='uint8')
         image = image.reshape(self.figure.canvas.get_width_height()[::-1] + (3,))
-        self.writer_gif.append_data(image)
+        # add dimension
+        image_exp = np.expand_dims(image, axis=0).astype(np.uint8)
+        self.frames_np = image_exp if self.frames_np is None else np.concatenate([self.frames_np, image_exp], axis=0)
+        return image
 
     def set_gif(self,  name_id = None,render_settings={} ): 
             # gif 
@@ -277,7 +245,6 @@ class Wenv(gym.Env):
         coords_mat = np.clip(coords_mat, 0, self.coverage_accuracy-1)
         self.matrix_coverage[tuple([coords_mat[:, i] for i in range(coords_mat.shape[1])])] += 1
        
-            
                 
             
     def get_coverage(self):
