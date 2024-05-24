@@ -192,19 +192,7 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     torch.nn.init.constant_(layer.bias, bias_const)
     return layer
 
-def update_un(obs_un, next_obs_un, actions_un, rewards_un,  dones_un, times_un,
-              obs_reshaped, next_obs_reshaped, actions_reshaped, rewards_reshaped, dones_reshaped, times_reshaped,
-              args):
-    n_batch = int(obs_un.shape[0]*args.beta_ratio)
-    idx_un = np.random.randint(0, obs_un.shape[0], size = n_batch)
-    idx_rho = np.random.randint(0, obs_reshaped.shape[0], size = n_batch)
-    obs_un[idx_un] = obs_reshaped[idx_rho].copy()
-    next_obs_un[idx_un] = next_obs_reshaped[idx_rho].copy()
-    actions_un[idx_un] = actions_reshaped[idx_rho].copy()
-    rewards_un[idx_un] = rewards_reshaped[idx_rho].copy()
-    dones_un[idx_un] = dones_reshaped[idx_rho].copy()
-    times_un[idx_un] = times_reshaped[idx_rho].copy()
-    return obs_un, next_obs_un, actions_un, rewards_un, dones_un, times_un
+
 
 
 class Agent(nn.Module):
@@ -237,6 +225,20 @@ class Agent(nn.Module):
         if action is None:
             action = probs.sample()
         return action, probs.log_prob(action).sum(1), probs.entropy().sum(1), self.critic(x)
+    
+def update_un(obs_un, next_obs_un, actions_un, rewards_un,  dones_un, times_un,
+              obs_reshaped, next_obs_reshaped, actions_reshaped, rewards_reshaped, dones_reshaped, times_reshaped,
+              args):
+    n_batch = int(obs_un.shape[0]*args.beta_ratio)
+    idx_un = np.random.randint(0, obs_un.shape[0], size = n_batch)
+    idx_rho = np.random.randint(0, obs_reshaped.shape[0], size = n_batch)
+    obs_un[idx_un] = obs_reshaped[idx_rho].copy()
+    next_obs_un[idx_un] = next_obs_reshaped[idx_rho].copy()
+    actions_un[idx_un] = actions_reshaped[idx_rho].copy()
+    rewards_un[idx_un] = rewards_reshaped[idx_rho].copy()
+    dones_un[idx_un] = dones_reshaped[idx_rho].copy()
+    times_un[idx_un] = times_reshaped[idx_rho].copy()
+    return obs_un, next_obs_un, actions_un, rewards_un, dones_un, times_un
 
 
 if __name__ == "__main__":
@@ -321,7 +323,7 @@ if __name__ == "__main__":
     # UN 
     obs_un = None
     next_obs_un = None
-    action_un = None
+    actions_un = None
     rewards_un = None
     dones_un = None
     times_un = None

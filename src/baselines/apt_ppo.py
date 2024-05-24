@@ -54,7 +54,7 @@ class Args:
     # RPO SPECIFIC
     env_id: str = "Maze-Easy"
     """the id of the environment"""
-    total_timesteps: int = 10_000
+    total_timesteps: int = 50_000
     """total timesteps of the experiments"""
     learning_rate: float = 5e-4
     """the learning rate of the optimizer"""
@@ -311,7 +311,7 @@ if __name__ == "__main__":
         wandb.init(
             project=args.wandb_project_name,
             entity=args.wandb_entity,
-            sync_tensorboard=True,
+            sync_tensorboard=False,
             config=vars(args),
             name=run_name,
             monitor_gym=True,
@@ -360,7 +360,7 @@ if __name__ == "__main__":
      # UN 
     obs_un = None
     next_obs_un = None
-    action_un = None
+    actions_un = None
     rewards_un = None
     dones_un = None
     times_un = None
@@ -408,7 +408,10 @@ if __name__ == "__main__":
                     idx_sample_s = np.random.randint(0, obs_un.shape[0], args.encoder_batch_size)
                     sample_s = torch.Tensor(obs_un[idx_sample_s]).to(device)
                     obs_reward = torch.Tensor(next_obs).to(device)
-                    intrinsinc_reward = encoder.get_knn_sum(obs_reward, sample_s, args.knn).detach().cpu().unsqueeze(0).numpy()
+                    intrinsinc_reward = np.zeros((args.num_envs, 1))
+                    for i in range(args.num_envs):
+                        intrinsinc_reward[i] = encoder.get_knn_sum(obs_reward[i], sample_s, args.knn).detach().cpu().numpy()
+                    intrinsinc_reward = np.squeeze(intrinsinc_reward,axis=1)
                     reward = reward*args.coef_extrinsic + intrinsinc_reward*args.coef_intrinsic if args.keep_extrinsic_reward else intrinsinc_reward*args.coef_intrinsic
             times[step] = torch.tensor(np.array([infos["l"]])).transpose(0,1).to(device)
             done = np.logical_or(terminations, truncations)
