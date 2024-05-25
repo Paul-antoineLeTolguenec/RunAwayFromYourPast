@@ -242,6 +242,7 @@ if __name__ == "__main__":
     actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
     logprobs = torch.zeros((args.num_steps, args.num_envs) + (1,)).to(device)
     rewards = torch.zeros((args.num_steps, args.num_envs) + (1,)).to(device)
+    extrinsic_rewards = torch.zeros((args.num_steps, args.num_envs) + (1,)).to(device)
     dones = torch.zeros((args.num_steps, args.num_envs) + (1,)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)+ (1,)).to(device)
     times = torch.zeros((args.num_steps, args.num_envs)+ (1,)).to(device)
@@ -291,6 +292,7 @@ if __name__ == "__main__":
 
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, terminations, truncations, infos = envs.step(action.cpu().numpy())
+            extrinsic_rewards[step] = torch.tensor(reward).to(device).unsqueeze(-1)
             reward = reward if args.keep_extrinsic_reward else reward * 0.0
             times[step] = torch.tensor(np.array([infos["l"]])).transpose(0,1).to(device)
             done = np.logical_or(terminations, truncations)
@@ -307,7 +309,7 @@ if __name__ == "__main__":
         obs_permute = obs.permute(1,0,2)
         times_permute = times.permute(1,0,2)
         actions_permute = actions.permute(1,0,2)
-        rewards_permute = rewards.permute(1,0,2)
+        rewards_permute = extrinsic_rewards.permute(1,0,2)
         dones_permute = dones.permute(1,0,2)
         # reshape
         obs_reshaped = obs.reshape(-1, obs_permute.shape[-1]).cpu().numpy()

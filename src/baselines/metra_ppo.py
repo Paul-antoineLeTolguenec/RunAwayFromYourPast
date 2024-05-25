@@ -407,6 +407,8 @@ if __name__ == "__main__":
             intrinsic_reward = torch.cat([w_mi, torch.zeros((1, args.nb_skill,1)).to(device)], dim=0) * 10.0
             # normalized 
             # intrinsic_reward = (intrinsic_reward - intrinsic_reward.mean(dim=1, keepdim=True)) / (intrinsic_reward.std(dim=1, keepdim=True) + 1e-8)
+
+            extrinsic_rewards = rewards
             rewards = intrinsic_reward * args.coef_intrinsic + rewards * args.coef_extrinsic if args.keep_extrinsic_reward else intrinsic_reward*args.coef_intrinsic
 
 
@@ -415,7 +417,7 @@ if __name__ == "__main__":
         obs_permute = obs.permute(1,0,2)
         times_permute = times.permute(1,0,2)
         actions_permute = actions.permute(1,0,2)
-        rewards_permute = rewards.permute(1,0,2)
+        rewards_permute = extrinsic_rewards.permute(1,0,2)
         dones_permute = dones.permute(1,0,2)
         zs_permute = zs.permute(1,0,2)
         # reshape

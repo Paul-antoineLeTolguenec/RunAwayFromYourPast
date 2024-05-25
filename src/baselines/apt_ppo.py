@@ -52,7 +52,7 @@ class Args:
     fig_frequency: int = 1
 
     # RPO SPECIFIC
-    env_id: str = "Maze-Easy"
+    env_id: str = "Maze-Ur"
     """the id of the environment"""
     total_timesteps: int = 50_000
     """total timesteps of the experiments"""
@@ -353,6 +353,7 @@ if __name__ == "__main__":
     actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
     logprobs = torch.zeros((args.num_steps, args.num_envs) + (1,)).to(device)
     rewards = torch.zeros((args.num_steps, args.num_envs) + (1,)).to(device)
+    extrinsic_rewards = torch.zeros((args.num_steps, args.num_envs) + (1,)).to(device)
     dones = torch.zeros((args.num_steps, args.num_envs) + (1,)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)+ (1,)).to(device)
     times = torch.zeros((args.num_steps, args.num_envs)+ (1,)).to(device)
@@ -402,6 +403,7 @@ if __name__ == "__main__":
 
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, terminations, truncations, infos = envs.step(action.cpu().numpy())
+            extrinsic_rewards[step] = torch.tensor(reward).to(device).unsqueeze(-1)
             if obs_un is not None:
                 with torch.no_grad():
                     # intrinsic reward
@@ -410,7 +412,7 @@ if __name__ == "__main__":
                     obs_reward = torch.Tensor(next_obs).to(device)
                     intrinsinc_reward = np.zeros((args.num_envs, 1))
                     for i in range(args.num_envs):
-                        intrinsinc_reward[i] = encoder.get_knn_sum(obs_reward[i], sample_s, args.knn).detach().cpu().numpy()
+                        intrinsinc_reward[i] = encoder.get_knn_sum(obs_reward[i].unsqueeze(0), sample_s, args.knn).detach().cpu().numpy()
                     intrinsinc_reward = np.squeeze(intrinsinc_reward,axis=1)
                     reward = reward*args.coef_extrinsic + intrinsinc_reward*args.coef_intrinsic if args.keep_extrinsic_reward else intrinsinc_reward*args.coef_intrinsic
             times[step] = torch.tensor(np.array([infos["l"]])).transpose(0,1).to(device)
@@ -441,7 +443,7 @@ if __name__ == "__main__":
         obs_permute = obs.permute(1,0,2)
         times_permute = times.permute(1,0,2)
         actions_permute = actions.permute(1,0,2)
-        rewards_permute = rewards.permute(1,0,2)
+        rewards_permute = extrinsic_rewards.permute(1,0,2)
         dones_permute = dones.permute(1,0,2)
         # reshape
         obs_reshaped = obs.reshape(-1, obs_permute.shape[-1]).cpu().numpy()

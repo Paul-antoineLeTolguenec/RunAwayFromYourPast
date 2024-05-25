@@ -54,9 +54,9 @@ class Args:
     fig_frequency: int = 1
 
     # RPO SPECIFIC
-    env_id: str = "Maze-Ur"
+    env_id: str = "HalfCheetah-v3"
     """the id of the environment"""
-    total_timesteps: int = 10_000
+    total_timesteps: int = 100_000
     """total timesteps of the experiments"""
     learning_rate: float = 5e-4
     """the learning rate of the optimizer"""
@@ -100,12 +100,14 @@ class Args:
     """the number of epochs to train the classifier"""
     classifier_batch_size: int = 256
     """the batch size of the classifier"""
-    feature_extractor: bool = False
+    feature_extractor: bool = True
     """if toggled, a feature extractor will be used"""
     clip_lim: float = 10.0
     """the clipping limit of the classifier"""
     adaptive_sampling: bool = False
     """if toggled, the sampling will be adaptive"""
+    use_sigmoid: bool = True
+    """if toggled, the sigmoid will be used"""
 
     # RHO SPECIFIC
     episodic_return: bool = True
@@ -126,7 +128,7 @@ class Args:
     """the ratio of the beta"""
     nb_max_un: int =256
     """the number of un"""
-    gamma_cte: float = 0.1
+    gamma_cte: float = 0.0
     """the gamma constant"""
 
     # to be filled in runtime
@@ -278,6 +280,7 @@ if __name__ == "__main__":
                             lim_up = args.clip_lim,
                             lim_down = -args.clip_lim,
                             env_id=args.env_id, 
+                            use_sigmoid=args.use_sigmoid,
                             lipshitz_regu=False).to(device)
     classifier_optimizer = optim.Adam(classifier.parameters(), lr=args.classifier_lr)
     replay_buffer = ReplayBuffer(capacity= int(1e6),
@@ -360,7 +363,7 @@ if __name__ == "__main__":
             batch_obs_rho = obs.permute(1,0,2).reshape(-1, obs.shape[-1]).to(device)
             batch_dones_rho = dones.permute(1,0,2).reshape(-1).to(device)
             batch_times_rho = times.permute(1,0,2).reshape(-1).to(device)
-            prob_unorm = 1/torch.tensor(args.gamma-args.gamma_cte).pow(batch_times_rho.cpu())
+            prob_unorm = torch.clamp(1/torch.tensor(args.gamma-args.gamma_cte).pow(batch_times_rho.cpu()),1_00.0)
             prob = prob_unorm/prob_unorm.sum()
             # classifier epoch 
             classifier_epochs = max((obs_un.shape[0] // args.classifier_batch_size) * args.classifier_epochs, (batch_obs_rho.shape[0] // args.classifier_batch_size) * args.classifier_epochs)
@@ -390,6 +393,8 @@ if __name__ == "__main__":
         ############################ INTRINSIC REWARD ##################################
         with torch.no_grad():
             log_rho_un = classifier(obs)
+        
+        extrinsic_rewards = rewards
         rewards = args.coef_extrinsic * rewards + args.coef_intrinsic * log_rho_un if args.keep_extrinsic_reward else args.coef_intrinsic * log_rho_un
         mask_pos = (log_rho_un > 0).float()
         # UPDATE DKL average
@@ -405,7 +410,7 @@ if __name__ == "__main__":
         obs_permute = obs.permute(1,0,2)
         times_permute = times.permute(1,0,2)
         actions_permute = actions.permute(1,0,2)
-        rewards_permute = rewards.permute(1,0,2)
+        rewards_permute = extrinsic_rewards.permute(1,0,2)
         dones_permute = dones.permute(1,0,2)
         # reshape
         obs_reshaped = obs.reshape(-1, obs_permute.shape[-1]).cpu().numpy()

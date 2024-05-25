@@ -21,6 +21,12 @@ from matplotlib.animation import FuncAnimation
 import numpy as np
 import imageio
 
+from src.utils.replay_buffer import ReplayBuffer
+from src.utils.wandb_utils import send_video, send_matrix, send_dataset
+from envs.wenv import Wenv
+from envs.config_env import config
+
+
 
 
 def parse_args():
@@ -182,12 +188,7 @@ if __name__ == "__main__":
             monitor_gym=True,
             save_code=True,
         )
-    writer = SummaryWriter(f"runs/{run_name}")
-    writer.add_text(
-        "hyperparameters",
-        "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
-    )
-
+   
     if args.make_gif:
         env_plot = Wenv(env_id=args.env_id, 
                         render_bool_matplot=True, 
@@ -271,8 +272,9 @@ if __name__ == "__main__":
             for info in infos['final_info']:
                 r_0 += info['episode']['r']
                 l_0 += info['episode']['l']
-            writer.add_scalar("charts/episodic_return", r_0/args.n_env, global_step)
-            writer.add_scalar("charts/episodic_length", l_0/args.n_env, global_step)
+            print(f"global_step={global_step}, episodic_return={r_0/args.n_env}, episodic_length={l_0/args.n_env}")
+            # writer.add_scalar("charts/episodic_return", r_0/args.n_env, global_step)
+            # writer.add_scalar("charts/episodic_length", l_0/args.n_env, global_step)
         # TRY NOT TO MODIFY: save data to reply buffer; handle `terminal_observation`
         real_next_obs = next_obs.copy()
         # for idx, d in enumerate(dones):
@@ -342,23 +344,32 @@ if __name__ == "__main__":
                     target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
 
             if global_step % 10 == 0:
-                writer.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), global_step)
-                writer.add_scalar("losses/qf2_values", qf2_a_values.mean().item(), global_step)
-                writer.add_scalar("losses/qf1_loss", qf1_loss.item(), global_step)
-                writer.add_scalar("losses/qf2_loss", qf2_loss.item(), global_step)
-                writer.add_scalar("losses/qf_loss", qf_loss.item() / 2.0, global_step)
-                writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
-                writer.add_scalar("losses/alpha", alpha, global_step)
-                writer.add_scalar("losses/rewards", rewards.mean().item(), global_step)
-                writer.add_scalar("losses/min_reward", rewards.min().item(), global_step)
-                writer.add_scalar("losses/max_reward", rewards.max().item(), global_step)
+                wandb.log({"actor_loss": actor_loss.item(), 
+                            "qf1_loss": qf1_loss.item(), 
+                            "qf2_loss": qf2_loss.item(), 
+                            "qf_loss": qf_loss.item(), 
+                            "alpha": alpha, 
+                            "rewards": rewards.mean().item(), 
+                            "min_reward": rewards.min().item(), 
+                            "max_reward": rewards.max().item(), 
+                            "SPS": int(global_step / (time.time() - start_time)), 
+                            "global_step": global_step})
+                if args.autotune:
+                    wandb.log({"alpha_loss": alpha_loss.item()})
+                # writer.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), global_step)
+                # writer.add_scalar("losses/qf2_values", qf2_a_values.mean().item(), global_step)
+                # writer.add_scalar("losses/qf1_loss", qf1_loss.item(), global_step)
+                # writer.add_scalar("losses/qf2_loss", qf2_loss.item(), global_step)
+                # writer.add_scalar("losses/qf_loss", qf_loss.item() / 2.0, global_step)
+                # writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
+                # writer.add_scalar("losses/alpha", alpha, global_step)
+                # writer.add_scalar("losses/rewards", rewards.mean().item(), global_step)
+                # writer.add_scalar("losses/min_reward", rewards.min().item(), global_step)
+                # writer.add_scalar("losses/max_reward", rewards.max().item(), global_step)
                 # print("SPS:", int(global_step / (time.time() - start_time)))
                 # print(f"Global step: {global_step}")
-                writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
-                if args.autotune:
-                    writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
+                
 
            
 
     envs.close()
-    writer.close()

@@ -52,7 +52,7 @@ class Args:
     fig_frequency: int = 1
 
     # RPO SPECIFIC
-    env_id: str = "Maze-Ur"
+    env_id: str = "Hopper-v3"
     """the id of the environment"""
     total_timesteps: int = 1_000_000
     """total timesteps of the experiments"""
@@ -107,6 +107,9 @@ class Args:
     vae_epochs: int = 16
     """the number of epochs for the VAE"""
     vae_latent_dim: int = 32
+    """the latent dimension of the VAE"""
+    feature_extractor: bool = True
+    """if toggled, the feature extractor will be used"""
 
 
     # to be filled in runtime
@@ -144,10 +147,12 @@ def make_env(env_id, idx, capture_video, run_name):
 
 
 class VAE(nn.Module):
-    def __init__(self, input_dim, latent_dim):
+    def __init__(self, input_dim, latent_dim, feature_extractor=False, env_id='Maze-U'):
         super().__init__()
+        self.feature_extractor = feature_extractor
+        self.env_id = env_id
         self.encoder = nn.Sequential(
-            layer_init(nn.Linear(input_dim, 256)),
+            layer_init(nn.Linear(input_dim, 256)) if not feature_extractor else layer_init(nn.Linear(config[env_id]['coverage_idx'].shape[0], 256)),
             nn.ReLU(),
             layer_init(nn.Linear(256, 256)),
             nn.ReLU(),
@@ -160,10 +165,11 @@ class VAE(nn.Module):
             nn.ReLU(),
             layer_init(nn.Linear(256, 256)),
             nn.ReLU(),
-            layer_init(nn.Linear(256, input_dim)),
-        )
+            layer_init(nn.Linear(256, input_dim)) if not feature_extractor else layer_init(nn.Linear(256, config[env_id]['coverage_idx'].shape[0])),
+        )   
 
     def encode(self, x):
+        x = self.feature(x) if self.feature_extractor else x
         x = self.encoder(x)
         mean = self.mean_layer(x)
         logstd = self.logstd_layer(x)
@@ -180,12 +186,17 @@ class VAE(nn.Module):
     
     def loss(self, x, reduce=True):
         x_recon, mean, logstd = self(x)
+        x = self.feature(x) if self.feature_extractor else x
         recon_loss = F.mse_loss(x_recon, x, reduction='none').sum(1)
         kl_loss = -0.5 * (1 + 2 * logstd - mean ** 2 - torch.exp(2 * logstd)).sum(1)
         loss = recon_loss + kl_loss
         if reduce:
             return loss.mean()
         return loss
+    
+    def feature(self, x):
+        x=  x[:, :, config[self.env_id]['coverage_idx']] if x.dim() == 3 else x[:, config[self.env_id]['coverage_idx']]
+        return x
 
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     torch.nn.init.orthogonal_(layer.weight, std)
@@ -302,7 +313,7 @@ if __name__ == "__main__":
     # Agent
     agent = Agent(envs).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
-    vae = VAE(np.array(envs.single_observation_space.shape).prod(), args.vae_latent_dim).to(device)
+    vae = VAE(np.array(envs.single_observation_space.shape).prod(), args.vae_latent_dim, args.feature_extractor, args.env_id).to(device)
     optimizer_vae = optim.Adam(vae.parameters(), lr=args.vae_lr, eps=1e-5)
     # rb
     replay_buffer = ReplayBuffer(capacity= int(1e6),
@@ -387,6 +398,8 @@ if __name__ == "__main__":
         with torch.no_grad():
             # update the reward
             rewards_nn = vae.loss(obs.reshape(-1, *envs.single_observation_space.shape), reduce = False).reshape(args.num_steps, args.num_envs).unsqueeze(-1)
+
+        extrinsic_rewards = rewards 
         rewards = args.coef_intrinsic * rewards_nn + args.coef_extrinsic * rewards if args.keep_extrinsic_reward else args.coef_intrinsic * rewards_nn
 
         ########################### UPDATE UN ###############################
@@ -394,7 +407,7 @@ if __name__ == "__main__":
         obs_permute = obs.permute(1,0,2)
         times_permute = times.permute(1,0,2)
         actions_permute = actions.permute(1,0,2)
-        rewards_permute = rewards.permute(1,0,2)
+        rewards_permute = extrinsic_rewards.permute(1,0,2)
         dones_permute = dones.permute(1,0,2)
         # reshape
         obs_reshaped = obs.reshape(-1, obs_permute.shape[-1]).cpu().numpy()

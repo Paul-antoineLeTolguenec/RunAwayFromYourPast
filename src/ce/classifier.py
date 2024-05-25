@@ -23,6 +23,7 @@ class Classifier(torch.nn.Module):
                 lipshitz_regu = False,
                 lambda_init = 30.0, 
                 lip_cte = 1.0,
+                use_sigmoid = False,
                 epsilon = 1e-3):
         super(Classifier, self).__init__()
         if feature_extractor:
@@ -57,6 +58,7 @@ class Classifier(torch.nn.Module):
         self.bound_spectral = bound_spectral
         self.env_id = env_id
         self.lip_cte = lip_cte
+        self.use_sigmoid = use_sigmoid
         if learn_z : 
             if feature_extractor:
                 self.fcz1 = torch.nn.Linear(config[env_id]['coverage_idx'].shape[0], 128,device=device)
@@ -147,7 +149,7 @@ class Classifier(torch.nn.Module):
         label_p = torch.ones_like(s_p)
         # classification loss
         # L = -((label_q*torch.log(s_q_p)) +(label_p*torch.log(1 - s_p_p))).mean() 
-        L =-((s_q - s_p)).mean()
+        L =-((s_q - s_p)).mean() if not self.use_sigmoid else -((s_q_p - s_p_p)).mean()
         # lipshitz regularization
         lipshitz_loss = (self.lipshits_regu(q_batch_s, q_batch_next_s, q_dones.squeeze(-1)) + self.lipshits_regu(p_batch_s, p_batch_next_s, p_dones))
         # if self.learn_z:

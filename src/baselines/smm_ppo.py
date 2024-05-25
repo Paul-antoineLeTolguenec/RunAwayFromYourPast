@@ -111,7 +111,7 @@ class Args:
     """the number of agents"""
     classifier_batch_size: int = 256
     """the batch size of the classifier"""
-    feature_extractor: bool = False
+    feature_extractor: bool = True
     """if toggled, the feature extractor will be used"""
     # VAE
     vae_lr: float = 1e-3
@@ -457,6 +457,8 @@ if __name__ == "__main__":
             intrinsic_reward_vae = vae.loss(obs, reduce = False).unsqueeze(-1)
             # full intrinsic reward 
             intrinsic_reward = intrinsic_reward_classifier + intrinsic_reward_vae
+
+            extrinsic_rewards = rewards
             rewards = intrinsic_reward * args.coef_intrinsic + rewards * args.coef_extrinsic if args.keep_extrinsic_reward else intrinsic_reward*args.coef_intrinsic
         
         ########################### UPDATE UN ###############################
@@ -464,7 +466,7 @@ if __name__ == "__main__":
         obs_permute = obs.permute(1,0,2)
         times_permute = times.permute(1,0,2)
         actions_permute = actions.permute(1,0,2)
-        rewards_permute = rewards.permute(1,0,2)
+        rewards_permute = extrinsic_rewards.permute(1,0,2)
         dones_permute = dones.permute(1,0,2)
         zs_permute = zs.permute(1,0,2)
         # reshape

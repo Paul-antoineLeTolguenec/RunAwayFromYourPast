@@ -304,6 +304,7 @@ if __name__ == "__main__":
     actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
     logprobs = torch.zeros((args.num_steps, args.num_envs) + (1,)).to(device)
     rewards = torch.zeros((args.num_steps, args.num_envs) + (1,)).to(device)
+    extrinsic_rewards = torch.zeros((args.num_steps, args.num_envs) + (1,)).to(device)
     dones = torch.zeros((args.num_steps, args.num_envs) + (1,)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)+ (1,)).to(device)
     times = torch.zeros((args.num_steps, args.num_envs)+ (1,)).to(device)
@@ -353,7 +354,7 @@ if __name__ == "__main__":
 
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, terminations, truncations, infos = envs.step(action.cpu().numpy())
-            
+            extrinsic_rewards[step] = torch.tensor(reward).to(device).unsqueeze(-1)
 
             # intrinsic reward
             with torch.no_grad():

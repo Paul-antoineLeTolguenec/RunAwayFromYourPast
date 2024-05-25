@@ -111,7 +111,7 @@ class Args:
     """the number of agents"""
     classifier_batch_size: int = 256
     """the batch size of the classifier"""
-    feature_extractor: bool = False
+    feature_extractor: bool = True
     """if toggled, the feature extractor will be used"""
 
     # to be filled in runtime
@@ -391,6 +391,7 @@ if __name__ == "__main__":
         with torch.no_grad():
             log_p_z = torch.log((torch.softmax(classifier.forward_z(obs), dim=-1)*zs).sum(dim=-1)).unsqueeze(-1) - torch.log(torch.tensor(1/args.nb_skill).float())
             intrinsic_reward = log_p_z
+            extrinsic_rewards = rewards
             rewards = intrinsic_reward * args.coef_intrinsic + rewards * args.coef_extrinsic if args.keep_extrinsic_reward else intrinsic_reward*args.coef_intrinsic
 
         ########################### UPDATE UN ###############################
@@ -398,7 +399,7 @@ if __name__ == "__main__":
         obs_permute = obs.permute(1,0,2)
         times_permute = times.permute(1,0,2)
         actions_permute = actions.permute(1,0,2)
-        rewards_permute = rewards.permute(1,0,2)
+        rewards_permute = extrinsic_rewards.permute(1,0,2)
         dones_permute = dones.permute(1,0,2)
         zs_permute = zs.permute(1,0,2)
         # reshape

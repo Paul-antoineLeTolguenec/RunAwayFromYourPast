@@ -55,7 +55,7 @@ class Args:
     # RPO SPECIFIC
     env_id: str = "Maze-Ur"
     """the id of the environment"""
-    total_timesteps: int = 10_000
+    total_timesteps: int = 100_000
     """total timesteps of the experiments"""
     learning_rate: float = 5e-4
     """the learning rate of the optimizer"""
@@ -99,7 +99,7 @@ class Args:
     """the number of epochs to train the classifier"""
     classifier_batch_size: int = 256
     """the batch size of the classifier"""
-    feature_extractor: bool = False
+    feature_extractor: bool = True
     """if toggled, a feature extractor will be used"""
     percentage_time: float = 0/4
     """the percentage of the time to use the classifier"""
@@ -107,6 +107,7 @@ class Args:
     """the clipping limit of the classifier"""
     adaptive_sampling: bool = False
     """if toggled, the sampling will be adaptive"""
+    use_sigmoid: bool = True
 
     # RHO SPECIFIC
     episodic_return: bool = True
@@ -135,7 +136,7 @@ class Args:
     """the lambda of the mutual information"""
     lambda_ent: float = 1.0
     """the lambda of the entropy"""
-    gamma_cte: float = 0.1
+    gamma_cte: float = 0.0
     """the gamma constant"""
 
     # to be filled in runtime
@@ -290,6 +291,7 @@ if __name__ == "__main__":
                             lim_down = -args.clip_lim,
                             env_id=args.env_id, 
                             lipshitz_regu=False, 
+                            use_sigmoid=args.use_sigmoid,
                             learn_z=True).to(device)
     classifier_optimizer = optim.Adam(classifier.parameters(), lr=args.classifier_lr)
     replay_buffer = ReplayBuffer(capacity= int(1e6),
@@ -371,7 +373,7 @@ if __name__ == "__main__":
             batch_dones_rho = dones.reshape(-1)
             batch_times_rho = times.reshape(-1)
             batch_zs_rho = zs.reshape(-1, zs.shape[-1])
-            prob_unorm = (1/torch.tensor(args.gamma).pow(batch_times_rho.cpu())).cpu().numpy()
+            prob_unorm = torch.clamp(1/torch.tensor(args.gamma-args.gamma_cte).pow(batch_times_rho.cpu()),1_00.0)
             prob = (prob_unorm/prob_unorm.sum())
             # classifier epoch 
             classifier_epochs = max((obs_un.shape[0] // args.classifier_batch_size) * args.classifier_epochs, (batch_obs_rho.shape[0] // args.classifier_batch_size) * args.classifier_epochs)
@@ -409,9 +411,8 @@ if __name__ == "__main__":
             log_rho_un = classifier(obs)
             log_p_z = torch.log((torch.softmax(classifier.forward_z(obs), dim=-1)*zs).sum(dim=-1)).unsqueeze(-1) - torch.log(torch.tensor(1/args.nb_skill).float())
             reward_intrinsic = args.lambda_im * log_p_z if args.start_explore >= update else args.lambda_im * log_p_z +  log_rho_un * args.lambda_ent
-            print('LOG_RHO_UN:', log_rho_un.mean().item())  
-            print('LOG_P_Z:', log_p_z.mean().item())
-
+        
+        extrinsic_rewards = rewards
         rewards = args.coef_extrinsic * rewards + args.coef_intrinsic * reward_intrinsic if args.keep_extrinsic_reward else args.coef_intrinsic * reward_intrinsic
         mask_pos = (log_rho_un > 0).float()
         # UPDATE DKL average
@@ -426,7 +427,7 @@ if __name__ == "__main__":
         obs_permute = obs.permute(1,0,2)
         times_permute = times.permute(1,0,2)
         actions_permute = actions.permute(1,0,2)
-        rewards_permute = rewards.permute(1,0,2)
+        rewards_permute = extrinsic_rewards.permute(1,0,2)
         dones_permute = dones.permute(1,0,2)
         zs_permute = zs.permute(1,0,2)
         # reshape

@@ -1,12 +1,11 @@
 # contrastive_exploration
 
 TODO : 
-1/ wandb only with metric and matrix for each epoch + dataset + gif 
-2/ all xp 
-3/ decide which HP to tune
+1/ Offline and online SAC
+2/ json file for HP
+3/ beta tune
 4/ Slurm
 5/ Send Pandi + Calmip 
-5/ Sac : Offline and online
 
 # XP 
 3 XP : 

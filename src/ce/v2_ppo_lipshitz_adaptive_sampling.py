@@ -114,6 +114,8 @@ class Args:
     """if toggled, the sampling will be adaptive"""
     lip_cte: float = 1.0
     """the lip constant"""
+    use_sigmoid: bool = False
+    """if toggled, the sigmoid will be used"""
 
     
     # RHO SPECIFIC
@@ -137,7 +139,7 @@ class Args:
     """the number of un"""
     w_rho_un: float = 1.0
     """the weight of the rho un"""
-    cte_gamma: float = 0.1
+    gamma_cte: float = 0.0
     """the constant gamma"""
 
     # METRA SPECIFIC
@@ -353,6 +355,7 @@ if __name__ == "__main__":
                             epsilon=args.epsilon,
                             lambda_init=args.lambda_init,
                             bound_spectral=args.bound_spectral,
+                            use_sigmoid=args.use_sigmoid
                             ).to(device)
     classifier_optimizer = optim.Adam(classifier.parameters(), lr=args.classifier_lr)
     replay_buffer = ReplayBuffer(capacity= int(1e6),
@@ -451,7 +454,7 @@ if __name__ == "__main__":
             batch_obs_rho = obs.permute(1,0,2).reshape(-1, obs.shape[-1]).to(device)
             batch_dones_rho = dones.permute(1,0,2).reshape(-1).to(device)
             batch_times_rho = times.permute(1,0,2).reshape(-1).to(device)
-            prob_unorm = 1/torch.tensor(args.gamma-args.cte_gamma).pow(batch_times_rho.cpu())
+            prob_unorm = torch.clamp(1/torch.tensor(args.gamma-args.gamma_cte).pow(batch_times_rho.cpu()),1_00.0)
             prob = prob_unorm[:-1]/prob_unorm[:-1].sum()
             batch_zs_rho = zs.permute(1,0,2).reshape(-1, args.n_agent).to(device)
             # classifier epoch
@@ -529,6 +532,7 @@ if __name__ == "__main__":
             r_mi = torch.cat([r_mi, torch.zeros((1, args.n_agent,1)).to(device)], dim=0) * args.w_mi
             reward_intrinsic = r_mi*args.lambda_im + log_rho_un*args.w_rho_un if update > args.start_explore else r_mi*args.lambda_im
 
+        extrinsic_rewards = rewards
         rewards = args.coef_extrinsic * rewards + args.coef_intrinsic * reward_intrinsic if args.keep_extrinsic_reward else args.coef_intrinsic * reward_intrinsic
         mask_pos = (log_rho_un > 0).float()
         # UPDATE DKL average
@@ -543,7 +547,7 @@ if __name__ == "__main__":
             obs_permute = obs.permute(1,0,2)
             times_permute = times.permute(1,0,2)
             actions_permute = actions.permute(1,0,2)
-            rewards_permute = rewards.permute(1,0,2)
+            rewards_permute = extrinsic_rewards.permute(1,0,2)
             dones_permute = dones.permute(1,0,2)
             zs_permute = zs.permute(1,0,2)
             # reshape

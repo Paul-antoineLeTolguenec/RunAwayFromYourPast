@@ -354,6 +354,8 @@ if __name__ == "__main__":
         with torch.no_grad():
             # update the reward
             rewards_nn = rnd.loss(obs, reduce = False)
+
+        extrinsic_rewards = rewards
         rewards = args.coef_intrinsic * rewards_nn + args.coef_extrinsic * rewards if args.keep_extrinsic_reward else args.coef_intrinsic * rewards_nn
 
 
@@ -362,7 +364,7 @@ if __name__ == "__main__":
         obs_permute = obs.permute(1,0,2)
         times_permute = times.permute(1,0,2)
         actions_permute = actions.permute(1,0,2)
-        rewards_permute = rewards.permute(1,0,2)
+        rewards_permute = extrinsic_rewards.permute(1,0,2)
         dones_permute = dones.permute(1,0,2)
         # reshape
         obs_reshaped = obs.reshape(-1, obs_permute.shape[-1]).cpu().numpy()
