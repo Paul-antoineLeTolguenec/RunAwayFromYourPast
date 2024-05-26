@@ -2,7 +2,6 @@
     "hyperparameters": {
 
       "maze": {
-
         "v1_ppo_kl_adaptive_sampling": {
                                         "cuda": true,
                                         "save_data": true,
