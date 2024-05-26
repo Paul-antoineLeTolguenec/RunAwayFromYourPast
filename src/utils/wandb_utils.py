@@ -36,7 +36,7 @@ def load_dataset(project_name: str, run_id: str, dataset_name: str):
     next_obs = df[next_obs_col].values
     done = df["done"].values
     times = df["times"].values
-    return obs, action, reward, next_obs, done, times
+    return obs, action, np.expand_dims(reward, axis=1), next_obs, np.expand_dims(done, axis=1), np.expand_dims(times, axis=1)
 
 def find_run_id(project_name: str, run_name: str):
     api = wandb.Api()
@@ -53,11 +53,15 @@ if __name__ == "__main__":
     wandb.login()
 
     project_name = "contrastive_exploration"
-    run_id = "Maze-Ur__aux_ppo__0"
+    # run_id = "Maze-Ur__aux_ppo__0"
+    run_id = "HalfCheetah-v3__v1_ppo_lipshitz_adaptive_sampling__0"
 
     run_id = find_run_id(project_name, run_id)
     print(run_id)
     # dataset
+    print('project_name:', project_name)
+    print('run_id:', run_id)
+    print('dataset:', "dataset")
     obs, action, reward, next_obs, done, times = load_dataset(project_name, run_id, "dataset")
     print('obs:', obs.shape)
     print('action:', action.shape)

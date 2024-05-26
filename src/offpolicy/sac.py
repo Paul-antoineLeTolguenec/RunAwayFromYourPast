@@ -3,6 +3,7 @@ import argparse
 import os
 import random
 import time
+from dataclasses import dataclass
 from distutils.util import strtobool
 import gym
 import numpy as np
@@ -25,77 +26,72 @@ from src.utils.replay_buffer import ReplayBuffer
 from src.utils.wandb_utils import send_video, send_matrix, send_dataset
 from envs.wenv import Wenv
 from envs.config_env import config
+import tyro
 
 
+@dataclass
+class Args:
+    exp_name: str = os.path.basename(__file__)[: -len(".py")]
+    """the name of this experiment"""
+    seed: int = 1
+    """seed of the experiment"""
+    torch_deterministic: bool = True
+    """if toggled, `torch.backends.cudnn.deterministic=False`"""
+    cuda: bool = False
+    """if toggled, cuda will be enabled by default"""
+    track: bool = True
+    """if toggled, this experiment will be tracked with Weights and Biases"""
+    wandb_project_name: str = "contrastive_exploration"
+    """the wandb's project name"""
+    wandb_entity: str = None
+    """the entity (team) of wandb's project"""
+    capture_video: bool = False
+    """whether to capture videos of the agent performances (check out `videos` folder)"""
+    num_envs: int = 1
+    """the number of parallel environments"""
 
 
-def parse_args():
-    # fmt: off
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--n_env", type=int, default=1)  
-    parser.add_argument("--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"),
-        help="the name of this experiment")
-    parser.add_argument("--seed", type=int, default=0,
-        help="seed of the experiment")
-    parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="if toggled, `torch.backends.cudnn.deterministic=False`")
-    parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="if toggled, cuda will be enabled by default")
-    parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="if toggled, this experiment will be tracked with Weights and Biases")
-    parser.add_argument("--wandb-project-name", type=str, default="contrastive_exploration",
-        help="the wandb's project name")
-    parser.add_argument("--wandb-entity", type=str, default=None,
-        help="the entity (team) of wandb's project")
-    parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="whether to capture videos of the agent performances (check out `videos` folder)")
-    parser.add_argument("--fig_frequency", type=int, default=1000)
-    parser.add_argument("--make-gif", type=bool, default=False)
-    parser.add_argument("--plotly", type=bool, default=False)
-    parser.add_argument("--episodic-return", type=bool, default=True)
-    parser.add_argument("--num-envs", type=int, default=1)
+    # replay buffer init
+    init_replay_buffer: bool = True
+    """if toggled, the replay buffer will be initialized"""
+    env_id: str = "HalfCheetah-v3"
+    """the id of the environment"""
+    algo_name: str = "v1_ppo_lipshitz_adaptive_sampling"
+    """the name of the algorithm"""
+    seed: int = 0
+    """seed of the experiment"""
+    dataset_name: str = "dataset"
+    """the name of the dataset"""
+    learning_starts: int = 5e3
+    """timestep to start learning"""
 
 
-    # REPLAY BUFFER
-    parser.add_argument("--xp_init", type=str, default="random",
-        help="the initialization of the replay buffer")
-
-    # SAC
-    parser.add_argument("--env-id", type=str, default="Swimmer-v3",
-        help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=int(1e6),
-        help="total timesteps of the experiments")
-    parser.add_argument("--buffer-size", type=int, default=int(1e6),
-        help="the replay memory buffer size")
-    parser.add_argument("--gamma", type=float, default=0.99,
-        help="the discount factor gamma")
-    parser.add_argument("--tau", type=float, default=0.005,
-        help="target smoothing coefficient (default: 0.005)")
-    parser.add_argument("--batch-size", type=int, default=256,
-        help="the batch size of sample from the reply memory")
-    parser.add_argument("--learning-starts", type=int, default=5000,
-        help="timestep to start learning")
-    parser.add_argument("--policy-lr", type=float, default=5e-4,
-        help="the learning rate of the policy network optimizer")
-    parser.add_argument("--q-lr", type=float, default=2e-3,
-        help="the learning rate of the Q network network optimizer")
-    parser.add_argument("--q-frequency", type=int, default=1,
-        help="the frequency of training Q network")
-    parser.add_argument("--policy-frequency", type=int, default=2,
-        help="the frequency of training policy (delayed)")
-    parser.add_argument("--target-network-frequency", type=int, default=1, # Denis Yarats' implementation delays this by 2.
-        help="the frequency of updates for the target nerworks")
-    parser.add_argument("--noise-clip", type=float, default=0.2,
-        help="noise clip parameter of the Target Policy Smoothing Regularization")
-    parser.add_argument("--alpha", type=float, default=0.2,
-            help="Entropy regularization coefficient.")
-    parser.add_argument("--autotune", type=lambda x:bool(strtobool(x)), default=False, 
-        help="automatic tuning of the entropy coefficient")
-
-
-    args = parser.parse_args()
-    # fmt: on
-    return args
+    # Algorithm specific arguments
+    """the environment id of the task"""
+    total_timesteps: int = 1000000
+    """total timesteps of the experiments"""
+    buffer_size: int = int(1e6)
+    """the replay memory buffer size"""
+    gamma: float = 0.99
+    """the discount factor gamma"""
+    tau: float = 0.005
+    """target smoothing coefficient (default: 0.005)"""
+    batch_size: int = 256
+    """the batch size of sample from the reply memory"""
+    policy_lr: float = 3e-4
+    """the learning rate of the policy network optimizer"""
+    q_lr: float = 1e-3
+    """the learning rate of the Q network network optimizer"""
+    policy_frequency: int = 2
+    """the frequency of training policy (delayed)"""
+    target_network_frequency: int = 1  # Denis Yarats' implementation delays this by 2.
+    """the frequency of updates for the target nerworks"""
+    noise_clip: float = 0.5
+    """noise clip parameter of the Target Policy Smoothing Regularization"""
+    alpha: float = 0.2
+    """Entropy regularization coefficient."""
+    autotune: bool = False
+    """automatic tuning of the entropy coefficient"""
 
 
 def make_env(env_id, idx, capture_video, run_name):
@@ -173,41 +169,29 @@ class Actor(nn.Module):
     
 
 if __name__ == "__main__":
-    args = parse_args()
+    args = tyro.cli(Args)
     # args.seed=np.random.randint(0,100)
-    run_name = f"{args.env_id}__{args.exp_name}__{args.seed}"
+    run_name = f"{args.env_id}__{args.exp_name}__{args.seed}" if not args.init_replay_buffer else f"sac_{args.env_id}__init__{args.algo_name}__{args.seed}"
     if args.track:
         import wandb
 
         wandb.init(
             project=args.wandb_project_name,
             entity=args.wandb_entity,
-            sync_tensorboard=True,
+            sync_tensorboard=False,
             config=vars(args),
             name=run_name,
             monitor_gym=True,
             save_code=True,
         )
    
-    if args.make_gif:
-        env_plot = Wenv(env_id=args.env_id, 
-                        render_bool_matplot=True, 
-                        xp_id=run_name, 
-                        **config[args.env_id])
-    if args.plotly:
-        env_plot = Wenv(env_id=args.env_id, 
-                        render_bool_plotly=True, 
-                        xp_id=run_name, 
-                        **config[args.env_id])
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = args.torch_deterministic
-
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
-
     # env setup
     envs = gym.vector.SyncVectorEnv(
         [make_env(args.env_id, i, args.capture_video, run_name) for i in range(args.num_envs)]
@@ -215,11 +199,7 @@ if __name__ == "__main__":
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
 
 
-    # SETUP BATCH 
-    if args.episodic_return:
-        max_steps = envs.envs[0].spec.max_episode_steps  
-
-
+    # SETUP BATCH
     max_action = float(envs.single_action_space.high[0])
     actor = Actor(envs).to(device)
     qf1 = SoftQNetwork(envs).to(device)
@@ -241,18 +221,17 @@ if __name__ == "__main__":
 
     envs.single_observation_space.dtype = np.float32
     rb = ReplayBuffer(
-        capacity = args.buffer_size,
-        classifier_capacity = args.classifier_capacity,
-        observation_space = envs.single_observation_space,
-        action_space = envs.single_action_space,
-        device = device,
-        n_env = args.n_env
-    )
+            capacity= args.buffer_size, 
+            observation_space= envs.single_observation_space,
+            action_space= envs.single_action_space,
+            device= device,
+            run_init_path = None if not args.init_replay_buffer else f"{args.env_id}__{args.algo_name}__{args.seed}",
+            project_name= args.wandb_project_name,
+            name_dataset= args.dataset_name,
+            num_envs= args.num_envs
+            )
 
     start_time = time.time()
-
-   
-
     # TRY NOT TO MODIFY: start the game
     obs,infos = envs.reset()
     for global_step in range(args.total_timesteps):
@@ -272,14 +251,12 @@ if __name__ == "__main__":
             for info in infos['final_info']:
                 r_0 += info['episode']['r']
                 l_0 += info['episode']['l']
-            print(f"global_step={global_step}, episodic_return={r_0/args.n_env}, episodic_length={l_0/args.n_env}")
-            # writer.add_scalar("charts/episodic_return", r_0/args.n_env, global_step)
-            # writer.add_scalar("charts/episodic_length", l_0/args.n_env, global_step)
+            wandb.log({"episodic_return": r_0/args.num_envs, "episodic_length": l_0/args.num_envs, "global_step": global_step})
+            print(f"global_step={global_step}, episodic_return={r_0/args.num_envs}, episodic_length={l_0/args.num_envs}")
+            # writer.add_scalar("charts/episodic_return", r_0/args.num_envs, global_step)
+            # writer.add_scalar("charts/episodic_length", l_0/args.num_envs, global_step)
         # TRY NOT TO MODIFY: save data to reply buffer; handle `terminal_observation`
         real_next_obs = next_obs.copy()
-        # for idx, d in enumerate(dones):
-        #     if d:
-        #         real_next_obs[idx] = infos[idx]["terminal_observation"]
         rb.add(obs, real_next_obs, actions, rewards, dones, infos)
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
@@ -289,28 +266,26 @@ if __name__ == "__main__":
 
             
         # SAC: training.
-        if global_step > args.learning_starts:
+        if (global_step > args.learning_starts) or args.init_replay_buffer:
             # q network training
-            if global_step % args.q_frequency == 0:
-                for _ in range(args.q_frequency):
-                    data = rb.sample(args.batch_size)
-                    with torch.no_grad():
-                        next_state_actions, next_state_log_pi, _ = actor.get_action(data.next_observations)
-                        qf1_next_target = qf1_target(data.next_observations, next_state_actions)
-                        qf2_next_target = qf2_target(data.next_observations, next_state_actions)
-                        min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
-                        # rewards
-                        rewards = torch.tensor(data.rewards, dtype=torch.float32, device=device).view(-1, 1)
-                        next_q_value = rewards+ (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
-                    qf1_a_values = qf1(data.observations, data.actions).view(-1)
-                    qf2_a_values = qf2(data.observations, data.actions).view(-1)
-                    qf1_loss = F.mse_loss(qf1_a_values, next_q_value)
-                    qf2_loss = F.mse_loss(qf2_a_values, next_q_value)
-                    qf_loss = qf1_loss + qf2_loss
+            data = rb.sample(args.batch_size)
+            with torch.no_grad():
+                next_state_actions, next_state_log_pi, _ = actor.get_action(data.next_observations)
+                qf1_next_target = qf1_target(data.next_observations, next_state_actions)
+                qf2_next_target = qf2_target(data.next_observations, next_state_actions)
+                min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
+                # rewards
+                rewards = torch.tensor(data.rewards, dtype=torch.float32, device=device).flatten()
+                next_q_value = rewards+ (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).flatten()
+            qf1_a_values = qf1(data.observations, data.actions).view(-1)
+            qf2_a_values = qf2(data.observations, data.actions).view(-1)
+            qf1_loss = F.mse_loss(qf1_a_values, next_q_value)
+            qf2_loss = F.mse_loss(qf2_a_values, next_q_value)
+            qf_loss = qf1_loss + qf2_loss
 
-                    q_optimizer.zero_grad()
-                    qf_loss.backward()
-                    q_optimizer.step()
+            q_optimizer.zero_grad()
+            qf_loss.backward()
+            q_optimizer.step()
 
             if global_step % args.policy_frequency == 0:  # TD 3 Delayed update support
                 for _ in range(
@@ -356,20 +331,5 @@ if __name__ == "__main__":
                             "global_step": global_step})
                 if args.autotune:
                     wandb.log({"alpha_loss": alpha_loss.item()})
-                # writer.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), global_step)
-                # writer.add_scalar("losses/qf2_values", qf2_a_values.mean().item(), global_step)
-                # writer.add_scalar("losses/qf1_loss", qf1_loss.item(), global_step)
-                # writer.add_scalar("losses/qf2_loss", qf2_loss.item(), global_step)
-                # writer.add_scalar("losses/qf_loss", qf_loss.item() / 2.0, global_step)
-                # writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
-                # writer.add_scalar("losses/alpha", alpha, global_step)
-                # writer.add_scalar("losses/rewards", rewards.mean().item(), global_step)
-                # writer.add_scalar("losses/min_reward", rewards.min().item(), global_step)
-                # writer.add_scalar("losses/max_reward", rewards.max().item(), global_step)
-                # print("SPS:", int(global_step / (time.time() - start_time)))
-                # print(f"Global step: {global_step}")
-                
-
-           
 
     envs.close()

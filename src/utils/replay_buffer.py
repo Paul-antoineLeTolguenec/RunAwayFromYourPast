@@ -4,6 +4,7 @@ import torch
 import numpy as np
 import socket, subprocess
 import os 
+from src.utils.wandb_utils import load_dataset, find_run_id
 
 class SampleBatch:
     def __init__(self, observations, actions, next_observations, rewards, dones, times):
@@ -21,7 +22,10 @@ class ReplayBuffer:
                  observation_space, 
                  action_space, 
                  device, 
-                 run_init_path = None):
+                 run_init_path = None, 
+                 project_name = None, 
+                 name_dataset = None, 
+                 num_envs = 1):
         self.capacity = capacity
         self.pos = 0
         self.full = False
@@ -30,11 +34,23 @@ class ReplayBuffer:
         self.action_space = action_space
         observation_shape = observation_space.shape
         action_shape = action_space.shape
+        self.num_envs = num_envs
         # Initialisation des buffers comme arrays NumPy avec la forme appropriée
         if run_init_path is not None:
-            self.observations, self.actions, self.next_observations, self.rewards, self.dones, self.times = self.load(run_init_path)
+            run_path = run_init_path
+            project_name = project_name
+            run_id = find_run_id(project_name, run_path)
+            self.observations, self.actions, self.rewards, self.next_observations, self.dones, self.times = load_dataset(project_name, run_id, name_dataset)
             self.pos = len(self.observations)
             self.full = True if self.pos >= self.capacity else False
+            # concatenate 
+            self.observations = np.vstack((self.observations, np.zeros((capacity - self.pos, *observation_shape), dtype=np.float32)))
+            self.actions = np.vstack((self.actions, np.zeros((capacity - self.pos, *action_shape), dtype=np.float32)))
+            self.rewards = np.vstack((self.rewards, np.zeros((capacity - self.pos, 1), dtype=np.float32)))
+            self.next_observations = np.vstack((self.next_observations, np.zeros((capacity - self.pos, *observation_shape), dtype=np.float32)))
+            self.dones = np.vstack((self.dones, np.zeros((capacity - self.pos, 1), dtype=np.bool_)))
+            self.times = np.vstack((self.times, np.zeros((capacity - self.pos, 1), dtype=np.int32)))
+            
         else:
             self.observations = np.zeros((capacity, *observation_shape), dtype=np.float32)
             self.actions = np.zeros((capacity, *action_shape), dtype=np.float32)
@@ -45,12 +61,12 @@ class ReplayBuffer:
         
 
     def add(self, obs, next_obs, actions, rewards, dones, infos):
-        np.copyto(self.observations[self.pos:self.pos + self.n_env], obs)
-        np.copyto(self.actions[self.pos:self.pos + self.n_env], actions)
-        np.copyto(self.rewards[self.pos:self.pos + self.n_env], np.expand_dims(rewards, axis=1))
-        np.copyto(self.next_observations[self.pos:self.pos + self.n_env], next_obs)
-        np.copyto(self.dones[self.pos:self.pos + self.n_env], np.expand_dims(dones, axis=1))
-        self.pos = (self.pos + self.n_env) 
+        np.copyto(self.observations[self.pos:self.pos + self.num_envs], obs)
+        np.copyto(self.actions[self.pos:self.pos + self.num_envs], actions)
+        np.copyto(self.rewards[self.pos:self.pos + self.num_envs], np.expand_dims(rewards, axis=1))
+        np.copyto(self.next_observations[self.pos:self.pos + self.num_envs], next_obs)
+        np.copyto(self.dones[self.pos:self.pos + self.num_envs], np.expand_dims(dones, axis=1))
+        self.pos = (self.pos + self.num_envs) 
         if self.pos >= self.capacity:
             self.remove_and_shift(self.window_t)
         
