@@ -354,7 +354,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     start_time = time.time()
     # custom noise 
     eps_tm = np.concatenate([ np.concatenate([cn.powerlaw_psd_gaussian(args.beta_noise, max_step +1 )[:, None] for _ in range(envs.single_action_space.shape[0])], axis=1)[None, :] for _ in range(args.num_envs)], axis=0)
-    nb_step_per_env = np.zeros(args.num_envs, dtype=int)    
+    nb_step_per_env = np.zeros(args.num_envs, dtype=int)   
+    # running episodic return
+    running_episodic_return = 0 
     # TRY NOT TO MODIFY: start the game
     obs, _ = envs.reset(seed=args.seed)
     for global_step in range(args.total_timesteps):
@@ -382,7 +384,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     wandb.log({
                         "charts/episodic_return": info["episode"]["r"], 
                         "charts/episodic_length": info["episode"]["l"], 
-                        }, step = global_step)
+                        }, step = global_step) if args.track else None
+                    running_episodic_return = running_episodic_return * 0.99 + info["episode"]["r"][0] * 0.01
                 except:
                     pass
 
@@ -427,7 +430,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             for classifier_step in range(int(size_rho/args.classifier_batch_size * args.classifier_epochs)):
                 # classifier training 
                 # batch un
-                batch_inds_un = fixed_idx_un[np.random.randint(0, max(2,len(fixed_idx_un)-args.pad_rho * max_step * args.beta_ratio), args.classifier_batch_size)]
+                batch_inds_un = fixed_idx_un[np.random.randint(0, max(1,len(fixed_idx_un)-args.pad_rho * max_step * args.beta_ratio), args.classifier_batch_size)]
                 batch_inds_envs_un = np.random.randint(0, args.num_envs, args.classifier_batch_size)
                 observations_un = torch.Tensor(rb.observations[batch_inds_un, batch_inds_envs_un]).to(device)
                 next_observations_un = torch.Tensor(rb.next_observations[batch_inds_un, batch_inds_envs_un]).to(device)
@@ -463,7 +466,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 wandb.log({
                             "losses/classifier_loss" : classifier_loss.item(),
                             "losses/classifier_diayn_loss" : classifier_diayn_loss.item(),
-                }, step = global_step)
+                }, step = global_step) if args.track else None
 
 
         # ALGO LOGIC: training.
@@ -559,7 +562,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     # print("SPS:", int(global_step / (time.time() - start_time)))
                     "charts/SPS" : int(global_step / (time.time() - start_time)),
                     "losses/alpha_loss" : alpha_loss.item() if args.autotune else 0.0,
-                }, step = global_step)
+                }, step = global_step) if args.track else None
 
         if global_step % args.metric_freq == 0 : 
             shannon_entropy_mu, coverage_mu = env_check.get_shanon_entropy_and_coverage_mu(rb.observations[fixed_idx_un].reshape(-1, *envs.single_observation_space.shape))
@@ -568,7 +571,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 "charts/shannon_entropy": env_check.shannon_entropy(),
                 "charts/coverage_mu" : coverage_mu,
                 "charts/shannon_entropy_mu": shannon_entropy_mu,
-                }, step = global_step)
+                }, step = global_step) if args.track else None
         
         if global_step % args.fig_frequency == 0  and global_step > args.learning_starts:
             if args.make_gif : 
@@ -578,7 +581,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                                      obs = rb.observations[max(rb.pos-int(size_rho), 0):rb.pos], 
                                     classifier = classifier,
                                     device= device)
-                send_matrix(wandb, image, "gif", global_step)
+                send_matrix(wandb, image, "gif", global_step) if args.track else None
             
-
+    # FINAL LOGGING
+    print(f"global_coverage={env_check.get_coverage()}, global_shannon_entropy={env_check.shannon_entropy()}, running_episodic_return={running_episodic_return}")
     envs.close()
+    wandb.finish(quiet=True) if args.track else None
