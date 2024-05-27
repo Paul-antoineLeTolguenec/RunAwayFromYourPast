@@ -2,7 +2,6 @@
 
 #SBATCH --nodes=16
 #SBATCH --ntasks=95
-#SBATCH --ntasks-per-node=4
 #SBATCH --cpus-per-task=4
 #SBATCH --partition=medium
 #SBATCH --time=00:05:00
@@ -52,7 +51,8 @@ for env_id in $env_ids; do
             cmd="poetry run python $algo --env_id $env_id $hyperparams --seed $seed"
             echo $cmd
             # $cmd
-        ((execution_count++))
+            srun --exclusive -N1 -n1 -c4 $cmd &
+            ((execution_count++))
         done
     else
         echo "Skipping $env_id as it is of type 'atari'"
