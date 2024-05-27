@@ -551,7 +551,7 @@ if __name__ == "__main__":
                 reduced_matrix = np.sum(reduced_matrix, axis=axis)
         else : 
             reduced_matrix = env_check.matrix_coverage
-        normalized_matrix = (env_check.matrix_coverage - env_check.matrix_coverage.min()) / (env_check.matrix_coverage.max() - env_check.matrix_coverage.min()) * 255
+        normalized_matrix = (reduced_matrix - reduced_matrix.min()) / (reduced_matrix.max() - reduced_matrix.min()) * 255
         send_matrix(wandb, np.rot90(normalized_matrix), "coverage", global_step)
         # log 
         print('shanon : ', env_check.shanon_entropy())
