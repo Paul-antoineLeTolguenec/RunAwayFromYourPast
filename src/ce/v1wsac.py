@@ -39,6 +39,10 @@ class Args:
     """the entity (team) of wandb's project"""
     capture_video: bool = False
     """whether to capture videos of the agent performances (check out `videos` folder)"""
+    use_hp_file : bool = False
+    """if toggled, will load the hyperparameters from file"""
+    hp_file: str = "hyper_parameters.json"
+    """the path to the hyperparameters json file"""
 
     # GIF
     make_gif: bool = True
@@ -237,6 +241,13 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         )
 
     args = tyro.cli(Args)
+    if args.use_hp_file:
+        import json
+        with open(args.hp_file, "r") as f:
+            type_id = config[args.env_id]['type_id']
+            hp = json.load(f)['hyperparameters'][type_id][args.exp_name]
+            for k, v in hp.items():
+                setattr(args, k, v)
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     if args.track:
         import wandb

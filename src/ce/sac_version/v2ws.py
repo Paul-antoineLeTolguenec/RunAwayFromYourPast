@@ -50,7 +50,7 @@ class Args:
     """the frequency of ploting metric"""
 
     # Algorithm specific arguments
-    env_id: str = "HalfCheetah-v3"
+    env_id: str = "Ant-v3"
     """the environment id of the task"""
     total_timesteps: int = 10_000_000
     """total timesteps of the experiments"""
@@ -68,7 +68,7 @@ class Args:
     """the learning rate of the policy network optimizer"""
     q_lr: float = 1e-3
     """the learning rate of the Q network network optimizer"""
-    policy_frequency: int = 2
+    policy_frequency: int = 4
     """the frequency of training policy (delayed)"""
     target_network_frequency: int = 1  # Denis Yarats' implementation delays this by 2.
     """the frequency of updates for the target nerworks"""
@@ -125,7 +125,7 @@ class Args:
     """ Lagrange parameter initialization """
     metra_batch_size: int = 256
     """ bath size for metra  """
-    metra_discriminator_epochs: int = 200
+    metra_discriminator_epochs: int = 100
     """ number of epochs for metra discriminator """
    
 
@@ -251,8 +251,8 @@ class Discriminator_METRA(torch.nn.Module):
         self.env_name = env_name
         self.l1=torch.nn.Linear(state_dim, 1024).to(device)
         self.l2=torch.nn.Linear(1024, 1024).to(device)
-        self.l3=torch.nn.Linear(1024, 1024).to(device)
-        self.l4=torch.nn.Linear(1024, z_dim).to(device)
+        # self.l3=torch.nn.Linear(1024, 1024).to(device)
+        self.l3=torch.nn.Linear(1024, z_dim).to(device)
         # learnable lagrange multiplier
         self.lambda_metra = nn.Parameter(torch.tensor(lambda_init, dtype=torch.float32)) #lambda_metra in the paper
         self.eps = torch.tensor(eps).to(device)
@@ -261,8 +261,8 @@ class Discriminator_METRA(torch.nn.Module):
     def forward(self, s):
         x=torch.nn.functional.relu(self.l1(s))
         x=torch.nn.functional.relu(self.l2(x))
-        x=torch.nn.functional.relu(self.l3(x))
-        x=self.l4(x)
+        # x=torch.nn.functional.relu(self.l3(x))
+        x=self.l3(x)
         return x
 
     def lipshitz_loss(self, s, s_next, z, d):
@@ -513,7 +513,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 # # clip lambda
                 # discriminator.lambda_param.data.clamp_(min=0)
 
-        if global_step*args.num_envs > args.learning_starts and  global_step*args.num_envs % 1200 == 0:
+        if global_step*args.num_envs > args.learning_starts and  global_step*args.num_envs % 1600 == 0:
             for _ in range(args.metra_discriminator_epochs):
                 # Metra training
                 beta_metra = args.beta_ratio

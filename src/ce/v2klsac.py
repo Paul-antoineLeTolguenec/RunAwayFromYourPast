@@ -38,6 +38,10 @@ class Args:
     """the entity (team) of wandb's project"""
     capture_video: bool = False
     """whether to capture videos of the agent performances (check out `videos` folder)"""
+    use_hp_file : bool = False
+    """if toggled, will load the hyperparameters from file"""
+    hp_file: str = "hyper_parameters.json"
+    """the path to the hyperparameters json file"""
 
     # GIF
     make_gif: bool = True
@@ -251,6 +255,13 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         )
     
     args = tyro.cli(Args)
+    if args.use_hp_file:
+        import json
+        with open(args.hp_file, "r") as f:
+            type_id = config[args.env_id]['type_id']
+            hp = json.load(f)['hyperparameters'][type_id][args.exp_name]
+            for k, v in hp.items():
+                setattr(args, k, v)
 
     # DIAYN Setup 
     args.num_envs = args.nb_skill #overide
@@ -415,17 +426,6 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
         # classifier training
         if global_step*args.num_envs > args.learning_starts and  global_step % size_rho == 0:
-            print('global_step', global_step)
-            print('nb_rho_episodes', nb_rho_episodes)
-            print('nb_rho_steps', nb_rho_steps)
-            print('fixed_idx_un', len(fixed_idx_un))
-            print('nb discrinimator step', int(size_rho/args.classifier_batch_size * args.classifier_epochs))
-            batch_times_rho = rb.times[max(int(rb.pos-size_rho), 0):rb.pos].transpose(1,0).reshape(-1)
-            batch_obs_rho = rb.observations[max(int(rb.pos-size_rho), 0):rb.pos].transpose(1,0,2).reshape(-1, rb.observations.shape[-1])
-            batch_next_obs_rho = rb.next_observations[max(int(rb.pos-size_rho), 0):rb.pos].transpose(1,0,2).reshape(-1, rb.next_observations.shape[-1])
-            batch_dones_rho = rb.dones[max(int(rb.pos-size_rho), 0):rb.pos].transpose(1,0).reshape(-1)           
-            prob = np.clip(1/(args.gamma + 0.009)**(batch_times_rho),0.0, 1_00.0)
-            prob = prob/prob.sum()
             for classifier_step in range(int(size_rho/args.classifier_batch_size * args.classifier_epochs)):
                 # classifier training 
                 # batch un
@@ -435,10 +435,11 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 next_observations_un = torch.Tensor(rb.next_observations[batch_inds_un, batch_inds_envs_un]).to(device)
                 dones_un = torch.Tensor(rb.dones[batch_inds_un, batch_inds_envs_un]).to(device)
                 # batch rho 
-                batch_inds_rho = np.random.randint(0, batch_obs_rho.shape[0], args.classifier_batch_size)
-                observations_rho = torch.Tensor(batch_obs_rho[batch_inds_rho]).to(device)
-                next_observations_rho = torch.Tensor(batch_next_obs_rho[batch_inds_rho]).to(device)
-                dones_rho = torch.Tensor(batch_dones_rho[batch_inds_rho]).to(device)
+                batch_inds_rho = np.random.randint(rb.pos-size_rho, rb.pos, args.classifier_batch_size)
+                batch_inds_envs_rho = np.random.randint(0, args.num_envs, args.classifier_batch_size)
+                observations_rho = torch.Tensor(rb.observations[batch_inds_rho, batch_inds_envs_rho]).to(device)
+                next_observations_rho = torch.Tensor(rb.next_observations[batch_inds_rho, batch_inds_envs_rho]).to(device)
+                dones_rho = torch.Tensor(rb.dones[batch_inds_rho, batch_inds_envs_rho]).to(device)
                 # train the classifier
                 classifier_loss = classifier.loss(observations_rho, observations_un)
                 classifier_optimizer.zero_grad()
@@ -447,8 +448,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
                 # diayn training 
                 beta_diayn = args.beta_ratio
-                batch_inds = np.concatenate([fixed_idx_un[np.random.randint(0,len(fixed_idx_un), int(args.classifier_batch_size*(1-beta_diayn)))], 
-                                             np.random.randint(rb.pos - size_rho , rb.pos, int(args.beta_ratio*args.classifier_batch_size))], axis = 0)[:args.classifier_batch_size]
+                # batch_inds = np.concatenate([fixed_idx_un[np.random.randint(0,len(fixed_idx_un), int(args.classifier_batch_size*(1-beta_diayn)))], 
+                #                              np.random.randint(rb.pos - size_rho , rb.pos, int(args.beta_ratio*args.classifier_batch_size))], axis = 0)[:args.classifier_batch_size]
+                batch_inds = np.random.randint(rb.pos - size_rho , rb.pos, int(args.classifier_batch_size))
                 batch_inds_env = np.random.randint(0, args.num_envs, args.classifier_batch_size)
                 batch_obs = torch.tensor(rb.observations[batch_inds, batch_inds_env], device=device)
                 batch_z = torch.tensor(rb.zs[batch_inds, batch_inds_env], device=device)

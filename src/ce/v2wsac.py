@@ -38,6 +38,10 @@ class Args:
     """the entity (team) of wandb's project"""
     capture_video: bool = False
     """whether to capture videos of the agent performances (check out `videos` folder)"""
+    use_hp_file : bool = False
+    """if toggled, will load the hyperparameters from file"""
+    hp_file: str = "hyper_parameters.json"
+    """the path to the hyperparameters json file"""
 
     # GIF
     make_gif: bool = True
@@ -50,7 +54,7 @@ class Args:
     """the frequency of ploting metric"""
 
     # Algorithm specific arguments
-    env_id: str = "HalfCheetah-v3"
+    env_id: str = "Maze-Ur-v0"
     """the environment id of the task"""
     total_timesteps: int = 10_000_000
     """total timesteps of the experiments"""
@@ -94,19 +98,19 @@ class Args:
     """the epsilon parameter of the wasserstein distance"""
     lambda_init: float = 200.0
     """the initial value of the lambda"""
-    lip_cte: float = 1.0 # 0.1 if maze 
+    lip_cte: float = 0.1 # 0.1 if maze 
     """the constant of the lipschitz"""
-    beta_ratio: float = 1/64 #1/64 if maze
+    beta_ratio: float = 1/8 #1/64 if maze
     """the ratio of the beta"""
-    nb_episodes_rho: int = 1
+    nb_episodes_rho: int = 4
     """the number of episodes for the rho"""
     pad_rho: int = 8
     """the padding of the rho"""
     p_custom_noise: float = 0.5
     """the probability of the custom noise"""
-    beta_noise: float = 0.0
+    beta_noise: float = 0.5
     """the beta of the noise"""
-    lambda_wasserstein: float = 0.0
+    lambda_wasserstein: float = 1.0
     """the weight for the wasserstein reward """
 
 
@@ -125,8 +129,13 @@ class Args:
     """ Lagrange parameter initialization """
     metra_batch_size: int = 256
     """ bath size for metra  """
-    metra_discriminator_epochs: int = 200
+    metra_discriminator_epochs: int = 50
     """ number of epochs for metra discriminator """
+    metra_max_step: int = 200
+    """ max step for metra """
+    episode_per_epoch: int = 8
+    """ number of episode per epoch """
+    lip_cte_metra: float = 1.0
    
 
 
@@ -292,6 +301,13 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         )
 
     args = tyro.cli(Args)
+    if args.use_hp_file:
+        import json
+        with open(args.hp_file, "r") as f:
+            type_id = config[args.env_id]['type_id']
+            hp = json.load(f)['hyperparameters'][type_id][args.exp_name]
+            for k, v in hp.items():
+                setattr(args, k, v)
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # METRA Specific
@@ -358,7 +374,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                                                 z_dim = args.nb_skill,
                                                 env_name = args.env_id,
                                                 device = device,
-                                                lip_cte = args.lip_cte,
+                                                lip_cte = args.lip_cte_metra,
                                                 eps = args.epsilon,
                                                 lambda_init = args.lambda_metra_init).to(device)
     qf1_target.load_state_dict(qf1.state_dict())
@@ -449,7 +465,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
         rb.add(obs, real_next_obs, actions, rewards, terminations, infos)
         rb.times[rb.pos-1] = infos['l']
-        rb.zs[rb.pos - 1] = z
+        rb.zs[rb.pos - 1] = z.detach().cpu().numpy()
         # decide whether to add transition to the un
         if len(fixed_idx_un)<= size_un:
             if bernoulli.rvs(args.beta_ratio/args.num_envs):
@@ -471,56 +487,51 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         obs = next_obs
 
         # discriminator training
-        # if global_step*args.num_envs > args.learning_starts and  global_step % size_rho == 0:
-        #     print('global_step', global_step)
-        #     print('nb_rho_episodes', nb_rho_episodes)
-        #     print('nb_rho_steps', nb_rho_steps)
-        #     print('fixed_idx_un', len(fixed_idx_un))
-        #     print('nb discrinimator step', int(size_rho/args.discriminator_batch_size * args.discriminator_epochs))
-        #     print('rb.pos :', rb.pos )
-            # batch_times_rho = rb.times[max(int(rb.pos-size_rho), 0):rb.pos].transpose(1,0).reshape(-1)
-            # batch_obs_rho = rb.observations[max(int(rb.pos-size_rho), 0):rb.pos].transpose(1,0,2).reshape(-1, rb.observations.shape[-1])
-            # batch_next_obs_rho = rb.next_observations[max(int(rb.pos-size_rho), 0):rb.pos].transpose(1,0,2).reshape(-1, rb.next_observations.shape[-1])
-            # batch_dones_rho = rb.dones[max(int(rb.pos-size_rho), 0):rb.pos].transpose(1,0).reshape(-1)           
-            # prob = np.clip(1/(args.gamma+0.009)**(batch_times_rho),0.0, 1_00.0)
-            # prob = prob/prob.sum()
-            # for discriminator_step in range(int(size_rho/args.discriminator_batch_size * args.discriminator_epochs)):
-                # # batch un
-                # batch_inds_un = fixed_idx_un[np.random.randint(0, max(1,len(fixed_idx_un)-args.pad_rho * max_step * args.beta_ratio), args.discriminator_batch_size)]
-                # batch_inds_envs_un = np.random.randint(0, args.num_envs, args.discriminator_batch_size)
-                # observations_un = torch.Tensor(rb.observations[batch_inds_un, batch_inds_envs_un]).to(device)
-                # next_observations_un = torch.Tensor(rb.next_observations[batch_inds_un, batch_inds_envs_un]).to(device)
-                # dones_un = torch.Tensor(rb.dones[batch_inds_un, batch_inds_envs_un]).to(device)
-                # # batch rho 
-                # batch_inds_rho = np.random.randint(0, batch_obs_rho.shape[0], args.discriminator_batch_size)
-                # observations_rho = torch.Tensor(batch_obs_rho[batch_inds_rho]).to(device)
-                # next_observations_rho = torch.Tensor(batch_next_obs_rho[batch_inds_rho]).to(device)
-                # dones_rho = torch.Tensor(batch_dones_rho[batch_inds_rho]).to(device)
-                # # train the discriminator
-                # constraints_rho = discriminator.constraint(observations_rho, next_observations_rho, dones_rho)
-                # constraints_un = discriminator.constraint(observations_un, next_observations_un, dones_un)
-                # discriminator_loss = discriminator.loss(observations_rho, observations_un, dones_rho, dones_un) + \
-                #                     discriminator.lambda_param.detach()*(constraints_rho + constraints_un)
-                # discriminator_optimizer.zero_grad()
-                # discriminator_loss.backward()
-                # discriminator_optimizer.step()
-                # # train lambda
-                # lambda_loss = -discriminator.lambda_param*(discriminator.constraint(observations_rho, next_observations_rho, dones_rho) + \
-                #                     discriminator.constraint(observations_un, next_observations_un, dones_un))
-                # lambda_optimizer.zero_grad()
-                # lambda_loss.backward()
-                # lambda_optimizer.step()
-                # # clip lambda
-                # discriminator.lambda_param.data.clamp_(min=0)
+        if global_step*args.num_envs > args.learning_starts and  global_step % size_rho == 0:
+            for discriminator_step in range(int(size_rho/args.discriminator_batch_size * args.discriminator_epochs)):
+                # batch un
+                batch_inds_un = fixed_idx_un[np.random.randint(0, max(1,len(fixed_idx_un)-args.pad_rho * max_step * args.beta_ratio), args.discriminator_batch_size)]
+                batch_inds_envs_un = np.random.randint(0, args.num_envs, args.discriminator_batch_size)
+                observations_un = torch.Tensor(rb.observations[batch_inds_un, batch_inds_envs_un]).to(device)
+                next_observations_un = torch.Tensor(rb.next_observations[batch_inds_un, batch_inds_envs_un]).to(device)
+                dones_un = torch.Tensor(rb.dones[batch_inds_un, batch_inds_envs_un]).to(device)
+                # batch rho 
+                batch_inds_rho = np.random.randint(rb.pos-size_rho, rb.pos, args.discriminator_batch_size)
+                batch_inds_envs_rho = np.random.randint(0, args.num_envs, args.discriminator_batch_size)
+                observations_rho = torch.Tensor(rb.observations[batch_inds_rho, batch_inds_envs_rho]).to(device)
+                next_observations_rho = torch.Tensor(rb.next_observations[batch_inds_rho, batch_inds_envs_rho]).to(device)
+                dones_rho = torch.Tensor(rb.dones[batch_inds_rho, batch_inds_envs_rho]).to(device)
+                # train the discriminator
+                constraints_rho = discriminator.constraint(observations_rho, next_observations_rho, dones_rho)
+                constraints_un = discriminator.constraint(observations_un, next_observations_un, dones_un)
+                discriminator_loss = discriminator.loss(observations_rho, observations_un, dones_rho, dones_un) + \
+                                    discriminator.lambda_param.detach()*(constraints_rho + constraints_un)
+                discriminator_optimizer.zero_grad()
+                discriminator_loss.backward()
+                discriminator_optimizer.step()
+                # train lambda
+                lambda_loss = -discriminator.lambda_param*(discriminator.constraint(observations_rho, next_observations_rho, dones_rho) + \
+                                    discriminator.constraint(observations_un, next_observations_un, dones_un))
+                lambda_optimizer.zero_grad()
+                lambda_loss.backward()
+                lambda_optimizer.step()
+                # clip lambda
+                discriminator.lambda_param.data.clamp_(min=0)
+                wandb.log({
+                    # losss
+                    "losses_discriminator/discriminator_loss": discriminator_loss.item(), 
+                    "losses_discriminator/lambda_loss": lambda_loss.item(), 
+                    "losses_discriminator/constraints_rho": constraints_rho.item(), 
+                    "losses_discriminator/constraints_un": constraints_un.item(), 
+                    # metrics
+                    "metrics_discriminator/lambda": discriminator.lambda_param.item(), 
+                    }, step = global_step)
 
-        if global_step*args.num_envs > args.learning_starts and  global_step*args.num_envs % 1200 == 0:
+        if global_step*args.num_envs > args.learning_starts and  global_step*args.num_envs % args.metra_max_step * args.episode_per_epoch == 0:
             for _ in range(args.metra_discriminator_epochs):
                 # Metra training
                 beta_metra = args.beta_ratio
-                # batch_inds = np.concatenate([fixed_idx_un[np.random.randint(0,len(fixed_idx_un), int(args.metra_batch_size*(1-beta_metra)))],
-                # batch_inds = np.concatenate([np.random.randint(0,rb.pos, int(args.metra_batch_size*(1-beta_metra))),  
-                #                              np.random.randint(rb.pos - size_rho , rb.pos, int(beta_metra*args.metra_batch_size))], axis = 0)
-                batch_inds = np.random.randint(0 ,rb.pos, int(args.metra_batch_size)),           
+                batch_inds = np.random.randint(rb.pos - size_rho ,rb.pos, int(args.metra_batch_size)),           
                 batch_inds_env = np.random.randint(0, args.num_envs, args.metra_batch_size)
                 batch_obs = torch.tensor(rb.observations[batch_inds, batch_inds_env], device=device)
                 batch_next_obs = torch.tensor(rb.next_observations[batch_inds, batch_inds_env], device=device)
@@ -539,15 +550,10 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 discriminator_metra.lambda_metra.data.clamp_(min=0)
                 wandb.log({
                     # losss
-                    # "losses_discriminator/discriminator_loss": discriminator_loss.item(), 
-                    # "losses_discriminator/lambda_loss": lambda_loss.item(), 
-                    # "losses_discriminator/constraints_rho": constraints_rho.item(), 
-                    # "losses_discriminator/constraints_un": constraints_un.item(), 
                     "losses_metra/discriminator_loss": loss_metra.item(), 
                     "losses_metra/lambda_loss": lambda_loss_metra.item(), 
                     "losses_metra/inner_product_loss": inner_product_loss.item(),
                     # metrics
-                    "metrics_discriminator/lambda": discriminator.lambda_param.item(), 
                     "metrics_metra/lambda": discriminator_metra.lambda_metra.item(), 
                     }, step = global_step)
                     
@@ -667,7 +673,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                                      obs = rb.observations[max(rb.pos-int(size_rho), 0):rb.pos], 
                                     classifier = discriminator,
                                     device= device)
-                send_matrix(wandb, resize_image(image,256, 256),  "gif", global_step)
+                send_matrix(wandb, image,  "gif", global_step)
             
 
     envs.close()
