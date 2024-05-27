@@ -2,7 +2,7 @@ from gym.envs.registration import register
 
 # Maze
 register(
-    id='Maze-Easy',
+    id='Maze-Easy-v0',
     entry_point='envs.continuous_maze:Maze', 
     kwargs={'name': 'Easy', 'max_episode_steps': 200},
     max_episode_steps = 200

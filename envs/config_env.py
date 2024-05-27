@@ -1,7 +1,7 @@
 import numpy as np
 config = {
 ##########################       MAZE       ############################################
-"Maze-Easy": { 
+"Maze-Easy-v0": { 
     'type_id': 'maze',
     'kwargs': {'max_episode_steps': 200},
     'coverage_idx': np.array([0,1]),
