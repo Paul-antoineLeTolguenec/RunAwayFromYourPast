@@ -53,7 +53,7 @@ for env_id in $env_ids; do
     if [ "$type_id" != "'atari'" ]; then
         for seed in {1..5}; do
             cmd="poetry run python $algo --env_id $env_id $hyperparams --seed $seed"
-            echo $cmd
+            echo $cmd 
             # $cmd
             srun --exclusive -N1 -n1 -c4 $cmd &
             ((execution_count++))
@@ -62,5 +62,5 @@ for env_id in $env_ids; do
         echo "Skipping $env_id as it is of type 'atari'"
     fi
 done
-
+wait 
 echo "Number of Python files executed: $execution_count"
