@@ -547,7 +547,7 @@ if __name__ == "__main__":
         if env_check.matrix_coverage.ndim > 2:
         # Sum over all dimensions except the first two
             reduced_matrix = env_check.matrix_coverage
-            for axis in range(2, env_check.matrix_coverage.ndim):
+            for axis in reversed(range(2, reduced_matrix.ndim)):
                 reduced_matrix = np.sum(reduced_matrix, axis=axis)
         else : 
             reduced_matrix = env_check.matrix_coverage
