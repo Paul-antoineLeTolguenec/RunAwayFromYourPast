@@ -283,7 +283,8 @@ def update_un(obs_un, next_obs_un, actions_un, rewards_un,  dones_un, times_un, 
     return obs_un, next_obs_un, actions_un, rewards_un, dones_un, times_un, z_un
 
 if __name__ == "__main__":
-    args = tyro.cli(Args)
+    from src.utils.argparse_test import parse_args
+    args = parse_args(Args)
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}"
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
