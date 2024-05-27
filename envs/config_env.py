@@ -7,13 +7,13 @@ config = {
     'coverage_idx': np.array([0,1]),
     'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1]}
 },
-"Maze-Ur": { 
+"Maze-Ur-v0": { 
     'type_id': 'maze',
     'kwargs': {'max_episode_steps': 200},
     'coverage_idx': np.array([0,1]),
     'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1]}
 },
-"Maze-Hard": { 
+"Maze-Hard-v0": { 
     'type_id': 'maze',
     'kwargs': {'max_episode_steps': 200},
     'coverage_idx': np.array([0,1]),
@@ -43,7 +43,7 @@ config = {
 },
 ##########################       DMCS       ############################################
 #  Acrobot,
-"DMCS-Acrobot": {
+"DMCS-Acrobot-v0": {
     'type_id': 'dmcs',
     'kwargs': {
         'render_mode': 'rgb_array', 
@@ -52,7 +52,7 @@ config = {
     'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1], 'z_lim': [-1, 1], 'w_lim': [-1, 1]}
 },
 #  Ball-in-cup, 
-"DMCS-Ball-in-cup": {
+"DMCS-Ball-in-cup-v0": {
     'type_id': 'dmcs',
     'kwargs': {'render_mode': 'rgb_array', 
                'max_episode_steps': 100},
@@ -60,7 +60,7 @@ config = {
     'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1], 'z_lim': [-1, 1], 'w_lim': [-1, 1]}
 },
 #  Cart-pole, 
-"DMCS-Cart-k-Pole": {
+"DMCS-Cart-k-Pole-v0": {
     'type_id': 'dmcs',
     'kwargs': {'render_mode': 'rgb_array', 
                'max_episode_steps': 100},
@@ -68,7 +68,7 @@ config = {
     'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1], 'z_lim': [-1, 1], 'w_lim': [-1, 1]}
 },
 #  Finger, 
-"DMCS-Finger": {
+"DMCS-Finger-v0": {
     'type_id': 'dmcs',
     'kwargs': {'render_mode': 'rgb_array', 
                'max_episode_steps': 100},
@@ -76,7 +76,7 @@ config = {
     'render_settings': {'x_lim': [-2.5, 2.5], 'y_lim': [-2.5, 2.5], 'z_lim': [-2.5, 2.5], 'w_lim': [-2.5, 2.5]}
 },
 #  Fish
-"DMCS-Fish": {
+"DMCS-Fish-v0": {
     'type_id': 'dmcs',
     'kwargs': {'render_mode': 'rgb_array', 
                'max_episode_steps': 200},
