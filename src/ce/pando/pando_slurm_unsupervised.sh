@@ -8,6 +8,10 @@
 #SBATCH --begin=now
 #SBATCH --mail-user=paul-antoine.le-tolguenec@isae.fr
 #SBATCH --mail-type=FAIL,END
+#SBATCH --job-name=slurm_pando_unsupervised
+#SBATCH --output=slurm_pando_unsupervised_%j.out
+#SBATCH --error=slurm_pando_unsupervised_%j.err
+
 
 # MODULES
 # module load python/3.9
@@ -49,7 +53,7 @@ for env_id in $env_ids; do
     if [ "$type_id" != "'atari'" ]; then
         for seed in {1..5}; do
             cmd="poetry run python $algo --env_id $env_id $hyperparams --seed $seed"
-            echo $cmd
+            # echo $cmd
             # $cmd
             srun --exclusive -N1 -n1 -c4 $cmd &
             ((execution_count++))
