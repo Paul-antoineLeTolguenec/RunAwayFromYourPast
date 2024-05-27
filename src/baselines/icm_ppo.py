@@ -5,6 +5,7 @@ import time
 from dataclasses import dataclass
 
 import gymnasium as gym
+import gym as gym_old
 import numpy as np
 import torch
 import torch.nn as nn
@@ -178,10 +179,10 @@ def make_env(env_id, idx, capture_video, run_name):
     def thunk():
         env = Wenv(env_id=env_id, xp_id=run_name, **config[env_id])
         env = gym.wrappers.FlattenObservation(env)  # deal with dm_control's Dict observation space
-        env = gym.wrappers.RecordEpisodeStatistics(env)
+        env = gym_old.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
             if idx == 0:
-                env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
+                env = gym_old.wrappers.RecordVideo(env, f"videos/{run_name}")
         # env = gym.wrappers.ClipAction(env)
         return env
 
@@ -529,7 +530,14 @@ if __name__ == "__main__":
             "charts/SPS": int(global_step / (time.time() - start_time)),
         })
         # coverage matrix
-        normalized_matrix = (env_check.matrix_coverage - env_check.matrix_coverage.min()) / (env_check.matrix_coverage.max() - env_check.matrix_coverage.min()) * 255
+        if env_check.matrix_coverage.ndim > 2:
+        # Sum over all dimensions except the first two
+            reduced_matrix = env_check.matrix_coverage
+            for axis in reversed(range(2, reduced_matrix.ndim)):
+                reduced_matrix = np.sum(reduced_matrix, axis=axis)
+        else : 
+            reduced_matrix = env_check.matrix_coverage
+        normalized_matrix = (reduced_matrix - reduced_matrix.min()) / (reduced_matrix.max() - reduced_matrix.min()) * 255
         send_matrix(wandb, np.rot90(normalized_matrix), "coverage", global_step)
         # log 
         print('shanon : ', env_check.shanon_entropy())
