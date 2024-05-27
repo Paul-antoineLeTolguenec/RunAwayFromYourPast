@@ -14,7 +14,7 @@
 
 
 # MODULES
-conda activate contrastive_env 
+source activate contrastive_env 
 
 # Get the path to the config file
 CONFIG_FILE="../../../envs/config_env.py"
