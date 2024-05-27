@@ -20,7 +20,7 @@ config = {
     'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1]}
 },
 ##########################       ROBOTICS       ############################################
-"FetchReach-v3": {
+"FetchReach-v1": {
     'type_id': 'robotics',
     'kwargs': {'render_mode': 'rgb_array', 
                'max_episode_steps': 50},
