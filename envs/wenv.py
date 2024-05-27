@@ -1,10 +1,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import gym, torch, os , imageio, socket, subprocess
+import torch, os , imageio, socket, subprocess
 from src.utils.dash_utils_2d import initialize_figure_2d, add_frame_to_figure_2d, create_html_2d
 from src.utils.dash_utils_3d import initialize_figure_3d, add_frame_to_figure_3d, create_html_3d
 from envs.compatible_random_generator import CompatibleRandomGenerator
-import gymnasium
+import gymnasium as gym
 import sys, signal
 from functools import reduce
 from operator import mul
@@ -76,8 +76,8 @@ class Wenv(gym.Env):
             original_generator = self.env.unwrapped.np_random
             compatible_generator = CompatibleRandomGenerator(original_generator)
             self.env.unwrapped.np_random = compatible_generator
-            self.observation_space = gymnasium.spaces.Box(self.env.observation_space.low, self.env.observation_space.high, dtype=np.uint8)
-            self.action_space = gymnasium.spaces.Discrete(self.action_space.n)
+            self.observation_space = gym.spaces.Box(self.env.observation_space.low, self.env.observation_space.high, dtype=np.uint8)
+            self.action_space = gym.spaces.Discrete(self.action_space.n)
             self.render_mode = kwargs['render_mode']
 
 

@@ -1,6 +1,6 @@
 from dm_control import suite
-from gym import spaces
-import gym 
+from gymnasium import spaces
+import gymnasium as gym
 import numpy as np
 
 
