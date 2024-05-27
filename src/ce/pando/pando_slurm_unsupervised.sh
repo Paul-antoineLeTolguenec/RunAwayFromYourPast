@@ -50,7 +50,7 @@ for env_id in $env_ids; do
     if [ "$type_id" != "'atari'" ]; then
         for seed in {1..5}; do
             cmd="poetry run python $algo --env_id $env_id $hyperparams --seed $seed"
-            # echo $cmd
+            echo $cmd
             # $cmd
         ((execution_count++))
         done
