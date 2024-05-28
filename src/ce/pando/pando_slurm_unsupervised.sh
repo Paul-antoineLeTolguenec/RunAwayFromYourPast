@@ -4,7 +4,7 @@
 #SBATCH --ntasks=95
 #SBATCH --cpus-per-task=4
 #SBATCH --partition=medium
-#SBATCH --time=00:05:00
+#SBATCH --time=00:10:00
 #SBATCH --begin=now
 #SBATCH --mail-user=paul-antoine.le-tolguenec@isae.fr
 #SBATCH --mail-type=FAIL,END
@@ -69,7 +69,6 @@ for env_id in $env_ids; do
     # Extract hyperparameters
     cmd_hyperparams="poetry run python \"$EXTRACT_SCRIPT\" \"$HYPERPARAMETERS_FILE\" $type_id \"$algo_id\""
     hyperparams=$(eval $cmd_hyperparams)
-    # hyperparams=$(poetry run python "$EXTRACT_SCRIPT" "$HYPERPARAMETERS_FILE" "$type_id" "$algo" "$algo_id")
 
     if [ "$type_id" != "'atari'" ]; then
         for seed in {1..5}; do

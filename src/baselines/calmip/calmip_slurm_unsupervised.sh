@@ -1,8 +1,8 @@
 #!/bin/bash
 
-#SBATCH --nodes=1
-#SBATCH --ntasks=8
-#SBATCH --cpus-per-task=2
+#SBATCH --nodes=11
+#SBATCH --ntasks=95
+#SBATCH --cpus-per-task=4
 #SBATCH --time=00:05:00
 #SBATCH --begin=now
 #SBATCH --mail-user=paul-antoine.le-tolguenec@isae.fr
