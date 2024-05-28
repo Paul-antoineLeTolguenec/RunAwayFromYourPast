@@ -4,7 +4,7 @@
 #SBATCH --ntasks=95
 #SBATCH --cpus-per-task=4
 #SBATCH --partition=medium
-#SBATCH --time=00:05:00
+#SBATCH --time=24:00:00
 #SBATCH --begin=now
 #SBATCH --mail-user=paul-antoine.le-tolguenec@isae.fr
 #SBATCH --mail-type=FAIL,END
@@ -27,24 +27,6 @@ EXTRACT_SCRIPT="extract_hyperparameters.py"
 algo=${1:-../v1_ppo_kl_adaptive_sampling.py}
 algo_id=$(basename "$algo" | sed 's/\.py//')
 
-
-# WANDB MODE
-WANDB_MODE_ARG=${2:-"offline"}
-if [ "$WANDB_MODE_ARG" == "offline" ]; then
-    export WANDB_MODE="dryrun"
-
-# CHECK IF WANDB MODE HAS BEEN SET
-echo "WANDB_MODE: $WANDB_MODE"
-
-# WANDB DIR 
-HOSTNAME=$(hostname)
-if [[ "$HOSTNAME" == *"pando"* ]]; then
-    export WANDB_DIR="/scratch/disc/p.le-tolguenec/"
-elif [[ "$HOSTNAME" == *"olympe"* ]]; then
-    export WANDB_DIR="/tmpdir/$USER/"
-
-# CHECK IF WANDB_DIR HAS BEEN SET
-echo "WANDB_DIR: $WANDB_DIR"
 
 EXPERIMENT_NAME="${algo_id}_experiment"
 SBATCH_JOB_NAME="slurm_${EXPERIMENT_NAME}"

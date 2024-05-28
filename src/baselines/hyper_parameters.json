@@ -1,0 +1,322 @@
+{
+"hyperparameters": {
+
+                    "maze": {
+
+                            "apt_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125
+                                        },
+                            "aux_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125
+                                        },
+                            "icm_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125
+                                        },
+                            "rnd_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125
+                                        },
+                            "ngu_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125
+                                        },
+                            "diayn_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125,
+                                        "num_skills": 4
+                                        },
+                            "smm_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125,
+                                        "num_skills": 4
+                                        },
+                            "lsd_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125,
+                                        "num_skills": 4
+                                        },
+                            "csd_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125,
+                                        "num_skills": 4
+                                        },
+                            "metra_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125,
+                                        "num_skills": 4
+                                        }
+                            },
+                
+                    "robotics": {
+
+                            "apt_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125
+                                        },
+                            "aux_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125
+                                        },
+                            "icm_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125
+                                        },
+                            "rnd_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125
+                                        },
+                            "ngu_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125
+                                        },
+                            "diayn_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125,
+                                        "num_skills": 4
+                                        },
+                            "smm_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125,
+                                        "num_skills": 4
+                                        },
+                            "lsd_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125,
+                                        "num_skills": 4
+                                        },
+                            "csd_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125,
+                                        "num_skills": 4
+                                        },
+                            "metra_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125,
+                                        "num_skills": 4
+                                        }
+                            },
+
+                    "dmcs": {
+
+                            "apt_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125
+                                        },
+                            "aux_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125
+                                        },
+                            "icm_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125
+                                        },
+                            "rnd_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125
+                                        },
+                            "ngu_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125
+                                        },
+                            "diayn_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125,
+                                        "num_skills": 4
+                                        },
+                            "smm_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125,
+                                        "num_skills": 4
+                                        },
+                            "lsd_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125,
+                                        "num_skills": 4
+                                        },
+                            "csd_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125,
+                                        "num_skills": 4
+                                        },
+                            "metra_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125,
+                                        "num_skills": 4
+                                        }
+                        },
+
+                    "mujoco": {
+
+                            "apt_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125
+                                        },
+                            "aux_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125
+                                        },
+                            "icm_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125
+                                        },
+                            "rnd_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125
+                                        },
+                            "ngu_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125
+                                        },
+                            "diayn_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125,
+                                        "num_skills": 4
+                                        },
+                            "smm_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125,
+                                        "num_skills": 4
+                                        },
+                            "lsd_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125,
+                                        "num_skills": 4
+                                        },
+                            "csd_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125,
+                                        "num_skills": 4
+                                        },
+                            "metra_ppo": {
+                                        "cuda": true,
+                                        "save_data": true,
+                                        "make_gif": true,
+                                        "total_timesteps": 500000, 
+                                        "beta_ratio":0.0078125,
+                                        "num_skills": 4
+                                        }
+                            }
+
+
+                }
+}
