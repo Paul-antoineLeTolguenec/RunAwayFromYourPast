@@ -275,7 +275,7 @@
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
+                                        "total_timesteps": 5000000, 
                                         "beta_ratio":0.0078125
                                         },
                             "aux_ppo": {
@@ -283,7 +283,7 @@
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
+                                        "total_timesteps": 5000000, 
                                         "beta_ratio":0.0078125
                                         },
                             "icm_ppo": {
@@ -291,7 +291,7 @@
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
+                                        "total_timesteps": 5000000, 
                                         "beta_ratio":0.0078125
                                         },
                             "rnd_ppo": {
@@ -299,7 +299,7 @@
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
+                                        "total_timesteps": 5000000, 
                                         "beta_ratio":0.0078125
                                         },
                             "ngu_ppo": {
@@ -307,7 +307,7 @@
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
+                                        "total_timesteps": 5000000, 
                                         "beta_ratio":0.0078125
                                         },
                             "diayn_ppo": {
@@ -315,7 +315,7 @@
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
+                                        "total_timesteps": 5000000, 
                                         "beta_ratio":0.0078125,
                                         "num_skills": 4
                                         },
@@ -324,7 +324,7 @@
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
+                                        "total_timesteps": 5000000, 
                                         "beta_ratio":0.0078125,
                                         "num_skills": 4
                                         },
@@ -333,7 +333,7 @@
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
+                                        "total_timesteps": 5000000, 
                                         "beta_ratio":0.0078125,
                                         "num_skills": 4
                                         },
@@ -342,7 +342,7 @@
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
+                                        "total_timesteps": 5000000, 
                                         "beta_ratio":0.0078125,
                                         "num_skills": 4
                                         },
@@ -351,7 +351,7 @@
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
+                                        "total_timesteps": 5000000, 
                                         "beta_ratio":0.0078125,
                                         "num_skills": 4
                                         }
