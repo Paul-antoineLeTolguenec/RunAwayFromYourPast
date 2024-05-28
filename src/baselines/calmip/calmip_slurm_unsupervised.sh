@@ -1,8 +1,8 @@
 #!/bin/bash
 
-#SBATCH --nodes=11
-#SBATCH --ntasks=95
-#SBATCH --cpus-per-task=4
+#SBATCH --nodes=1
+#SBATCH --ntasks=8
+#SBATCH --cpus-per-task=2
 #SBATCH --time=00:05:00
 #SBATCH --begin=now
 #SBATCH --mail-user=paul-antoine.le-tolguenec@isae.fr
@@ -11,6 +11,8 @@
 #SBATCH --output=slurm_calmip_unsupervised_%j.out
 #SBATCH --error=slurm_calmip_unsupervised_%j.err
 #SBATCH --export=ALL
+
+
 # FIND + RUN 
 algo=${1:-../apt_ppo.py}
 algo_id=$(basename "$algo" | sed 's/\.py//')
