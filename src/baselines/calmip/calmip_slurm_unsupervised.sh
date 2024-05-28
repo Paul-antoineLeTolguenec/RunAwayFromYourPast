@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#SBATCH --nodes=11
-#SBATCH --ntasks=95
+#SBATCH --nodes=2
+#SBATCH --ntasks=38
 #SBATCH --cpus-per-task=4
 #SBATCH --time=00:10:00
 #SBATCH --begin=now
@@ -74,7 +74,7 @@ for env_id in $env_ids; do
     # hyperparams=$(poetry run python "$EXTRACT_SCRIPT" "$HYPERPARAMETERS_FILE" "$type_id" "$algo" "$algo_id")
 
     if [ "$type_id" != "'atari'" ]; then
-        for seed in {1..5}; do
+        for seed in {1..2}; do
             cmd="poetry run python $algo --env_id $env_id $hyperparams --seed $seed"
             echo $cmd 
             # $cmd
