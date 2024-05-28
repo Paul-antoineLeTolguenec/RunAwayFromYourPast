@@ -11,6 +11,7 @@
 #SBATCH --job-name=slurm_pando_unsupervised
 #SBATCH --output=slurm_pando_unsupervised_%j.out
 #SBATCH --error=slurm_pando_unsupervised_%j.err
+#SBATCH --export=ALL
 
 
 # MODULES
@@ -32,6 +33,7 @@ algo_id=$(basename "$algo" | sed 's/\.py//')
 WANDB_MODE_ARG=${2:-"offline"}
 if [ "$WANDB_MODE_ARG" == "offline" ]; then
     export WANDB_MODE="dryrun"
+fi
 
 # CHECK IF WANDB MODE HAS BEEN SET
 echo "WANDB_MODE: $WANDB_MODE"
@@ -42,6 +44,7 @@ if [[ "$HOSTNAME" == *"pando"* ]]; then
     export WANDB_DIR="/scratch/disc/p.le-tolguenec/"
 elif [[ "$HOSTNAME" == *"olympe"* ]]; then
     export WANDB_DIR="/tmpdir/$USER/"
+fi
 
 # CHECK IF WANDB_DIR HAS BEEN SET
 echo "WANDB_DIR: $WANDB_DIR"
