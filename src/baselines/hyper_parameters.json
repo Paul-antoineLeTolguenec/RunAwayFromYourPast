@@ -7,6 +7,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125
                                         },
@@ -14,6 +15,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125
                                         },
@@ -21,6 +23,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125
                                         },
@@ -28,6 +31,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125
                                         },
@@ -35,6 +39,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125
                                         },
@@ -42,6 +47,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125,
                                         "num_skills": 4
@@ -50,6 +56,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125,
                                         "num_skills": 4
@@ -58,6 +65,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125,
                                         "num_skills": 4
@@ -66,6 +74,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125,
                                         "num_skills": 4
@@ -74,6 +83,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125,
                                         "num_skills": 4
@@ -86,6 +96,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125
                                         },
@@ -93,6 +104,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125
                                         },
@@ -100,6 +112,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125
                                         },
@@ -107,6 +120,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125
                                         },
@@ -114,6 +128,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125
                                         },
@@ -121,6 +136,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125,
                                         "num_skills": 4
@@ -129,6 +145,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125,
                                         "num_skills": 4
@@ -137,6 +154,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125,
                                         "num_skills": 4
@@ -145,6 +163,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125,
                                         "num_skills": 4
@@ -153,6 +172,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125,
                                         "num_skills": 4
@@ -165,6 +185,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125
                                         },
@@ -172,6 +193,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125
                                         },
@@ -179,6 +201,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125
                                         },
@@ -186,6 +209,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125
                                         },
@@ -193,6 +217,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125
                                         },
@@ -200,6 +225,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125,
                                         "num_skills": 4
@@ -208,6 +234,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125,
                                         "num_skills": 4
@@ -216,6 +243,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125,
                                         "num_skills": 4
@@ -224,6 +252,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125,
                                         "num_skills": 4
@@ -232,6 +261,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125,
                                         "num_skills": 4
@@ -244,6 +274,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125
                                         },
@@ -251,6 +282,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125
                                         },
@@ -258,6 +290,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125
                                         },
@@ -265,6 +298,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125
                                         },
@@ -272,6 +306,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125
                                         },
@@ -279,6 +314,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125,
                                         "num_skills": 4
@@ -287,6 +323,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125,
                                         "num_skills": 4
@@ -295,6 +332,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125,
                                         "num_skills": 4
@@ -303,6 +341,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125,
                                         "num_skills": 4
@@ -311,6 +350,7 @@
                                         "cuda": true,
                                         "save_data": true,
                                         "make_gif": true,
+                                        "feature_extractor":false,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.0078125,
                                         "num_skills": 4

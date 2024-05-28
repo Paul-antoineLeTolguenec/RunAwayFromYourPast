@@ -105,6 +105,9 @@ class Args:
     ngu_lr: float = 1e-3
     """the learning rate of the RND"""
     ngu_epochs: int = 16
+    """the number of epochs for the RND"""
+    feature_extractor: bool = False
+    """if toggled, the feature extractor will be used"""
 
     # to be filled in runtime
     batch_size: int = 0

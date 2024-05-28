@@ -107,6 +107,9 @@ class Args:
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
     icm_epochs: int = 32
+    """the number of epochs for the ICM"""
+    feature_extractor: bool = False
+    """if toggled, the feature extractor will be used"""
 
     # to be filled in runtime
     batch_size: int = 0

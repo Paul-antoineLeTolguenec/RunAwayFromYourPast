@@ -101,6 +101,9 @@ class Args:
     coef_intrinsic : float = 1.0
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
+    """the coefficient of the extrinsic reward"""
+    feature_extractor: bool = False
+    """if toggled, the feature extractor will be used"""
 
     # to be filled in runtime
     batch_size: int = 0

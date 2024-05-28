@@ -1,16 +1,21 @@
 #!/bin/bash
 
-#SBATCH --nodes=16
+#SBATCH --nodes=11
 #SBATCH --ntasks=95
 #SBATCH --cpus-per-task=4
-#SBATCH --partition=medium
-#SBATCH --time=24:00:00
+#SBATCH --time=00:05:00
 #SBATCH --begin=now
 #SBATCH --mail-user=paul-antoine.le-tolguenec@isae.fr
 #SBATCH --mail-type=FAIL,END
-#SBATCH --job-name=slurm_pando_unsupervised
-#SBATCH --output=slurm_pando_unsupervised_%j.out
-#SBATCH --error=slurm_pando_unsupervised_%j.err
+#SBATCH --job-name=slurm_calmip_unsupervised
+
+# FIND + RUN 
+algo=${1:-../apt_ppo.py}
+algo_id=$(basename "$algo" | sed 's/\.py//')
+
+#SBATCH --output=slurm_$algo_id_%j.out
+#SBATCH --error=slurm_$algo_id_%j.err
+#SBATCH --export=ALL
 
 
 # MODULES
@@ -23,10 +28,25 @@ HYPERPARAMETERS_FILE="../hyper_parameters.json"
 env_ids=$(grep -oP '(?<=^")[^"]+(?=":)' "$CONFIG_FILE")
 # FUNCTION: extract_hyperparameters
 EXTRACT_SCRIPT="extract_hyperparameters.py"
-# FIND + RUN 
-algo=${1:-../v1_ppo_kl_adaptive_sampling.py}
-algo_id=$(basename "$algo" | sed 's/\.py//')
 
+
+# WANDB MODE
+WANDB_MODE_ARG=${2:-"offline"}
+if [ "$WANDB_MODE_ARG" == "offline" ]; then
+    export WANDB_MODE="dryrun"
+
+# CHECK IF WANDB MODE HAS BEEN SET
+echo "WANDB_MODE: $WANDB_MODE"
+
+# WANDB DIR 
+HOSTNAME=$(hostname)
+if [[ "$HOSTNAME" == *"pando"* ]]; then
+    export WANDB_DIR="/scratch/disc/p.le-tolguenec/"
+elif [[ "$HOSTNAME" == *"olympe"* ]]; then
+    export WANDB_DIR="/tmpdir/$USER/"
+
+# CHECK IF WANDB_DIR HAS BEEN SET
+echo "WANDB_DIR: $WANDB_DIR"
 
 EXPERIMENT_NAME="${algo_id}_experiment"
 SBATCH_JOB_NAME="slurm_${EXPERIMENT_NAME}"
@@ -55,7 +75,7 @@ for env_id in $env_ids; do
             cmd="poetry run python $algo --env_id $env_id $hyperparams --seed $seed"
             echo $cmd 
             # $cmd
-            srun --exclusive -N1 -n1 -c4 $cmd &
+            # srun --exclusive -N1 -n1 -c4 $cmd &
             ((execution_count++))
         done
     else
