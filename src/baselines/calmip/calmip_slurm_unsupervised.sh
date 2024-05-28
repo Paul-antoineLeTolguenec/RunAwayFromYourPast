@@ -3,7 +3,7 @@
 #SBATCH --nodes=11
 #SBATCH --ntasks=95
 #SBATCH --cpus-per-task=4
-#SBATCH --time=00:05:00
+#SBATCH --time=00:10:00
 #SBATCH --begin=now
 #SBATCH --mail-user=paul-antoine.le-tolguenec@isae.fr
 #SBATCH --mail-type=FAIL,END
@@ -78,7 +78,7 @@ for env_id in $env_ids; do
             cmd="poetry run python $algo --env_id $env_id $hyperparams --seed $seed"
             echo $cmd 
             # $cmd
-            # srun --exclusive -N1 -n1 -c4 $cmd &
+            srun --exclusive -N1 -n1 -c4 $cmd &
             ((execution_count++))
         done
     else
