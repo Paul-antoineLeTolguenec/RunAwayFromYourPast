@@ -33,9 +33,6 @@ for env_id in $env_ids; do
     # Incrémenter le compteur
     count=$((count + 1))
 
-    # Vérifier si le compteur est supérieur à 2
-    if [ $count -gt 0 ]; then
-        break
-    fi
+    echo "nb script slurms launched: $count"
 
 done
