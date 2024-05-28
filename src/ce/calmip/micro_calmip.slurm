@@ -10,7 +10,7 @@
 
 
 # FIND + RUN 
-algo=${1:-../apt_ppo.py}
+algo=${1:-../v1_ppo_kl_adaptative_sampling.py}
 algo_id=$(basename "$algo" | sed 's/\.py//')
 
 
