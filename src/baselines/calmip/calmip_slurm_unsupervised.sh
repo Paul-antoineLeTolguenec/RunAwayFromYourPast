@@ -35,6 +35,7 @@ EXTRACT_SCRIPT="extract_hyperparameters.py"
 WANDB_MODE_ARG=${2:-"offline"}
 if [ "$WANDB_MODE_ARG" == "offline" ]; then
     export WANDB_MODE="dryrun"
+fi
 
 # CHECK IF WANDB MODE HAS BEEN SET
 echo "WANDB_MODE: $WANDB_MODE"
@@ -45,6 +46,7 @@ if [[ "$HOSTNAME" == *"pando"* ]]; then
     export WANDB_DIR="/scratch/disc/p.le-tolguenec/"
 elif [[ "$HOSTNAME" == *"olympe"* ]]; then
     export WANDB_DIR="/tmpdir/$USER/"
+fi
 
 # CHECK IF WANDB_DIR HAS BEEN SET
 echo "WANDB_DIR: $WANDB_DIR"
