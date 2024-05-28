@@ -8,14 +8,14 @@
 #SBATCH --mail-user=paul-antoine.le-tolguenec@isae.fr
 #SBATCH --mail-type=FAIL,END
 #SBATCH --job-name=slurm_calmip_unsupervised
-
+#SBATCH --output=slurm_calmip_unsupervised_%j.out
+#SBATCH --error=slurm_calmip_unsupervised_%j.err
+#SBATCH --export=ALL
 # FIND + RUN 
 algo=${1:-../apt_ppo.py}
 algo_id=$(basename "$algo" | sed 's/\.py//')
 
-#SBATCH --output=slurm_$algo_id_%j.out
-#SBATCH --error=slurm_$algo_id_%j.err
-#SBATCH --export=ALL
+
 
 
 # MODULES
