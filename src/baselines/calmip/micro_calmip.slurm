@@ -4,27 +4,23 @@
 #SBATCH --ntasks=5
 #SBATCH --cpus-per-task=7
 #SBATCH --time=00:05:00
-#SBATCH --begin=now
-#SBATCH --job-name=slurm_calmip_unsupervised
-#SBATCH --export=ALL
-
-
-output_file=${4:-output.out}
-error_file=${5:-error.err}
-#SBATCH --output=%x-%j.out
-#SBATCH --error=%x-%j.err
 
 # FIND + RUN 
 algo=${1:-../apt_ppo.py}
 algo_id=$(basename "$algo" | sed 's/\.py//')
+# Extract env_ids from config file
+env_id=${2:-"Maze-Easy-v0"}
 
+#SBATCH --job-name=run-$algo_id-$env_id
+#SBATCH --output=$algo_id-$env_id-%j.out
+#SBATCH --error=$algo_id-$env_id-%j.err
+#SBATCH --begin=now
+#SBATCH --export=ALL
 
 # Get the path to the config file
 CONFIG_FILE="../../../envs/config_env.py"
 # Get the path to the config file
 HYPERPARAMETERS_FILE="../hyper_parameters.json"
-# Extract env_ids from config file
-env_id=${2:-"Maze-Easy-v0"}
 # FUNCTION: extract_hyperparameters
 EXTRACT_SCRIPT="extract_hyperparameters.py"
 
