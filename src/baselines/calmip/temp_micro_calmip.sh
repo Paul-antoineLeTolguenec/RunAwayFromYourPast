@@ -19,6 +19,8 @@ else
     path_file_err_out="/tmp/error_out/"
 fi
 
+# create error output directory if it does not exist
+mkdir -p "$path_file_err_out"
 
 cat <<EOT > $temp_slurm_script
 #!/bin/bash
@@ -54,16 +56,18 @@ echo "WANDB_MODE: \$WANDB_MODE"
 HOSTNAME=\$(hostname)
 if [[ "\$HOSTNAME" == *"pando"* ]]; then
     export WANDB_DIR="/scratch/disc/p.le-tolguenec/"
-    export WANDB_CACHE_DIR="/scratch/disc/p.le-tolguenec/cache"
-    export WANDB_CONFIG_DIR="/scratch/disc/p.le-tolguenec/config"
-    export WANDB_ARTIFACTS_DIR="/scratch/disc/p.le-tolguenec/artifact"
-    export WANDB_RUN_DIR="/scratch/disc/p.le-tolguenec/run"
+    export WANDB_CACHE_DIR="/scratch/disc/p.le-tolguenec/"
+    export WANDB_CONFIG_DIR="/scratch/disc/p.le-tolguenec/"
+    export WANDB_ARTIFACTS_DIR="/scratch/disc/p.le-tolguenec/"
+    export WANDB_RUN_DIR="/scratch/disc/p.le-tolguenec/"
+    export WANDB_DATA_DIR="/scratch/disc/p.le-tolguenec/"
 elif [[ "\$HOSTNAME" == *"olympe"* ]]; then
     export WANDB_DIR="/tmpdir/\$USER/"
     export WANDB_CACHE_DIR="/tmpdir/\$USER/"
     export WANDB_CONFIG_DIR="/tmpdir/\$USER/"
     export WANDB_ARTIFACTS_DIR="/tmpdir/\$USER/"
     export WANDB_RUN_DIR="/tmpdir/\$USER/"
+    export WANDB_DATA_DIR="/tmpdir/\$USER/"
 fi
 
 
