@@ -6,10 +6,18 @@ algo_id=$(basename "$algo" | sed 's/\.py//')
 env_id=${2:-"Maze-Easy-v0"}
 WANDB_MODE_ARG=${3:-"offline"}
 
-
-# Créez un fichier temporaire pour le script SLURM avec les bonnes directives SBATCH
-# temp_slurm_script=$(mktemp /tmp/temp_slurm_script.XXXXXX)
+# create tempfile
 temp_slurm_script="temp_slurm_script_$$.slurm"
+
+# Check HOSTNAME
+HOSTNAME=$(hostname)
+if [[ "$HOSTNAME" == *"pando"* ]]; then
+    path_file_err_out="/scratch/disc/p.le-tolguenec/error_out/"
+elif [[ "$HOSTNAME" == *"olympe"* ]]; then
+    path_file_err_out="/tmpdir/$USER/error_out/"
+else 
+    path_file_err_out="/tmp/error_out/"
+fi
 
 
 cat <<EOT > $temp_slurm_script
@@ -20,8 +28,8 @@ cat <<EOT > $temp_slurm_script
 #SBATCH --cpus-per-task=7
 #SBATCH --time=00:05:00
 #SBATCH --job-name=run-$algo_id-$env_id
-#SBATCH --output=$algo_id-$env_id-%j.out
-#SBATCH --error=$algo_id-$env_id-%j.err
+#SBATCH --output=$path_file_err_out$algo_id-$env_id-%j.out
+#SBATCH --error=$path_file_err_out$algo_id-$env_id-%j.err
 #SBATCH --begin=now
 #SBATCH --export=ALL
 

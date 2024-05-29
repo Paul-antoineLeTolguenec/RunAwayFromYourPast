@@ -22,7 +22,7 @@ for env_id in $env_ids; do
     ' "$CONFIG_FILE")
 
     if [ "$type_id" != "'atari'" ]; then
-        cmd="sbatch micro_calmip.slurm $algo $env_id offline"
+        cmd="bash temp_micro_calmip_per_algo.sh $algo $env_id offline"
         echo "Running: $cmd"
         eval $cmd
     else
