@@ -9,7 +9,7 @@
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 10000, 
+                                        "total_timesteps": 200000, 
                                         "beta_ratio":0.25, "nb_max_steps": 20000
                                         },
                             "aux_ppo": {

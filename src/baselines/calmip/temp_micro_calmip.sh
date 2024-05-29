@@ -28,10 +28,12 @@ cat <<EOT > $temp_slurm_script
 #SBATCH --nodes=1
 #SBATCH --ntasks=5
 #SBATCH --cpus-per-task=7
-#SBATCH --time=00:05:00
+#SBATCH --time=05:00:00
 #SBATCH --job-name=run-$algo_id-$env_id
 #SBATCH --output=$path_file_err_out$algo_id-$env_id-%j.out
 #SBATCH --error=$path_file_err_out$algo_id-$env_id-%j.err
+#SBATCH --mail-user=paul-antoine.le-tolguenec@isae.fr
+#SBATCH --mail-type=FAIL
 #SBATCH --begin=now
 #SBATCH --export=ALL
 
