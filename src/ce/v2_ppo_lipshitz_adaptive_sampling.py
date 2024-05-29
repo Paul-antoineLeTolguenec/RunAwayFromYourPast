@@ -55,7 +55,7 @@ class Args:
     # RPO SPECIFIC
     env_id: str = "Maze-Ur"
     """the id of the environment"""
-    total_timesteps: int = 50_000
+    total_timesteps: int = 500_000
     """total timesteps of the experiments"""
     learning_rate: float = 5e-4
     """the learning rate of the optimizer"""
@@ -105,7 +105,7 @@ class Args:
     """the percentage of the time to use the classifier"""
     epsilon: float = 1e-3
     """the epsilon of the classifier"""
-    lambda_init: float = 100.0
+    lambda_init: float = 25.0
     """the lambda of the classifier"""
     bound_spectral: float = 1.0
     """the bound spectral of the classifier"""
@@ -134,7 +134,7 @@ class Args:
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
-    beta_ratio: float = 1/256
+    beta_ratio: float = 1/128
     """the ratio of the beta"""
     nb_max_steps: int = 50_000
     """the maximum number of step in un"""

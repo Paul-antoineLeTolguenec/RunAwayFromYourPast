@@ -96,7 +96,7 @@ class Args:
     # CLASSIFIER SPECIFIC
     classifier_lr: float = 1e-3
     """the learning rate of the classifier"""
-    classifier_epochs: int = 2
+    classifier_epochs: int = 1
     """the number of epochs to train the classifier"""
     classifier_batch_size: int = 256
     """the batch size of the classifier"""
@@ -106,7 +106,7 @@ class Args:
     """the percentage of the time to use the classifier"""
     epsilon: float = 1e-3
     """the epsilon of the classifier"""
-    lambda_init: float = 200.0 #50 in mazes
+    lambda_init: float = 25.0 #50 in mazes
     """the lambda of the classifier"""
     bound_spectral: float = 1.0
     """the bound spectral of the classifier"""
@@ -136,7 +136,7 @@ class Args:
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
-    beta_ratio: float = 1/256
+    beta_ratio: float = 1/64
     """the ratio of the beta"""
     nb_max_steps: int = 50_000
     """the maximum number of step in un"""

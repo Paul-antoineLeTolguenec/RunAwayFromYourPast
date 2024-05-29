@@ -57,7 +57,7 @@ class Args:
     # RPO SPECIFIC
     env_id: str = "HalfCheetah-v3"
     """the id of the environment"""
-    total_timesteps: int = 100_000
+    total_timesteps: int = 500_000
     """total timesteps of the experiments"""
     learning_rate: float = 5e-4
     """the learning rate of the optimizer"""
@@ -125,7 +125,7 @@ class Args:
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
-    beta_ratio: float = 1/16
+    beta_ratio: float = 1/256
     """the ratio of the beta"""
     nb_max_steps: int = 50_000
     """the maximum number of step in un"""
