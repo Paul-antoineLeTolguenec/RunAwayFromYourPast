@@ -3,11 +3,16 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=5
 #SBATCH --cpus-per-task=7
-#SBATCH --time=05:00:00
+#SBATCH --time=00:05:00
 #SBATCH --begin=now
 #SBATCH --job-name=slurm_calmip_unsupervised
 #SBATCH --export=ALL
 
+
+output_file=${4:-output.out}
+error_file=${5:-error.err}
+#SBATCH --output=%x-%j.out
+#SBATCH --error=%x-%j.err
 
 # FIND + RUN 
 algo=${1:-../apt_ppo.py}
