@@ -1,16 +1,15 @@
 #!/bin/bash
 
-#SBATCH --nodes=1
-#SBATCH --ntasks=5
-#SBATCH --cpus-per-task=7
-#SBATCH --time=00:05:00
-
 # FIND + RUN 
 algo=${1:-../apt_ppo.py}
 algo_id=$(basename "$algo" | sed 's/\.py//')
 # Extract env_ids from config file
 env_id=${2:-"Maze-Easy-v0"}
 
+#SBATCH --nodes=1
+#SBATCH --ntasks=5
+#SBATCH --cpus-per-task=7
+#SBATCH --time=00:05:00
 #SBATCH --job-name=run-$algo_id-$env_id
 #SBATCH --output=$algo_id-$env_id-%j.out
 #SBATCH --error=$algo_id-$env_id-%j.err
