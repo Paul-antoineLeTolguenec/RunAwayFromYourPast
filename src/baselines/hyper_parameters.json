@@ -9,48 +9,48 @@
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000
                                         },
                             "aux_ppo": {
                                         "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000
                                         },
                             "icm_ppo": {
                                         "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000
                                         },
                             "rnd_ppo": {
                                         "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000
                                         },
                             "ngu_ppo": {
                                         "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000
                                         },
                             "diayn_ppo": {
                                         "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000,
                                         "num_skills": 4
                                         },
                             "smm_ppo": {
@@ -58,8 +58,8 @@
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000,
                                         "num_skills": 4
                                         },
                             "lsd_ppo": {
@@ -67,8 +67,8 @@
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000,
                                         "num_skills": 4
                                         },
                             "csd_ppo": {
@@ -76,8 +76,8 @@
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000,
                                         "num_skills": 4
                                         },
                             "metra_ppo": {
@@ -85,8 +85,8 @@
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000,
                                         "num_skills": 4
                                         }
                             },
@@ -98,48 +98,48 @@
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000
                                         },
                             "aux_ppo": {
                                         "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000
                                         },
                             "icm_ppo": {
                                         "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000
                                         },
                             "rnd_ppo": {
                                         "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000
                                         },
                             "ngu_ppo": {
                                         "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000
                                         },
                             "diayn_ppo": {
                                         "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000,
                                         "num_skills": 4
                                         },
                             "smm_ppo": {
@@ -147,8 +147,8 @@
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000,
                                         "num_skills": 4
                                         },
                             "lsd_ppo": {
@@ -156,8 +156,8 @@
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000,
                                         "num_skills": 4
                                         },
                             "csd_ppo": {
@@ -165,8 +165,8 @@
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000,
                                         "num_skills": 4
                                         },
                             "metra_ppo": {
@@ -174,8 +174,8 @@
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000,
                                         "num_skills": 4
                                         }
                             },
@@ -187,48 +187,48 @@
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000
                                         },
                             "aux_ppo": {
                                         "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000
                                         },
                             "icm_ppo": {
                                         "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000
                                         },
                             "rnd_ppo": {
                                         "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000
                                         },
                             "ngu_ppo": {
                                         "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000
                                         },
                             "diayn_ppo": {
                                         "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000,
                                         "num_skills": 4
                                         },
                             "smm_ppo": {
@@ -236,8 +236,8 @@
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000,
                                         "num_skills": 4
                                         },
                             "lsd_ppo": {
@@ -245,8 +245,8 @@
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000,
                                         "num_skills": 4
                                         },
                             "csd_ppo": {
@@ -254,8 +254,8 @@
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000,
                                         "num_skills": 4
                                         },
                             "metra_ppo": {
@@ -263,8 +263,8 @@
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
+                                        "total_timesteps": 200000, 
+                                        "beta_ratio":0.25, "nb_max_steps": 20000,
                                         "num_skills": 4
                                         }
                         },
@@ -277,7 +277,7 @@
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 5000000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 2000000
+                                        "beta_ratio":0.25, "nb_max_steps": 100000
                                         },
                             "aux_ppo": {
                                         "cuda": true, "fig_frequency": 50,
@@ -285,7 +285,7 @@
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 5000000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 2000000
+                                        "beta_ratio":0.25, "nb_max_steps": 100000
                                         },
                             "icm_ppo": {
                                         "cuda": true, "fig_frequency": 50,
@@ -293,7 +293,7 @@
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 5000000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 2000000
+                                        "beta_ratio":0.25, "nb_max_steps": 100000
                                         },
                             "rnd_ppo": {
                                         "cuda": true, "fig_frequency": 50,
@@ -301,7 +301,7 @@
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 5000000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 2000000
+                                        "beta_ratio":0.25, "nb_max_steps": 100000
                                         },
                             "ngu_ppo": {
                                         "cuda": true, "fig_frequency": 50,
@@ -309,7 +309,7 @@
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 5000000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 2000000
+                                        "beta_ratio":0.25, "nb_max_steps": 100000
                                         },
                             "diayn_ppo": {
                                         "cuda": true, "fig_frequency": 50,
@@ -317,7 +317,7 @@
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 5000000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 2000000,
+                                        "beta_ratio":0.25, "nb_max_steps": 100000,
                                         "num_skills": 4
                                         },
                             "smm_ppo": {
@@ -326,7 +326,7 @@
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 5000000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 2000000,
+                                        "beta_ratio":0.25, "nb_max_steps": 100000,
                                         "num_skills": 4
                                         },
                             "lsd_ppo": {
@@ -335,7 +335,7 @@
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 5000000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 2000000,
+                                        "beta_ratio":0.25, "nb_max_steps": 100000,
                                         "num_skills": 4
                                         },
                             "csd_ppo": {
@@ -344,7 +344,7 @@
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 5000000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 2000000,
+                                        "beta_ratio":0.25, "nb_max_steps": 100000,
                                         "num_skills": 4
                                         },
                             "metra_ppo": {
@@ -353,7 +353,7 @@
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 5000000, 
-                                        "beta_ratio":0.0078125, "nb_max_steps": 2000000,
+                                        "beta_ratio":0.25, "nb_max_steps": 100000,
                                         "num_skills": 4
                                         }
                             }
