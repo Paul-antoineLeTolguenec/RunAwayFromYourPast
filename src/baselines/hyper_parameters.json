@@ -5,87 +5,88 @@
 
                             "apt_ppo": {
                                         "cuda": true,
+                                        "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
                                         },
                             "aux_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
                                         },
                             "icm_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
                                         },
                             "rnd_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
                                         },
                             "ngu_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
                                         },
                             "diayn_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125,
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
                                         "num_skills": 4
                                         },
                             "smm_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125,
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
                                         "num_skills": 4
                                         },
                             "lsd_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125,
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
                                         "num_skills": 4
                                         },
                             "csd_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125,
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
                                         "num_skills": 4
                                         },
                             "metra_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125,
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
                                         "num_skills": 4
                                         }
                             },
@@ -93,88 +94,88 @@
                     "robotics": {
 
                             "apt_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
                                         },
                             "aux_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
                                         },
                             "icm_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
                                         },
                             "rnd_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
                                         },
                             "ngu_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
                                         },
                             "diayn_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125,
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
                                         "num_skills": 4
                                         },
                             "smm_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125,
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
                                         "num_skills": 4
                                         },
                             "lsd_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125,
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
                                         "num_skills": 4
                                         },
                             "csd_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125,
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
                                         "num_skills": 4
                                         },
                             "metra_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125,
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
                                         "num_skills": 4
                                         }
                             },
@@ -182,88 +183,88 @@
                     "dmcs": {
 
                             "apt_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
                                         },
                             "aux_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
                                         },
                             "icm_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
                                         },
                             "rnd_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
                                         },
                             "ngu_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000
                                         },
                             "diayn_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125,
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
                                         "num_skills": 4
                                         },
                             "smm_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125,
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
                                         "num_skills": 4
                                         },
                             "lsd_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125,
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
                                         "num_skills": 4
                                         },
                             "csd_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125,
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
                                         "num_skills": 4
                                         },
                             "metra_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 500000, 
-                                        "beta_ratio":0.0078125,
+                                        "beta_ratio":0.0078125, "nb_max_steps": 50000,
                                         "num_skills": 4
                                         }
                         },
@@ -271,88 +272,88 @@
                     "mujoco": {
 
                             "apt_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 5000000, 
-                                        "beta_ratio":0.0078125
+                                        "beta_ratio":0.0078125, "nb_max_steps": 2000000
                                         },
                             "aux_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 5000000, 
-                                        "beta_ratio":0.0078125
+                                        "beta_ratio":0.0078125, "nb_max_steps": 2000000
                                         },
                             "icm_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 5000000, 
-                                        "beta_ratio":0.0078125
+                                        "beta_ratio":0.0078125, "nb_max_steps": 2000000
                                         },
                             "rnd_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 5000000, 
-                                        "beta_ratio":0.0078125
+                                        "beta_ratio":0.0078125, "nb_max_steps": 2000000
                                         },
                             "ngu_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 5000000, 
-                                        "beta_ratio":0.0078125
+                                        "beta_ratio":0.0078125, "nb_max_steps": 2000000
                                         },
                             "diayn_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 5000000, 
-                                        "beta_ratio":0.0078125,
+                                        "beta_ratio":0.0078125, "nb_max_steps": 2000000,
                                         "num_skills": 4
                                         },
                             "smm_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 5000000, 
-                                        "beta_ratio":0.0078125,
+                                        "beta_ratio":0.0078125, "nb_max_steps": 2000000,
                                         "num_skills": 4
                                         },
                             "lsd_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 5000000, 
-                                        "beta_ratio":0.0078125,
+                                        "beta_ratio":0.0078125, "nb_max_steps": 2000000,
                                         "num_skills": 4
                                         },
                             "csd_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 5000000, 
-                                        "beta_ratio":0.0078125,
+                                        "beta_ratio":0.0078125, "nb_max_steps": 2000000,
                                         "num_skills": 4
                                         },
                             "metra_ppo": {
-                                        "cuda": true,
+                                        "cuda": true, "fig_frequency": 50,
                                         "save_data": true,
                                         "make_gif": true,
                                         "feature_extractor":false,
                                         "total_timesteps": 5000000, 
-                                        "beta_ratio":0.0078125,
+                                        "beta_ratio":0.0078125, "nb_max_steps": 2000000,
                                         "num_skills": 4
                                         }
                             }

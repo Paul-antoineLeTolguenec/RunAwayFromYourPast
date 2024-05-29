@@ -124,10 +124,10 @@ class Args:
     """the number of iterations (computed in runtime)"""
 
     # dataset 
-    beta_ratio: float = 1/16
+    beta_ratio: float = 1/128
     """the ratio of the beta"""
-    nb_max_un: int = 256
-    """the maximum number of un"""
+    nb_max_steps: int = 50_000
+    """the maximum number of step in un"""
 
 
 
@@ -440,7 +440,7 @@ if __name__ == "__main__":
                 times_un = times_reshaped[idx_un]
                 z_un = zs_reshaped[idx_un]
 
-        elif obs_un.shape[0] >= args.num_steps*args.num_envs*args.nb_max_un:
+        elif obs_un.shape[0] >= args.nb_max_steps:
             obs_un, next_obs_un, actions_un, rewards_un, dones_un, times_un, z_un = update_un(obs_un, next_obs_un, actions_un, rewards_un, dones_un, times_un, z_un,
                                                                                             obs_reshaped[:-1], obs_reshaped[1:], actions_reshaped[:-1], rewards_reshaped[:-1], dones_reshaped[:-1], times_reshaped[:-1], zs_reshaped[:-1],
                                                                                             args)
@@ -562,7 +562,7 @@ if __name__ == "__main__":
         else : 
             reduced_matrix = env_check.matrix_coverage
         normalized_matrix = (reduced_matrix - reduced_matrix.min()) / (reduced_matrix.max() - reduced_matrix.min()) * 255
-        send_matrix(wandb, np.rot90(normalized_matrix), "coverage", global_step)
+        send_matrix(wandb, np.rot90(normalized_matrix), "coverage", global_step) if update % args.fig_frequency == 0 else None
         # log 
         print('shanon : ', env_check.shanon_entropy())
         print("SPS:", int(global_step / (time.time() - start_time)))
