@@ -44,7 +44,7 @@ for DIR in "$path_offline"offline*; do
                 
                 echo "Synchronizing $DIR with env_id: $ENV_ID and algo_name: $ALGO_NAME"
                 count=$((count+1))
-                # wandb sync "$DIR"
+                wandb sync "$DIR"
                 if [ $? -eq 0 ]; then
                     echo "Successfully synchronized $DIR with env_id: $ENV_ID"
                 else
