@@ -27,7 +27,7 @@
                                         "coef_extrinsic": 1.0,
                                         "beta_ratio": 0.015625,
                                         "nb_max_steps": 20000,
-                                        "gamma_cte": 0.1
+                                        "gamma_cte": 0.0
                                         },
 
         "v2_ppo_kl_adaptive_sampling": {
@@ -58,7 +58,7 @@
                                         "nb_skill": 4,
                                         "lambda_im": 1.0,
                                         "lambda_ent": 1.0,
-                                        "gamma_cte": 0.1
+                                        "gamma_cte": 0.0
                                         },
 
         "v1_ppo_lipshitz_adaptive_sampling": {
@@ -90,7 +90,7 @@
                                         "coef_extrinsic": 1.0,
                                         "beta_ratio": 0.015625,
                                         "nb_max_steps": 20000,
-                                        "gamma_cte": 0.1
+                                        "gamma_cte": 0.0
                                         },
 
         "v2_ppo_lipshitz_adaptive_sampling": {
@@ -124,7 +124,7 @@
                                         "beta_ratio": 0.00390625,
                                         "nb_max_steps": 20000,
                                         "w_rho_un": 1.0,
-                                        "gamma_cte": 0.1,
+                                        "gamma_cte": 0.0,
                                         "n_agent": 4,
                                         "lambda_im": 1.0,
                                         "metra_lr": 0.001,
@@ -162,7 +162,7 @@
                                     "coef_extrinsic": 1.0,
                                     "beta_ratio": 0.015625,
                                     "nb_max_steps": 20000,
-                                    "gamma_cte": 0.1
+                                    "gamma_cte": 0.0
                                     },
 
     "v2_ppo_kl_adaptive_sampling": {
@@ -193,7 +193,7 @@
                                     "nb_skill": 4,
                                     "lambda_im": 1.0,
                                     "lambda_ent": 1.0,
-                                    "gamma_cte": 0.1
+                                    "gamma_cte": 0.0
                                     },
 
     "v1_ppo_lipshitz_adaptive_sampling": {
@@ -225,7 +225,7 @@
                                     "coef_extrinsic": 1.0,
                                     "beta_ratio": 0.015625,
                                     "nb_max_steps": 20000,
-                                    "gamma_cte": 0.1
+                                    "gamma_cte": 0.0
                                     },
 
     "v2_ppo_lipshitz_adaptive_sampling": {
@@ -259,7 +259,7 @@
                                     "beta_ratio": 0.00390625,
                                     "nb_max_steps": 20000,
                                     "w_rho_un": 1.0,
-                                    "gamma_cte": 0.1,
+                                    "gamma_cte": 0.0,
                                     "n_agent": 4,
                                     "lambda_im": 1.0,
                                     "metra_lr": 0.001,
@@ -297,7 +297,7 @@
                                         "coef_extrinsic": 1.0,
                                         "beta_ratio": 0.015625,
                                         "nb_max_steps": 20000,
-                                        "gamma_cte": 0.1
+                                        "gamma_cte": 0.0
                                         },
     
         "v2_ppo_kl_adaptive_sampling": {
@@ -328,7 +328,7 @@
                                         "nb_skill": 4,
                                         "lambda_im": 1.0,
                                         "lambda_ent": 1.0,
-                                        "gamma_cte": 0.1
+                                        "gamma_cte": 0.0
                                         },
     
         "v1_ppo_lipshitz_adaptive_sampling": {
@@ -360,7 +360,7 @@
                                         "coef_extrinsic": 1.0,
                                         "beta_ratio": 0.015625,
                                         "nb_max_steps": 20000,
-                                        "gamma_cte": 0.1
+                                        "gamma_cte": 0.0
                                         },
     
         "v2_ppo_lipshitz_adaptive_sampling": {
@@ -394,7 +394,7 @@
                                         "beta_ratio": 0.00390625,
                                         "nb_max_steps": 20000,
                                         "w_rho_un": 1.0,
-                                        "gamma_cte": 0.1,
+                                        "gamma_cte": 0.0,
                                         "n_agent": 4,
                                         "lambda_im": 1.0,
                                         "metra_lr": 0.001,
