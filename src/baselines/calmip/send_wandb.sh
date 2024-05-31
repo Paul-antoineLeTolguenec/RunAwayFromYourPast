@@ -4,12 +4,27 @@
 HOSTNAME=$(hostname)
 if [[ "$HOSTNAME" == *"pando"* ]]; then
     path_offline="/scratch/disc/p.le-tolguenec/wandb/"
+    export WANDB_DIR="/scratch/disc/p.le-tolguenec/"
+    export WANDB_CACHE_DIR="/scratch/disc/p.le-tolguenec/"
+    export WANDB_CONFIG_DIR="/scratch/disc/p.le-tolguenec/"
+    export WANDB_ARTIFACTS_DIR="/scratch/disc/p.le-tolguenec/"
+    export WANDB_RUN_DIR="/scratch/disc/p.le-tolguenec/"
+    export WANDB_DATA_DIR="/scratch/disc/p.le-tolguenec/"
 elif [[ "$HOSTNAME" == *"olympe"* ]]; then
     path_offline="/tmpdir/$USER/wandb/"
+    export WANDB_DIR="/tmpdir/\$USER/"
+    export WANDB_CACHE_DIR="/tmpdir/\$USER/"
+    export WANDB_CONFIG_DIR="/tmpdir/\$USER/"
+    export WANDB_ARTIFACTS_DIR="/tmpdir/\$USER/"
+    export WANDB_RUN_DIR="/tmpdir/\$USER/"
+    export WANDB_DATA_DIR="/tmpdir/\$USER/"
 else
     echo "Hostname non reconnu. Script annulé."
     exit 1
 fi
+
+# Créer le répertoire WANDB_CACHE_DIR si nécessaire
+mkdir -p $WANDB_CACHE_DIR
 
 # Vérifier si au moins un argument est fourni
 if [ "$#" -lt 1 ]; then
@@ -45,16 +60,17 @@ for DIR in "$path_offline"offline*; do
     if [ -d "$DIR" ]; then
         # Chemin vers le fichier wandb-metadata.json
         METADATA_FILE="$DIR/files/wandb-metadata.json"
+        SYNC_MARKER="$DIR/*.synced"
         
-        # Vérifier si le fichier existe
-        if [ -f "$METADATA_FILE" ]; then
+        # Vérifier si le fichier existe et n'a pas déjà été synchronisé
+        if [ -f "$METADATA_FILE" ] && [ ! -f $SYNC_MARKER ]; then
             # Vérifier si le fichier contient au moins un des algorithmes
             if contains_algo "$METADATA_FILE"; then
                 # Extraire l'env_id
                 ENV_ID=$(extract_arg_value "$METADATA_FILE" "env_id")
                 count=$((count + 1))
                 echo "Synchronizing $DIR with env_id: $ENV_ID..."
-                wandb sync "$DIR"
+                # wandb sync "$DIR"
                 if [ $? -eq 0 ]; then
                     echo "Successfully synchronized $DIR with env_id: $ENV_ID"
                 else
@@ -65,4 +81,4 @@ for DIR in "$path_offline"offline*; do
     fi
 done
 
-echo "Total $count directories synchronized"
+echo "Number of directories synchronized: $count"
