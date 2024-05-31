@@ -52,7 +52,7 @@ class Args:
     fig_frequency: int = 1
 
     # RPO SPECIFIC
-    env_id: str = "Maze-Ur"
+    env_id: str = "Maze-Ur-v0"
     """the id of the environment"""
     total_timesteps: int = 100_000
     """total timesteps of the experiments"""
@@ -438,8 +438,8 @@ if __name__ == "__main__":
                     # rewards NGU 
                     obs_episode = obs[last_d_idx[idx]:step+1, idx].cpu().numpy()
                     intrinsic_reward, sdm[idx], rnd_err[step,idx]= ngu.r_i(torch.Tensor(next_obs[idx]).to(device), torch.Tensor(obs_episode).to(device), sdm[idx], np.mean(rnd_err[step,idx]), np.std(rnd_err[step,idx]))
-                    clipped_intrinsic_reward = np.clip(intrinsic_reward, -args.clip_intrinsic, args.clip_intrinsic)
-                    reward[idx] = args.coef_intrinsic * clipped_intrinsic_reward[0] + args.coef_extrinsic * reward[idx] if args.keep_extrinsic_reward else clipped_intrinsic_reward[0]*args.coef_intrinsic
+                    clipped_intrinsic_reward = intrinsic_reward
+                    reward[idx] = clipped_intrinsic_reward[0] 
 
             times[step] = torch.tensor(np.array([infos["l"]])).transpose(0,1).to(device)
             done = np.logical_or(terminations, truncations)
@@ -513,6 +513,11 @@ if __name__ == "__main__":
             dones_un = np.concatenate([dones_un, dones_reshaped[idx_un]])
             times_un = np.concatenate([times_un, times_reshaped[idx_un]])   
 
+        
+        rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-8)
+        rewards = extrinsic_rewards*args.coef_extrinsic + rewards*args.coef_intrinsic if args.keep_extrinsic_reward else rewards*args.coef_intrinsic
+        print('max : ', rewards.max())
+        print('min : ', rewards.min())
         ########################### PPO UPDATE ###############################
         # bootstrap value if not done
         with torch.no_grad():

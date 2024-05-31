@@ -102,7 +102,7 @@ class Args:
     """the number of rollouts"""
     keep_extrinsic_reward: bool = False
     """if toggled, the extrinsic reward will be kept"""
-    coef_intrinsic : float = 0.1
+    coef_intrinsic : float = 1.0
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
@@ -367,7 +367,8 @@ if __name__ == "__main__":
             with torch.no_grad():
                 rewards_intrinsic = icm.loss(obs=obs[step], action=actions[step], next_obs=torch.tensor(next_obs, device = device), dones=dones[step], reduce=False).detach().cpu().numpy()
                 clipped_rewards_intrinsic = np.clip(rewards_intrinsic, -args.clip_intrinsic, args.clip_intrinsic)
-            reward = reward + args.coef_intrinsic * clipped_rewards_intrinsic + args.coef_extrinsic * reward if args.keep_extrinsic_reward else args.coef_intrinsic * clipped_rewards_intrinsic
+                rewards[step] = torch.tensor(clipped_rewards_intrinsic).to(device).unsqueeze(-1)
+
 
             times[step] = torch.tensor(np.array([infos["l"]])).transpose(0,1).to(device)
             done = np.logical_or(terminations, truncations)
@@ -436,10 +437,14 @@ if __name__ == "__main__":
             dones_un = np.concatenate([dones_un, dones_reshaped[idx_un]])
             times_un = np.concatenate([times_un, times_reshaped[idx_un]])   
         
-        print('reward max : ', rewards.max())
-        print('reward min : ', rewards.min())
+    
         # normalize rewards
         rewards = (rewards - rewards.mean()) / (rewards.std() + 1)
+        rewards = extrinsic_rewards * args.coef_extrinsic + rewards * args.coef_intrinsic if args.keep_extrinsic_reward else rewards*args.coef_intrinsic
+
+        print('reward max : ', rewards.max())
+        print('reward min : ', rewards.min())
+
         ########################### PPO UPDATE ###############################
         # bootstrap value if not done
         with torch.no_grad():
