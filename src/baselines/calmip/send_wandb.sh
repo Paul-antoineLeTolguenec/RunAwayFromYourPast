@@ -12,17 +12,25 @@ if [[ "$HOSTNAME" == *"pando"* ]]; then
     export WANDB_DATA_DIR="/scratch/disc/p.le-tolguenec/"
 elif [[ "$HOSTNAME" == *"olympe"* ]]; then
     path_offline="/tmpdir/$USER/wandb/"
-    export WANDB_DIR="/tmpdir/\$USER/"
-    export WANDB_CACHE_DIR="/tmpdir/\$USER/"
-    export WANDB_CONFIG_DIR="/tmpdir/\$USER/"
-    export WANDB_ARTIFACTS_DIR="/tmpdir/\$USER/"
-    export WANDB_RUN_DIR="/tmpdir/\$USER/"
-    export WANDB_DATA_DIR="/tmpdir/\$USER/"
+    export WANDB_DIR="/tmpdir/$USER/wandb_export_dir/"
+    export WANDB_CACHE_DIR="/tmpdir/$USER/wandb_export_cache_dir/"
+    export WANDB_CONFIG_DIR="/tmpdir/$USER/wandb_export_config_dir/"
+    export WANDB_ARTIFACTS_DIR="/tmpdir/$USER/wandb_export_artifacts_dir/"
+    export WANDB_RUN_DIR="/tmpdir/$USER/wandb_export_run_dir/"
+    export WANDB_DATA_DIR="/tmpdir/$USER/wandb_export_data_dir/"
 else
     echo "Hostname non reconnu. Script annulé."
     exit 1
 fi
 
+
+# create repository if it does not exist
+mkdir -p "/tmpdir/$USER/wandb_export_dir/"
+mkdir -p "/tmpdir/$USER/wandb_export_cache_dir/"
+mkdir -p "/tmpdir/$USER/wandb_export_config_dir/"
+mkdir -p "/tmpdir/$USER/wandb_export_artifacts_dir/"
+mkdir -p "/tmpdir/$USER/wandb_export_run_dir/"
+mkdir -p "/tmpdir/$USER/wandb_export_data_dir/"
 
 # Vérifier si au moins un argument est fourni
 if [ "$#" -lt 1 ]; then
