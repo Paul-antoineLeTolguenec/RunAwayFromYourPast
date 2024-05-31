@@ -11,19 +11,30 @@ else
     exit 1
 fi
 
-# Vérifier si un argument est fourni
-if [ "$#" -ne 1 ]; then
-    echo "Usage: $0 <algorithm_name>"
+# Vérifier si au moins un argument est fourni
+if [ "$#" -lt 1 ]; then
+    echo "Usage: $0 <algorithm_name1> <algorithm_name2> ..."
     exit 1
 fi
 
-ALGO_NAME=$1
+ALGO_NAMES=("$@")
 
 # Fonction pour extraire la valeur d'un argument spécifique dans wandb-metadata.json
 extract_arg_value() {
     local json_file=$1
     local arg_name=$2
     grep -A1 "\"--$arg_name\"" "$json_file" | tail -n1 | awk -F'"' '{print $2}'
+}
+
+# Fonction pour vérifier si un fichier contient au moins un des algorithmes
+contains_algo() {
+    local json_file=$1
+    for algo in "${ALGO_NAMES[@]}"; do
+        if grep -q "$algo" "$json_file"; then
+            return 0
+        fi
+    done
+    return 1
 }
 
 count=0
@@ -37,14 +48,13 @@ for DIR in "$path_offline"offline*; do
         
         # Vérifier si le fichier existe
         if [ -f "$METADATA_FILE" ]; then
-            # Vérifier si le nom de l'algo est présent dans le fichier
-            if grep -q "$ALGO_NAME" "$METADATA_FILE"; then
+            # Vérifier si le fichier contient au moins un des algorithmes
+            if contains_algo "$METADATA_FILE"; then
                 # Extraire l'env_id
                 ENV_ID=$(extract_arg_value "$METADATA_FILE" "env_id")
-                
-                echo "Synchronizing $DIR with env_id: $ENV_ID and algo_name: $ALGO_NAME"
-                count=$((count+1))
-                wandb sync "$DIR"
+                count=$((count + 1))
+                echo "Synchronizing $DIR with env_id: $ENV_ID..."
+                # wandb sync "$DIR"
                 if [ $? -eq 0 ]; then
                     echo "Successfully synchronized $DIR with env_id: $ENV_ID"
                 else
@@ -55,4 +65,4 @@ for DIR in "$path_offline"offline*; do
     fi
 done
 
-echo "Total $count directories synchronized for algo_name: $ALGO_NAME"
+echo "Total $count directories synchronized"
