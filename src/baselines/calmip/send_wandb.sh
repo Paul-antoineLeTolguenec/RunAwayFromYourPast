@@ -23,8 +23,6 @@ else
     exit 1
 fi
 
-# Créer le répertoire WANDB_CACHE_DIR si nécessaire
-mkdir -p $WANDB_CACHE_DIR
 
 # Vérifier si au moins un argument est fourni
 if [ "$#" -lt 1 ]; then
