@@ -46,26 +46,11 @@ def find_run_id(project_name: str, run_name: str):
             return run.id
     return None
     
-   
-def get_failed_runs(project_name):
-    api = wandb.Api()
-    runs = api.runs(project_name)
-    
-    failed_runs = {}
-    
-    for run in runs:
-        if run.state in ['failed', 'crashed']:
-            run_info = {
-                'id': run.id,
-                'hyperparameters': run.config
-            }
-            failed_runs[run.name] = run_info
-    
-    return failed_runs
+
 
    
 if __name__ == "__main__":
-    # wandb.login()
+    wandb.login()
 
     # project_name = "contrastive_exploration"
     # # run_id = "Maze-Ur__aux_ppo__0"
@@ -86,7 +71,4 @@ if __name__ == "__main__":
     # print('times:', times.shape)
 
     # check get failed runs
-    project_name = "contrastive_exploration"
-    failed_runs = get_failed_runs(project_name)
-    print('number run failed:', len(failed_runs))
-    print(failed_runs.keys())
+    
