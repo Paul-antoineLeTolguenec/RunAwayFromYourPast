@@ -438,7 +438,8 @@ if __name__ == "__main__":
         
         print('reward max : ', rewards.max())
         print('reward min : ', rewards.min())
-
+        # normalize rewards
+        rewards = (rewards - rewards.mean()) / (rewards.std() + 1)
         ########################### PPO UPDATE ###############################
         # bootstrap value if not done
         with torch.no_grad():
