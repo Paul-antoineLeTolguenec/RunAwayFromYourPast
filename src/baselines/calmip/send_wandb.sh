@@ -23,8 +23,10 @@ ALGO_NAME=$1
 extract_arg_value() {
     local json_file=$1
     local arg_name=$2
-    jq -r ".args" "$json_file" | jq -r 'map(select(.[0] == "--'${arg_name}'")) | .[0][1]'
+    grep -A1 "\"--$arg_name\"" "$json_file" | tail -n1 | awk -F'"' '{print $2}'
 }
+
+count=0
 
 # Parcourir les dossiers commençant par "offline" dans le répertoire défini
 for DIR in "$path_offline"offline*; do
@@ -40,7 +42,8 @@ for DIR in "$path_offline"offline*; do
                 # Extraire l'env_id
                 ENV_ID=$(extract_arg_value "$METADATA_FILE" "env_id")
                 
-                echo "Synchronizing $DIR with env_id: $ENV_ID..."
+                echo "Synchronizing $DIR with env_id: $ENV_ID and algo_name: $ALGO_NAME"
+                count=$((count+1))
                 # wandb sync "$DIR"
                 if [ $? -eq 0 ]; then
                     echo "Successfully synchronized $DIR with env_id: $ENV_ID"
@@ -52,4 +55,4 @@ for DIR in "$path_offline"offline*; do
     fi
 done
 
-echo "Synchronization process completed."
+echo "Total $count directories synchronized for algo_name: $ALGO_NAME"
