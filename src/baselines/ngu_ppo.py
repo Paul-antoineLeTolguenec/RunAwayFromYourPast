@@ -98,7 +98,7 @@ class Args:
     """the number of rollouts"""
     keep_extrinsic_reward: bool = False
     """if toggled, the extrinsic reward will be kept"""
-    coef_intrinsic : float = 1.0
+    coef_intrinsic : float = 0.1
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
@@ -108,6 +108,8 @@ class Args:
     """the number of epochs for the RND"""
     feature_extractor: bool = False
     """if toggled, the feature extractor will be used"""
+    clip_intrinsic: float = 10.0
+    """the clipping of the intrinsic reward"""
 
     # to be filled in runtime
     batch_size: int = 0
@@ -436,7 +438,8 @@ if __name__ == "__main__":
                     # rewards NGU 
                     obs_episode = obs[last_d_idx[idx]:step+1, idx].cpu().numpy()
                     intrinsic_reward, sdm[idx], rnd_err[step,idx]= ngu.r_i(torch.Tensor(next_obs[idx]).to(device), torch.Tensor(obs_episode).to(device), sdm[idx], np.mean(rnd_err[step,idx]), np.std(rnd_err[step,idx]))
-                    reward[idx] = args.coef_intrinsic * intrinsic_reward[0] + args.coef_extrinsic * reward[idx] if args.keep_extrinsic_reward else intrinsic_reward[0]*args.coef_intrinsic
+                    clipped_intrinsic_reward = np.clip(intrinsic_reward, -args.clip_intrinsic, args.clip_intrinsic)
+                    reward[idx] = args.coef_intrinsic * clipped_intrinsic_reward[0] + args.coef_extrinsic * reward[idx] if args.keep_extrinsic_reward else clipped_intrinsic_reward[0]*args.coef_intrinsic
 
             times[step] = torch.tensor(np.array([infos["l"]])).transpose(0,1).to(device)
             done = np.logical_or(terminations, truncations)

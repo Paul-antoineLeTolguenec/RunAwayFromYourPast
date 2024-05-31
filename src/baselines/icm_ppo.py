@@ -102,7 +102,7 @@ class Args:
     """the number of rollouts"""
     keep_extrinsic_reward: bool = False
     """if toggled, the extrinsic reward will be kept"""
-    coef_intrinsic : float = 1.0
+    coef_intrinsic : float = 0.1
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
@@ -110,6 +110,8 @@ class Args:
     """the number of epochs for the ICM"""
     feature_extractor: bool = False
     """if toggled, the feature extractor will be used"""
+    clip_intrinsic: float = 10.0
+    """the clipping of the intrinsic reward"""
 
     # to be filled in runtime
     batch_size: int = 0
@@ -364,7 +366,8 @@ if __name__ == "__main__":
             # intrinsic reward
             with torch.no_grad():
                 rewards_intrinsic = icm.loss(obs=obs[step], action=actions[step], next_obs=torch.tensor(next_obs, device = device), dones=dones[step], reduce=False).detach().cpu().numpy()
-            reward = reward + args.coef_intrinsic * rewards_intrinsic + args.coef_extrinsic * reward if args.keep_extrinsic_reward else args.coef_intrinsic * rewards_intrinsic
+                clipped_rewards_intrinsic = np.clip(rewards_intrinsic, -args.clip_intrinsic, args.clip_intrinsic)
+            reward = reward + args.coef_intrinsic * clipped_rewards_intrinsic + args.coef_extrinsic * reward if args.keep_extrinsic_reward else args.coef_intrinsic * clipped_rewards_intrinsic
 
             times[step] = torch.tensor(np.array([infos["l"]])).transpose(0,1).to(device)
             done = np.logical_or(terminations, truncations)
