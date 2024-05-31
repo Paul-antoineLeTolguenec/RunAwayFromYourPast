@@ -47,25 +47,46 @@ def find_run_id(project_name: str, run_name: str):
     return None
     
    
+def get_failed_runs(project_name):
+    api = wandb.Api()
+    runs = api.runs(project_name)
+    
+    failed_runs = {}
+    
+    for run in runs:
+        if run.state in ['failed', 'crashed']:
+            run_info = {
+                'id': run.id,
+                'hyperparameters': run.config
+            }
+            failed_runs[run.name] = run_info
+    
+    return failed_runs
 
    
 if __name__ == "__main__":
-    wandb.login()
+    # wandb.login()
 
+    # project_name = "contrastive_exploration"
+    # # run_id = "Maze-Ur__aux_ppo__0"
+    # run_id = "HalfCheetah-v3__v1_ppo_lipshitz_adaptive_sampling__0"
+
+    # run_id = find_run_id(project_name, run_id)
+    # print(run_id)
+    # # dataset
+    # print('project_name:', project_name)
+    # print('run_id:', run_id)
+    # print('dataset:', "dataset")
+    # obs, action, reward, next_obs, done, times = load_dataset(project_name, run_id, "dataset")
+    # print('obs:', obs.shape)
+    # print('action:', action.shape)
+    # print('reward:', reward.shape)
+    # print('next_obs:', next_obs.shape)
+    # print('done:', done.shape)
+    # print('times:', times.shape)
+
+    # check get failed runs
     project_name = "contrastive_exploration"
-    # run_id = "Maze-Ur__aux_ppo__0"
-    run_id = "HalfCheetah-v3__v1_ppo_lipshitz_adaptive_sampling__0"
-
-    run_id = find_run_id(project_name, run_id)
-    print(run_id)
-    # dataset
-    print('project_name:', project_name)
-    print('run_id:', run_id)
-    print('dataset:', "dataset")
-    obs, action, reward, next_obs, done, times = load_dataset(project_name, run_id, "dataset")
-    print('obs:', obs.shape)
-    print('action:', action.shape)
-    print('reward:', reward.shape)
-    print('next_obs:', next_obs.shape)
-    print('done:', done.shape)
-    print('times:', times.shape)
+    failed_runs = get_failed_runs(project_name)
+    print('number run failed:', len(failed_runs))
+    print(failed_runs.keys())
