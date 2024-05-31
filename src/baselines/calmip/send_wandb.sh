@@ -54,7 +54,7 @@ for DIR in "$path_offline"offline*; do
                 ENV_ID=$(extract_arg_value "$METADATA_FILE" "env_id")
                 count=$((count + 1))
                 echo "Synchronizing $DIR with env_id: $ENV_ID..."
-                # wandb sync "$DIR"
+                wandb sync "$DIR"
                 if [ $? -eq 0 ]; then
                     echo "Successfully synchronized $DIR with env_id: $ENV_ID"
                 else
