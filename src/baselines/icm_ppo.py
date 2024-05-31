@@ -52,9 +52,9 @@ class Args:
     fig_frequency: int = 1
 
     # RPO SPECIFIC
-    env_id: str = "Maze-Ur"
+    env_id: str = "Maze-Ur-v0"
     """the id of the environment"""
-    total_timesteps: int = 50_000
+    total_timesteps: int = 100_000
     """total timesteps of the experiments"""
     learning_rate: float = 5e-4
     """the learning rate of the optimizer"""
@@ -72,7 +72,7 @@ class Args:
     """the number of mini-batches"""
     update_epochs: int = 10
     """the K epochs to update the policy"""
-    norm_adv: bool = True
+    norm_adv: bool = False
     """Toggles advantages normalization"""
     clip_coef: float = 0.2
     """the surrogate clipping coefficient"""
@@ -122,7 +122,7 @@ class Args:
     """the number of iterations (computed in runtime)"""
 
     # dataset 
-    beta_ratio: float = 1/128
+    beta_ratio: float = 1/4
     """the ratio of the beta"""
     nb_max_steps: int = 50_000
     """the maximum number of step in un"""
@@ -435,6 +435,9 @@ if __name__ == "__main__":
             rewards_un = np.concatenate([rewards_un, rewards_reshaped[idx_un]])
             dones_un = np.concatenate([dones_un, dones_reshaped[idx_un]])
             times_un = np.concatenate([times_un, times_reshaped[idx_un]])   
+        
+        print('reward max : ', rewards.max())
+        print('reward min : ', rewards.min())
 
         ########################### PPO UPDATE ###############################
         # bootstrap value if not done
