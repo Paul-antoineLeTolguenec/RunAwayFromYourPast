@@ -1,11 +1,10 @@
 # contrastive_exploration
 
 TODO : 
-1/ Offline and online SAC
-2/ json file for HP
+1/ xp untar
+2/ update our versions of the algorithme (KL rho and un-k)
 3/ beta tune
-4/ Slurm
-5/ Send Pandi + Calmip 
+4/ Offline and online SAC (IQL XP)
 
 # XP 
 3 XP : 
