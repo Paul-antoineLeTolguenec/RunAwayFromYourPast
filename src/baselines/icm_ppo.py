@@ -52,7 +52,7 @@ class Args:
     fig_frequency: int = 1
 
     # RPO SPECIFIC
-    env_id: str = "Maze-Ur-v0"
+    env_id: str = "HalfCheetah-v3"
     """the id of the environment"""
     total_timesteps: int = 100_000
     """total timesteps of the experiments"""
@@ -365,7 +365,11 @@ if __name__ == "__main__":
 
             # intrinsic reward
             with torch.no_grad():
-                rewards_intrinsic = icm.loss(obs=obs[step], action=actions[step], next_obs=torch.tensor(next_obs, device = device), dones=dones[step], reduce=False).detach().cpu().numpy()
+                rewards_intrinsic = icm.loss(obs=obs[step].to(torch.float32),
+                                             action=actions[step].to(torch.float32),
+                                             next_obs=torch.tensor(next_obs, device = device).to(torch.float32),
+                                             dones=dones[step], 
+                                             reduce=False).detach().cpu().numpy()
                 clipped_rewards_intrinsic = np.clip(rewards_intrinsic, -args.clip_intrinsic, args.clip_intrinsic)
                 rewards[step] = torch.tensor(clipped_rewards_intrinsic).to(device).unsqueeze(-1)
 

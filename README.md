@@ -1,8 +1,9 @@
 # contrastive_exploration
 
 TODO : 
-1/ xp untar
+1/ xp untar (almost done)
 2/ update our versions of the algorithme (KL rho and un-k)
+3/ why data is not sent properly baselines ? 
 3/ beta tune
 4/ Offline and online SAC (IQL XP)
 
