@@ -58,9 +58,9 @@ class Args:
     """the frequency of computing shannon entropy"""
 
     # RPO SPECIFIC
-    env_id: str = "Maze-Ur-v0"
+    env_id: str = "Hopper-v3"
     """the id of the environment"""
-    total_timesteps: int = 500_000
+    total_timesteps: int = 2_000_000
     """total timesteps of the experiments"""
     learning_rate: float = 5e-4
     """the learning rate of the optimizer"""
@@ -88,7 +88,7 @@ class Args:
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
     ent_coef: float = 0.01
     """coefficient of the entropy"""
-    ent_mask_coef: float = 0.05
+    ent_mask_coef: float = 0.01
     """coefficient of the entropy mask"""
     vf_coef: float = 0.5
     """coefficient of the value function"""
@@ -124,11 +124,11 @@ class Args:
     """if toggled, the extrinsic reward will be kept"""
     start_explore: int = 4
     """the number of updates to start exploring"""
-    coef_intrinsic : float = 1.0
+    coef_intrinsic : float = 0.1
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
-    beta_ratio: float = 1/128
+    beta_ratio: float = 1/256
     """the ratio of the beta"""
     nb_max_steps: int = 20_000
     """the maximum number of step in un"""
@@ -136,7 +136,7 @@ class Args:
     """the gamma constant"""
     beta_min: float = 1/512
     """the minimum beta"""
-    beta_max: float = 1/32
+    beta_max: float = 1/128
     """the maximum beta"""
 
     # to be filled in runtime
@@ -321,6 +321,7 @@ if __name__ == "__main__":
     min_dkl_rho_un = 0
     last_dkl_rho_un = 0
     beta_increment = 0
+    beta_adaptive = args.beta_ratio
     # TRY NOT TO MODIFY: start the game
     global_step = 0
     start_time = time.time()
@@ -385,13 +386,13 @@ if __name__ == "__main__":
                 mb_rho = batch_obs_rho[mb_rho_idx].to(device)
                 # mb un
                 # rho
-                beta_mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], int(args.classifier_batch_size*args.beta_ratio))
+                beta_mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], int(args.classifier_batch_size*beta_adaptive))
                 # un
                 if args.adaptive_sampling:
                     probs_un = update_probs(obs_un, classifier, device)
-                    beta_mb_un_idx = np.random.choice(np.arange(obs_un.shape[0]), int(args.classifier_batch_size*(1-args.beta_ratio)), p=probs_un)
+                    beta_mb_un_idx = np.random.choice(np.arange(obs_un.shape[0]), int(args.classifier_batch_size*(1-beta_adaptive)), p=probs_un)
                 else:
-                    beta_mb_un_idx = np.random.randint(0, obs_un.shape[0]-beta_increment,int(args.classifier_batch_size*(1-args.beta_ratio)))
+                    beta_mb_un_idx = np.random.randint(0, obs_un.shape[0]-beta_increment,int(args.classifier_batch_size*(1-beta_adaptive)))
                 mb_un = torch.tensor(np.concatenate((obs_un[beta_mb_un_idx], batch_obs_rho[beta_mb_rho_idx].cpu().numpy()), axis=0)).to(device)
                 # classifier loss + lipshitz regularization
                 loss = classifier.ce_loss_ppo(batch_q=mb_rho, batch_p=mb_un)
@@ -412,10 +413,14 @@ if __name__ == "__main__":
         # dkl_rho_un = args.polyak * dkl_rho_un + (1-args.polyak) * log_rho_un.mean().item()
         dkl_rho_un = log_rho_un.mean().item()
         rate_dkl = (dkl_rho_un - last_dkl_rho_un)
-        last_dkl_rho_un = dkl_rho_un
-        beta_increment += int(args.num_envs * args.num_steps*args.beta_ratio) if rate_dkl < 0 else 0
-        beta_increment = int(max(min(beta_increment, obs_un.shape[0]-args.num_envs*args.num_steps*args.beta_ratio),0)) if obs_un is not None else 0
-        print(f"DKL_RHO_UN: {dkl_rho_un}, RATE_DKL: {rate_dkl}, BETA_INCREMENT: {beta_increment}, OBS_UN: {obs_un.shape[0] if obs_un is not None else 0}")
+        # last_dkl_rho_un = dkl_rho_un
+        # beta_increment += int(args.num_envs * args.num_steps*beta_adaptive) if rate_dkl < 0 else 0
+        # beta_increment = int(max(min(beta_increment, obs_un.shape[0]-args.num_envs*args.num_steps*beta_adaptive),0)) if obs_un is not None else 0
+        max_dkl_rho_un = max(max_dkl_rho_un, dkl_rho_un)
+        min_dkl_rho_un = min(min_dkl_rho_un, dkl_rho_un)
+        normalized_dkl = (dkl_rho_un - min_dkl_rho_un) / (max_dkl_rho_un - min_dkl_rho_un)
+        beta_adaptive = args.beta_min + normalized_dkl * (args.beta_max - args.beta_min)
+        print(f"DKL_RHO_UN: {dkl_rho_un}, RATE_DKL: {rate_dkl}, BETA_INCREMENT: {beta_increment}, OBS_UN: {obs_un.shape[0] if obs_un is not None else 0}, BETA_ADAPTIVE: {beta_adaptive}")
         
 
         ########################### UPDATE UN ###############################
@@ -432,7 +437,7 @@ if __name__ == "__main__":
         dones_reshaped = dones_permute.reshape(-1).cpu().numpy()
         times_reshaped = times_permute.reshape(-1).cpu().numpy()
         # update un
-        idx_un = np.random.randint(0, obs_reshaped.shape[0]-1, int(args.beta_ratio*obs_reshaped.shape[0]))
+        idx_un = np.random.randint(0, obs_reshaped.shape[0]-1, int(beta_adaptive*obs_reshaped.shape[0]))
         if obs_un is None:
                 obs_un = obs_reshaped[idx_un]
                 next_obs_un = obs_reshaped[idx_un+1]
@@ -565,6 +570,8 @@ if __name__ == "__main__":
             "specific/rewards_std": rewards.std().item(),
             "v1_specific/dkl_rho_un": dkl_rho_un,
             "v1_specific/rate_dkl": rate_dkl,
+            "v1_specific/beta_increment": beta_increment,
+            "v1_specific/beta_adaptive": beta_adaptive,
         })
         if args.make_gif:
             # coverage matrix

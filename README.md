@@ -19,9 +19,30 @@ TODO :
 
 
 
+<!-- HP -->
+v1_kl : 
+maze/dmcs/robotics:
+beta_min = 1/512
+beta_max = 1/64
+beta_ratio = 1/128
+entropy_mask = 0.05
+entropy = 0.05
+coef_intrinsic = 1.0
+classifier_epoch = 1
+norm_adv = True
 
+mujoco:
+beta_min = 1/512
+beta_max = 1/128
+beta_ratio = 1/256
+entropy_mask = 0.05
+entropy = 0.01
+coef_intrinsic = 0.1
+classifier_epoch = 1
+norm_adv = True
 
-
+v2_kl :
+maze/dmcs/robotics:
 
 ## Metrics 
 * Coverage 
