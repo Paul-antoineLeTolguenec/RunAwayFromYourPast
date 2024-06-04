@@ -50,11 +50,14 @@ class Args:
     plotly: bool = False
     """if toggled, will use plotly instead of matplotlib"""
     fig_frequency: int = 1
+    """the frequency of plotting figures"""
+    shannon_compute_freq: int = 5
+    """the frequency of computing shannon entropy"""
 
     # RPO SPECIFIC
     env_id: str = "HalfCheetah-v3"
     """the id of the environment"""
-    total_timesteps: int = 100_000
+    total_timesteps: int = 500_000
     """total timesteps of the experiments"""
     learning_rate: float = 5e-4
     """the learning rate of the optimizer"""
@@ -143,9 +146,10 @@ class ICM(nn.Module):
         self.forward_2 = nn.Linear(32, feature_dim, device = device)
         # beta 
         self.beta = beta
+        
     def feature(self, x):
         x = F.relu(self.feature_1(x))
-        x = F.relu(self.feature_2(x))
+        x = self.feature_2(x)
         return x
     
     def forward(self, x, a):
@@ -161,7 +165,6 @@ class ICM(nn.Module):
         return x
 
     def loss(self, obs, next_obs, action, dones, reduce=True):
-        
         # feature encoding
         phi = self.feature(obs)
         next_phi = self.feature(next_obs)
@@ -174,7 +177,6 @@ class ICM(nn.Module):
         inverse_loss = F.mse_loss(pred_a, action)
         # forward_loss : MSE for continuous action space
         forward_loss = torch.sqrt(F.mse_loss(pred_phi, next_phi, reduction='none').sum(1))
-        forward_loss = torch.sqrt(forward_loss + 1e-6)
         return ((1-self.beta)*inverse_loss + self.beta*forward_loss.mean(), inverse_loss, forward_loss.mean()) if reduce else forward_loss
 
 
@@ -361,7 +363,7 @@ if __name__ == "__main__":
 
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, terminations, truncations, infos = envs.step(action.cpu().numpy())
-            extrinsic_rewards[step] = torch.tensor(reward).to(device).unsqueeze(-1)
+            extrinsic_rewards[step] = torch.tensor(reward).to(device).unsqueeze(-1).clone()
 
             # intrinsic reward
             with torch.no_grad():
@@ -410,7 +412,7 @@ if __name__ == "__main__":
         obs_permute = obs.permute(1,0,2)
         times_permute = times.permute(1,0,2)
         actions_permute = actions.permute(1,0,2)
-        rewards_permute = rewards.permute(1,0,2)
+        rewards_permute = extrinsic_rewards.permute(1,0,2)
         dones_permute = dones.permute(1,0,2)
         # reshape
         obs_reshaped = obs.reshape(-1, obs_permute.shape[-1]).cpu().numpy()
@@ -534,6 +536,11 @@ if __name__ == "__main__":
         var_y = np.var(y_true)
         explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
      
+        # compute shannon entropy and coverage on mu 
+        if update % args.shannon_compute_freq == 0:
+            shannon_entropy_mu, coverage_mu = env_check.get_shanon_entropy_and_coverage_mu(obs_un)
+            wandb.log({"specific/shannon_entropy_mu": shannon_entropy_mu, "specific/coverage_mu": coverage_mu, "global_step": global_step})
+            
         # metric
         wandb.log({
             "losses/value_loss": v_loss.item(),
@@ -547,17 +554,27 @@ if __name__ == "__main__":
             "specific/coverage": env_check.get_coverage(),
             "specific/shanon_entropy": env_check.shanon_entropy(),
             "charts/SPS": int(global_step / (time.time() - start_time)),
+            "global_step": global_step,
+            "update": update,
+            "specific/rewards_max": rewards.max().item(),
+            "specific/rewards_min": rewards.min().item(),
+            "specific/rewards_mean": rewards.mean().item(),
+            "specific/rewards_std": rewards.std().item(),
+            # losses
+            "losses/icm_loss": icm_loss.item() if obs_un is not None else 0,
+            "losses/inverse_loss": inverse_loss.item() if obs_un is not None else 0,
         })
-        # coverage matrix
-        if env_check.matrix_coverage.ndim > 2:
-        # Sum over all dimensions except the first two
-            reduced_matrix = env_check.matrix_coverage
-            for axis in reversed(range(2, reduced_matrix.ndim)):
-                reduced_matrix = np.sum(reduced_matrix, axis=axis)
-        else : 
-            reduced_matrix = env_check.matrix_coverage
-        normalized_matrix = (reduced_matrix - reduced_matrix.min()) / (reduced_matrix.max() - reduced_matrix.min()) * 255
-        send_matrix(wandb, np.rot90(normalized_matrix), "coverage", global_step) if update % args.fig_frequency == 0 else None
+        if args.make_gif:
+            # coverage matrix
+            if env_check.matrix_coverage.ndim > 2:
+            # Sum over all dimensions except the first two
+                reduced_matrix = env_check.matrix_coverage
+                for axis in reversed(range(2, reduced_matrix.ndim)):
+                    reduced_matrix = np.sum(reduced_matrix, axis=axis)
+            else : 
+                reduced_matrix = env_check.matrix_coverage
+            normalized_matrix = (reduced_matrix - reduced_matrix.min()) / (reduced_matrix.max() - reduced_matrix.min()) * 255
+            send_matrix(wandb, np.rot90(normalized_matrix), "coverage", global_step) if update % args.fig_frequency == 0 else None
         # log 
         print('shanon : ', env_check.shanon_entropy())
         print("SPS:", int(global_step / (time.time() - start_time)))

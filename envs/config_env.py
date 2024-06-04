@@ -47,7 +47,7 @@ config = {
     'type_id': 'dmcs',
     'kwargs': {
         'render_mode': 'rgb_array', 
-        'max_episode_steps': 100},
+        'max_episode_steps': 1000},
     'coverage_idx': np.array([0,1,2,3]),
     'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1], 'z_lim': [-1, 1], 'w_lim': [-1, 1]}
 },
@@ -55,7 +55,7 @@ config = {
 "DMCS-Ball-in-cup-v0": {
     'type_id': 'dmcs',
     'kwargs': {'render_mode': 'rgb_array', 
-               'max_episode_steps': 100},
+               'max_episode_steps': 1000},
     'coverage_idx': np.array([0,1,2,3]),
     'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1], 'z_lim': [-1, 1], 'w_lim': [-1, 1]}
 },
@@ -63,7 +63,7 @@ config = {
 "DMCS-Cart-k-Pole-v0": {
     'type_id': 'dmcs',
     'kwargs': {'render_mode': 'rgb_array', 
-               'max_episode_steps': 100},
+               'max_episode_steps': 1000},
     'coverage_idx': np.array([4,5,6,7]),
     'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1], 'z_lim': [-1, 1], 'w_lim': [-1, 1]}
 },
@@ -71,7 +71,7 @@ config = {
 "DMCS-Finger-v0": {
     'type_id': 'dmcs',
     'kwargs': {'render_mode': 'rgb_array', 
-               'max_episode_steps': 100},
+               'max_episode_steps': 1000},
     'coverage_idx': np.array([2,3,4,5]),
     'render_settings': {'x_lim': [-2.5, 2.5], 'y_lim': [-2.5, 2.5], 'z_lim': [-2.5, 2.5], 'w_lim': [-2.5, 2.5]}
 },
@@ -79,7 +79,7 @@ config = {
 "DMCS-Fish-v0": {
     'type_id': 'dmcs',
     'kwargs': {'render_mode': 'rgb_array', 
-               'max_episode_steps': 200},
+               'max_episode_steps': 1000},
     'coverage_idx': np.array([0,1]),
     'render_settings': {'x_lim': [-0.5, 0.5], 'y_lim': [-0.5, 0.5]}
 },

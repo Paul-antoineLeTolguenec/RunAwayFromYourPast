@@ -3,9 +3,9 @@
 
       "maze": {
         "v1_ppo_kl_adaptive_sampling": {
-                                        "cuda": true,
+                                        "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
                                         "save_data": true,
-                                        "make_gif": true, "fig_frequency": 20,
+                                        "make_gif": true, "fig_frequency": 10,
                                         "total_timesteps": 500000,
                                         "num_envs": 4,
                                         "norm_adv": false,
@@ -31,9 +31,9 @@
                                         },
 
         "v2_ppo_kl_adaptive_sampling": {
-                                        "cuda": true,
+                                        "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
                                         "save_data": true,
-                                        "make_gif": true, "fig_frequency": 20,
+                                        "make_gif": true, "fig_frequency": 10,
                                         "total_timesteps": 500000,
                                         "num_envs": 4,
                                         "norm_adv": false,
@@ -62,9 +62,9 @@
                                         },
 
         "v1_ppo_lipshitz_adaptive_sampling": {
-                                        "cuda": true,
+                                        "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
                                         "save_data": true,
-                                        "make_gif": true, "fig_frequency": 20,
+                                        "make_gif": true, "fig_frequency": 10,
                                         "total_timesteps": 500000,
                                         "num_envs": 4,
                                         "norm_adv": true,
@@ -94,9 +94,9 @@
                                         },
 
         "v2_ppo_lipshitz_adaptive_sampling": {
-                                        "cuda": true,
+                                        "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
                                         "save_data": true,
-                                        "make_gif": true, "fig_frequency": 20,
+                                        "make_gif": true, "fig_frequency": 10,
                                         "total_timesteps": 500000,
                                         "num_envs": 4,
                                         "norm_adv": false,
@@ -138,10 +138,10 @@
     "dmcs": {
 
     "v1_ppo_kl_adaptive_sampling": {
-                                    "cuda": true,
+                                    "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
                                     "save_data": true,
-                                    "make_gif": true, "fig_frequency": 20,
-                                    "total_timesteps": 500000,
+                                    "make_gif": true, "fig_frequency": 10,
+                                    "total_timesteps": 5000000,
                                     "num_envs": 4,
                                     "norm_adv": false,
                                     "clip_coef": 0.2,
@@ -161,15 +161,15 @@
                                     "coef_intrinsic": 1.0,
                                     "coef_extrinsic": 1.0,
                                     "beta_ratio": 0.015625,
-                                    "nb_max_steps": 20000,
+                                    "nb_max_steps": 100000,
                                     "gamma_cte": 0.0
                                     },
 
     "v2_ppo_kl_adaptive_sampling": {
-                                    "cuda": true,
+                                    "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
                                     "save_data": true,
-                                    "make_gif": true, "fig_frequency": 20,
-                                    "total_timesteps": 500000,
+                                    "make_gif": true, "fig_frequency": 10,
+                                    "total_timesteps": 5000000,
                                     "num_envs": 4,
                                     "norm_adv": false,
                                     "clip_coef": 0.2,
@@ -189,7 +189,7 @@
                                     "coef_intrinsic": 1.0,
                                     "coef_extrinsic": 1.0,
                                     "beta_ratio": 0.0078125,
-                                    "nb_max_steps": 20000,
+                                    "nb_max_steps": 100000,
                                     "nb_skill": 4,
                                     "lambda_im": 1.0,
                                     "lambda_ent": 1.0,
@@ -197,10 +197,10 @@
                                     },
 
     "v1_ppo_lipshitz_adaptive_sampling": {
-                                    "cuda": true,
+                                    "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
                                     "save_data": true,
-                                    "make_gif": true, "fig_frequency": 20,
-                                    "total_timesteps": 500000,
+                                    "make_gif": true, "fig_frequency": 10,
+                                    "total_timesteps": 5000000,
                                     "num_envs": 4,
                                     "norm_adv": true,
                                     "clip_coef": 0.2,
@@ -224,15 +224,15 @@
                                     "coef_intrinsic": 1.0,
                                     "coef_extrinsic": 1.0,
                                     "beta_ratio": 0.015625,
-                                    "nb_max_steps": 20000,
+                                    "nb_max_steps": 100000,
                                     "gamma_cte": 0.0
                                     },
 
     "v2_ppo_lipshitz_adaptive_sampling": {
-                                    "cuda": true,
+                                    "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
                                     "save_data": true,
-                                    "make_gif": true, "fig_frequency": 20,
-                                    "total_timesteps": 500000,
+                                    "make_gif": true, "fig_frequency": 10,
+                                    "total_timesteps": 5000000,
                                     "num_envs": 4,
                                     "norm_adv": false,
                                     "clip_coef": 0.2,
@@ -257,7 +257,7 @@
                                     "coef_intrinsic": 1.0,
                                     "coef_extrinsic": 1.0,
                                     "beta_ratio": 0.00390625,
-                                    "nb_max_steps": 20000,
+                                    "nb_max_steps": 100000,
                                     "w_rho_un": 1.0,
                                     "gamma_cte": 0.0,
                                     "n_agent": 4,
@@ -273,9 +273,9 @@
     "robotics": {
 
         "v1_ppo_kl_adaptive_sampling": {
-                                        "cuda": true,
+                                        "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
                                         "save_data": true,
-                                        "make_gif": true, "fig_frequency": 20,
+                                        "make_gif": true, "fig_frequency": 10,
                                         "total_timesteps": 500000,
                                         "num_envs": 4,
                                         "norm_adv": false,
@@ -301,9 +301,9 @@
                                         },
     
         "v2_ppo_kl_adaptive_sampling": {
-                                        "cuda": true,
+                                        "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
                                         "save_data": true,
-                                        "make_gif": true, "fig_frequency": 20,
+                                        "make_gif": true, "fig_frequency": 10,
                                         "total_timesteps": 500000,
                                         "num_envs": 4,
                                         "norm_adv": false,
@@ -332,9 +332,9 @@
                                         },
     
         "v1_ppo_lipshitz_adaptive_sampling": {
-                                        "cuda": true,
+                                        "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
                                         "save_data": true,
-                                        "make_gif": true, "fig_frequency": 20,
+                                        "make_gif": true, "fig_frequency": 10,
                                         "total_timesteps": 500000,
                                         "num_envs": 4,
                                         "norm_adv": true,
@@ -364,9 +364,9 @@
                                         },
     
         "v2_ppo_lipshitz_adaptive_sampling": {
-                                        "cuda": true,
+                                        "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
                                         "save_data": true,
-                                        "make_gif": true, "fig_frequency": 20,
+                                        "make_gif": true, "fig_frequency": 10,
                                         "total_timesteps": 500000,
                                         "num_envs": 4,
                                         "norm_adv": false,
@@ -408,9 +408,9 @@
         "mujoco": {
 
             "v1_ppo_kl_adaptive_sampling": {
-                                            "cuda": true,
+                                            "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
                                             "save_data": true,
-                                            "make_gif": true, "fig_frequency": 20,
+                                            "make_gif": true, "fig_frequency": 10,
                                             "total_timesteps": 5000000,
                                             "num_envs": 4,
                                             "norm_adv": false,
@@ -436,9 +436,9 @@
                                             },
         
             "v2_ppo_kl_adaptive_sampling": {
-                                            "cuda": true,
+                                            "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
                                             "save_data": true,
-                                            "make_gif": true, "fig_frequency": 20,
+                                            "make_gif": true, "fig_frequency": 10,
                                             "total_timesteps": 5000000,
                                             "num_envs": 4,
                                             "norm_adv": false,
@@ -467,9 +467,9 @@
                                             },
         
             "v1_ppo_lipshitz_adaptive_sampling": {
-                                            "cuda": true,
+                                            "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
                                             "save_data": true,
-                                            "make_gif": true, "fig_frequency": 20,
+                                            "make_gif": true, "fig_frequency": 10,
                                             "total_timesteps": 5000000,
                                             "num_envs": 4,
                                             "norm_adv": true,
@@ -499,9 +499,9 @@
                                             },
         
             "v2_ppo_lipshitz_adaptive_sampling": {
-                                            "cuda": true,
+                                            "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
                                             "save_data": true,
-                                            "make_gif": true, "fig_frequency": 20,
+                                            "make_gif": true, "fig_frequency": 10,
                                             "total_timesteps": 5000000,
                                             "num_envs": 4,
                                             "norm_adv": false,

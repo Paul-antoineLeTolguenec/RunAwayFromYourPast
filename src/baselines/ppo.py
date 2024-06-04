@@ -50,6 +50,9 @@ class Args:
     plotly: bool = False
     """if toggled, will use plotly instead of matplotlib"""
     fig_frequency: int = 1
+    """the frequency of plotting figures"""
+    shannon_compute_freq: int = 5
+    """the frequency of computing shannon entropy"""
 
     # RPO SPECIFIC
     env_id: str = "Maze-Ur"
@@ -297,7 +300,7 @@ if __name__ == "__main__":
 
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, terminations, truncations, infos = envs.step(action.cpu().numpy())
-            extrinsic_rewards[step] = torch.tensor(reward).to(device).unsqueeze(-1)
+            extrinsic_rewards[step] = torch.tensor(reward).to(device).unsqueeze(-1).clone()
             reward = reward if args.keep_extrinsic_reward else reward * 0.0
             times[step] = torch.tensor(np.array([infos["l"]])).transpose(0,1).to(device)
             done = np.logical_or(terminations, truncations)
@@ -431,6 +434,11 @@ if __name__ == "__main__":
         var_y = np.var(y_true)
         explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
      
+        # compute shannon entropy and coverage on mu 
+        if update % args.shannon_compute_freq == 0:
+            shannon_entropy_mu, coverage_mu = env_check.get_shanon_entropy_and_coverage_mu(obs_un)
+            wandb.log({"specific/shannon_entropy_mu": shannon_entropy_mu, "specific/coverage_mu": coverage_mu, "global_step": global_step})
+            
         # metric
         wandb.log({
             "losses/value_loss": v_loss.item(),
@@ -444,17 +452,25 @@ if __name__ == "__main__":
             "specific/coverage": env_check.get_coverage(),
             "specific/shanon_entropy": env_check.shanon_entropy(),
             "charts/SPS": int(global_step / (time.time() - start_time)),
+            "global_step": global_step,
+            "update": update,
+            "specific/rewards_max": rewards.max().item(),
+            "specific/rewards_min": rewards.min().item(),
+            "specific/rewards_mean": rewards.mean().item(),
+            "specific/rewards_std": rewards.std().item(),
         })
         # coverage matrix
-        if env_check.matrix_coverage.ndim > 2:
-        # Sum over all dimensions except the first two
-            reduced_matrix = env_check.matrix_coverage
-            for axis in reversed(range(2, reduced_matrix.ndim)):
-                reduced_matrix = np.sum(reduced_matrix, axis=axis)
-        else : 
-            reduced_matrix = env_check.matrix_coverage
-        normalized_matrix = (reduced_matrix - reduced_matrix.min()) / (reduced_matrix.max() - reduced_matrix.min()) * 255
-        send_matrix(wandb, np.rot90(normalized_matrix), "coverage", global_step) if update % args.fig_frequency == 0 else None
+        if args.make_gif:
+            # coverage matrix
+            if env_check.matrix_coverage.ndim > 2:
+            # Sum over all dimensions except the first two
+                reduced_matrix = env_check.matrix_coverage
+                for axis in reversed(range(2, reduced_matrix.ndim)):
+                    reduced_matrix = np.sum(reduced_matrix, axis=axis)
+            else : 
+                reduced_matrix = env_check.matrix_coverage
+            normalized_matrix = (reduced_matrix - reduced_matrix.min()) / (reduced_matrix.max() - reduced_matrix.min()) * 255
+            send_matrix(wandb, np.rot90(normalized_matrix), "coverage", global_step) if update % args.fig_frequency == 0 else None
         # log 
         print('shanon : ', env_check.shanon_entropy())
         print("SPS:", int(global_step / (time.time() - start_time)))

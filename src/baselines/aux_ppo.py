@@ -28,7 +28,7 @@ class Args:
     # XP RECORD
     exp_name: str = os.path.basename(__file__)[: -len(".py")]
     """the name of this experiment"""
-    seed: int = 0
+    seed: int = 1
     """seed of the experiment"""
     torch_deterministic: bool = True
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
@@ -46,11 +46,14 @@ class Args:
     """whether to save the data of the experiment"""
 
     # GIF
-    make_gif: bool = True
+    make_gif: bool = False
     """if toggled, will make gif """
     plotly: bool = False
     """if toggled, will use plotly instead of matplotlib"""
     fig_frequency: int = 50
+    """the frequency of plotting figures"""
+    shannon_compute_freq: int = 5
+    """the frequency of computing shannon entropy"""
 
     # RPO SPECIFIC
     env_id: str = "Hopper-v3"
@@ -103,6 +106,8 @@ class Args:
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
+    clip_intrinsic_reward: float = 10.0
+    """the clipping of the intrinsic reward"""
     vae_lr: float = 1e-3
     """the learning rate of the VAE"""
     vae_epochs: int = 16
@@ -111,6 +116,10 @@ class Args:
     """the latent dimension of the VAE"""
     feature_extractor: bool = True
     """if toggled, the feature extractor will be used"""
+    clip_vae: float = 120.0
+    """the clipping of the VAE"""
+    vae_batch_size: int = 256
+    """the batch size of the VAE"""
 
 
     # to be filled in runtime
@@ -147,27 +156,33 @@ def make_env(env_id, idx, capture_video, run_name):
     return thunk
 
 
+def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
+    torch.nn.init.orthogonal_(layer.weight, std)
+    torch.nn.init.constant_(layer.bias, bias_const)
+    return layer
 
 class VAE(nn.Module):
-    def __init__(self, input_dim, latent_dim, feature_extractor=False, env_id='Maze-U'):
+    def __init__(self, input_dim, latent_dim, feature_extractor=False, env_id='Maze-U', clip_vae=120.0, scale_l = 1000.0):
         super().__init__()
         self.feature_extractor = feature_extractor
+        self.clip_vae = clip_vae
         self.env_id = env_id
+        self.scale_l = scale_l
         self.encoder = nn.Sequential(
-            layer_init(nn.Linear(input_dim, 256)) if not feature_extractor else layer_init(nn.Linear(config[env_id]['coverage_idx'].shape[0], 256)),
+            nn.Linear(input_dim, 256) if not feature_extractor else nn.Linear(config[env_id]['coverage_idx'].shape[0], 256),
             nn.ReLU(),
-            layer_init(nn.Linear(256, 256)),
+            nn.Linear(256, 256),
             nn.ReLU(),
         )
-        self.mean_layer = layer_init(nn.Linear(256, latent_dim))
-        self.logstd_layer = layer_init(nn.Linear(256, latent_dim))
+        self.mean_layer = nn.Linear(256, latent_dim)
+        self.logstd_layer = nn.Linear(256, latent_dim)
 
         self.decoder = nn.Sequential(
-            layer_init(nn.Linear(latent_dim, 256)),
+            nn.Linear(latent_dim, 256),
             nn.ReLU(),
-            layer_init(nn.Linear(256, 256)),
+            nn.Linear(256, 256),
             nn.ReLU(),
-            layer_init(nn.Linear(256, input_dim)) if not feature_extractor else layer_init(nn.Linear(256, config[env_id]['coverage_idx'].shape[0])),
+            nn.Linear(256, input_dim) if not feature_extractor else nn.Linear(256, config[env_id]['coverage_idx'].shape[0]),
         )   
 
     def encode(self, x):
@@ -181,14 +196,14 @@ class VAE(nn.Module):
         return self.decoder(z)
 
     def forward(self, x):
-        mean, logstd = self.encode(x)
+        mean, logstd = self.encode(x/self.scale_l)
         z = mean + torch.randn_like(mean) * torch.exp(logstd)
-        x_recon = self.decode(z)
+        x_recon = torch.clamp(self.decode(z), -self.clip_vae, self.clip_vae)
         return x_recon, mean, logstd
     
     def loss(self, x, reduce=True):
         x_recon, mean, logstd = self(x)
-        x = self.feature(x) if self.feature_extractor else x
+        x = self.feature(x) if self.feature_extractor else x/self.scale_l
         recon_loss = F.mse_loss(x_recon, x, reduction='none').sum(1)
         kl_loss = -0.5 * (1 + 2 * logstd - mean ** 2 - torch.exp(2 * logstd)).sum(1)
         loss = recon_loss + kl_loss
@@ -199,11 +214,6 @@ class VAE(nn.Module):
     def feature(self, x):
         x=  x[:, :, config[self.env_id]['coverage_idx']] if x.dim() == 3 else x[:, config[self.env_id]['coverage_idx']]
         return x
-
-def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
-    torch.nn.init.orthogonal_(layer.weight, std)
-    torch.nn.init.constant_(layer.bias, bias_const)
-    return layer
 
 
 
@@ -316,7 +326,23 @@ if __name__ == "__main__":
     # Agent
     agent = Agent(envs).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
-    vae = VAE(np.array(envs.single_observation_space.shape).prod(), args.vae_latent_dim, args.feature_extractor, args.env_id).to(device)
+    # check type_id 
+    type_id = config[args.env_id]['type_id']
+    if type_id == 'maze':
+        scale_l = 1.0
+    elif type_id == 'dmcs':
+        scale_l = 10.0
+    elif type_id == 'mujoco':
+        scale_l = 1000.0
+    else:
+        scale_l = 10.0
+    print('scale_l : ', scale_l)
+    vae = VAE(np.array(envs.single_observation_space.shape).prod(), 
+              args.vae_latent_dim, 
+              args.feature_extractor, 
+              args.env_id, 
+              args.clip_vae,
+                scale_l).to(device)
     optimizer_vae = optim.Adam(vae.parameters(), lr=args.vae_lr, eps=1e-5)
     # rb
     replay_buffer = ReplayBuffer(capacity= int(1e6),
@@ -391,18 +417,25 @@ if __name__ == "__main__":
 
 
         ########################### VAE UPDATE ###############################
-        for _ in range(args.vae_epochs):
-            vae_loss = vae.loss(obs.reshape(-1, *envs.single_observation_space.shape))
-            optimizer_vae.zero_grad()
-            vae_loss.backward()
-            optimizer_vae.step()
+        if obs_un is not None:
+            batch_obs = obs.reshape(-1, obs.shape[-1])
+            for _ in range(args.vae_epochs):
+                idx = torch.randint(0, batch_obs.shape[0], (args.vae_batch_size,))
+                obs_batch = batch_obs[idx]
+                vae_loss = vae.loss(obs_batch)
+                optimizer_vae.zero_grad()
+                vae_loss.backward()
+                optimizer_vae.step()
 
         ############################ REWARD ##################################
         with torch.no_grad():
             # update the reward
             rewards_nn = vae.loss(obs.reshape(-1, *envs.single_observation_space.shape), reduce = False).reshape(args.num_steps, args.num_envs).unsqueeze(-1)
-
-        extrinsic_rewards = rewards 
+            print('portion of nan : ', torch.isnan(rewards_nn).sum()/rewards_nn.numel())
+            print('max reward : ', rewards_nn.max())
+            print('min reward : ', rewards_nn.min())
+            rewards_nn = rewards_nn.clamp(-args.clip_intrinsic_reward, args.clip_intrinsic_reward)
+        extrinsic_rewards = rewards.clone()
         rewards = args.coef_intrinsic * rewards_nn + args.coef_extrinsic * rewards if args.keep_extrinsic_reward else args.coef_intrinsic * rewards_nn
 
         ########################### UPDATE UN ###############################
@@ -530,6 +563,11 @@ if __name__ == "__main__":
         var_y = np.var(y_true)
         explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
      
+        # compute shannon entropy and coverage on mu 
+        if update % args.shannon_compute_freq == 0:
+            shannon_entropy_mu, coverage_mu = env_check.get_shanon_entropy_and_coverage_mu(obs_un)
+            wandb.log({"specific/shannon_entropy_mu": shannon_entropy_mu, "specific/coverage_mu": coverage_mu, "global_step": global_step})
+            
         # metric
         wandb.log({
             "losses/value_loss": v_loss.item(),
@@ -543,18 +581,27 @@ if __name__ == "__main__":
             "specific/coverage": env_check.get_coverage(),
             "specific/shanon_entropy": env_check.shanon_entropy(),
             "charts/SPS": int(global_step / (time.time() - start_time)),
+            "global_step": global_step,
+            "update": update,
+            "specific/rewards_max": rewards.max().item(),
+            "specific/rewards_min": rewards.min().item(),
+            "specific/rewards_mean": rewards.mean().item(),
+            "specific/rewards_std": rewards.std().item(),
+            # encoder
         })
         # coverage matrix
         # coverage matrix
-        if env_check.matrix_coverage.ndim > 2:
-        # Sum over all dimensions except the first two
-            reduced_matrix = env_check.matrix_coverage
-            for axis in reversed(range(2, reduced_matrix.ndim)):
-                reduced_matrix = np.sum(reduced_matrix, axis=axis)
-        else : 
-            reduced_matrix = env_check.matrix_coverage
-        normalized_matrix = (reduced_matrix - reduced_matrix.min()) / (reduced_matrix.max() - reduced_matrix.min()) * 255
-        send_matrix(wandb, np.rot90(normalized_matrix), "coverage", global_step) if update % args.fig_frequency == 0 else None
+        if args.make_gif:
+            # coverage matrix
+            if env_check.matrix_coverage.ndim > 2:
+            # Sum over all dimensions except the first two
+                reduced_matrix = env_check.matrix_coverage
+                for axis in reversed(range(2, reduced_matrix.ndim)):
+                    reduced_matrix = np.sum(reduced_matrix, axis=axis)
+            else : 
+                reduced_matrix = env_check.matrix_coverage
+            normalized_matrix = (reduced_matrix - reduced_matrix.min()) / (reduced_matrix.max() - reduced_matrix.min()) * 255
+            send_matrix(wandb, np.rot90(normalized_matrix), "coverage", global_step) if update % args.fig_frequency == 0 else None
         # log 
         print('shanon : ', env_check.shanon_entropy())
         print("SPS:", int(global_step / (time.time() - start_time)))

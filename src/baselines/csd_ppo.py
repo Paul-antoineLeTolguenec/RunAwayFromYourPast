@@ -54,6 +54,9 @@ class Args:
     plotly: bool = False
     """if toggled, will use plotly instead of matplotlib"""
     fig_frequency: int = 1
+    """the frequency of plotting figures"""
+    shannon_compute_freq: int = 5
+    """the frequency of computing shannon entropy"""
 
     # RPO SPECIFIC
     env_id: str = "Maze-Ur"
@@ -161,7 +164,8 @@ class Discriminator(torch.nn.Module):
                 env_name, 
                 featurize,
                 device, 
-                lambda_init = 1.0, 
+                lambda_init = 1.0,
+                scale_l = 1.0, 
                 epsilon = 1e-6):
         super(Discriminator, self).__init__()
         self.env_name = env_name
@@ -176,6 +180,7 @@ class Discriminator(torch.nn.Module):
         # learnable lagrange multiplier
         self.lambda_csd = torch.nn.Parameter(torch.tensor(lambda_init)) #lambda_csd in the paper
         self.eps = epsilon
+        self.scale_l = scale_l
     
     def forward(self, s):
         x=torch.nn.functional.relu(self.l1(s))
@@ -184,7 +189,7 @@ class Discriminator(torch.nn.Module):
         return x
     
     def predict(self, s):
-        x = s
+        x = s/self.scale_l
         x=torch.nn.functional.relu(self.pred_l1(x))
         x=torch.nn.functional.relu(self.pred_l2(x))
         s_next=self.pred_l3(x)
@@ -194,13 +199,13 @@ class Discriminator(torch.nn.Module):
     def d_csd(self, s, s_next, reduce=True):
         mu_s_next, logvar_s_next = self.predict(s)
         dist = torch.distributions.Normal(mu_s_next, torch.exp(logvar_s_next))
-        log_prob = dist.log_prob(s_next).sum(dim=-1)
+        log_prob = dist.log_prob(s_next/self.scale_l).sum(dim=-1)
         return - log_prob
     
     def mlh_loss(self, s, s_next, d):
         mu_s_next, logvar_s_next = self.predict(s)
         dist = torch.distributions.Normal(mu_s_next, torch.exp(logvar_s_next))
-        log_prob = dist.log_prob(s_next)
+        log_prob = dist.log_prob(s_next/self.scale_l)
         return -log_prob.mean()
 
     def lipshitz_loss(self, s, s_next, z, d):
@@ -323,11 +328,23 @@ if __name__ == "__main__":
     # Agent
     agent = Agent(envs, args.nb_skill).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
+    # check type_id 
+    type_id = config[args.env_id]['type_id']
+    if type_id == 'maze':
+        scale_l = 1.0
+    elif type_id == 'dmcs':
+        scale_l = 10.0
+    elif type_id == 'mujoco':
+        scale_l = 1000.0
+    else:
+        scale_l = 10.0
+    print('scale_l : ', scale_l)
     discriminator = Discriminator(state_dim=np.array(envs.single_observation_space.shape).prod(),
                                     z_dim=args.nb_skill,
                                     env_name=args.env_id,
                                     featurize=args.feature_extractor,
-                                    device=device).to(device)
+                                    device=device, 
+                                    scale_l = scale_l).to(device)
     optimizer_discriminator = optim.Adam(discriminator.parameters(), lr=args.discriminator_lr, eps=1e-5)
     # REPLAY BUFFER
     replay_buffer = ReplayBuffer(capacity= int(1e6),
@@ -451,7 +468,7 @@ if __name__ == "__main__":
             intrinsic_reward = torch.cat([w_mi, torch.zeros((1, args.nb_skill,1)).to(device)], dim=0) * 10.0
             # normalized 
             # intrinsic_reward = (intrinsic_reward - intrinsic_reward.mean(dim=1, keepdim=True)) / (intrinsic_reward.std(dim=1, keepdim=True) + 1e-8)
-            extrinsic_rewards = rewards
+            extrinsic_rewards = rewards.clone()
             rewards = intrinsic_reward * args.coef_intrinsic + rewards * args.coef_extrinsic if args.keep_extrinsic_reward else intrinsic_reward*args.coef_intrinsic
 
 
@@ -580,6 +597,11 @@ if __name__ == "__main__":
         y_pred, y_true = b_values.cpu().numpy(), b_returns.cpu().numpy()
         var_y = np.var(y_true)
         explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
+        # compute shannon entropy and coverage on mu 
+        if update % args.shannon_compute_freq == 0:
+            shannon_entropy_mu, coverage_mu = env_check.get_shanon_entropy_and_coverage_mu(obs_un)
+            wandb.log({"specific/shannon_entropy_mu": shannon_entropy_mu, "specific/coverage_mu": coverage_mu, "global_step": global_step})
+            
         # metric
         wandb.log({
             "losses/value_loss": v_loss.item(),
@@ -593,17 +615,25 @@ if __name__ == "__main__":
             "specific/coverage": env_check.get_coverage(),
             "specific/shanon_entropy": env_check.shanon_entropy(),
             "charts/SPS": int(global_step / (time.time() - start_time)),
+            "global_step": global_step,
+            "update": update,
+            "specific/rewards_max": rewards.max().item(),
+            "specific/rewards_min": rewards.min().item(),
+            "specific/rewards_mean": rewards.mean().item(),
+            "specific/rewards_std": rewards.std().item(),
         })
         # coverage matrix
-        if env_check.matrix_coverage.ndim > 2:
-        # Sum over all dimensions except the first two
-            reduced_matrix = env_check.matrix_coverage
-            for axis in reversed(range(2, reduced_matrix.ndim)):
-                reduced_matrix = np.sum(reduced_matrix, axis=axis)
-        else : 
-            reduced_matrix = env_check.matrix_coverage
-        normalized_matrix = (reduced_matrix - reduced_matrix.min()) / (reduced_matrix.max() - reduced_matrix.min()) * 255
-        send_matrix(wandb, np.rot90(normalized_matrix), "coverage", global_step) if update % args.fig_frequency == 0 else None
+        if args.make_gif:
+            # coverage matrix
+            if env_check.matrix_coverage.ndim > 2:
+            # Sum over all dimensions except the first two
+                reduced_matrix = env_check.matrix_coverage
+                for axis in reversed(range(2, reduced_matrix.ndim)):
+                    reduced_matrix = np.sum(reduced_matrix, axis=axis)
+            else : 
+                reduced_matrix = env_check.matrix_coverage
+            normalized_matrix = (reduced_matrix - reduced_matrix.min()) / (reduced_matrix.max() - reduced_matrix.min()) * 255
+            send_matrix(wandb, np.rot90(normalized_matrix), "coverage", global_step) if update % args.fig_frequency == 0 else None
         # log 
         print('shanon : ', env_check.shanon_entropy())
         print("SPS:", int(global_step / (time.time() - start_time)))

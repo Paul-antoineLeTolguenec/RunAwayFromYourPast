@@ -52,6 +52,9 @@ class Args:
     plotly: bool = False
     """if toggled, will use plotly instead of matplotlib"""
     fig_frequency: int = 1
+    """the frequency of plotting figures"""
+    shannon_compute_freq: int = 5
+    """the frequency of computing shannon entropy"""
 
     # RPO SPECIFIC
     env_id: str = "Maze-Ur"
@@ -189,7 +192,7 @@ class Classifier(torch.nn.Module):
     
     def mlh_loss(self, obs, z):
         # change dtype to int
-        z = z.type(torch.int64)-1
+        z = z.type(torch.int64)
         p_z = self.softmax(self.forward_z(obs))
         p_z_i = torch.sum(p_z*z, dim=-1)
         return -torch.mean(torch.log(p_z_i))
@@ -199,23 +202,23 @@ class Classifier(torch.nn.Module):
         return x
 
 class VAE(nn.Module):
-    def __init__(self, input_dim, latent_dim):
+    def __init__(self, input_dim, latent_dim, scale_l = 1000.0):
         super().__init__()
         self.encoder = nn.Sequential(
-            layer_init(nn.Linear(input_dim, 256)),
+            nn.Linear(input_dim, 256),
             nn.ReLU(),
-            layer_init(nn.Linear(256, 256)),
+            nn.Linear(256, 256),
             nn.ReLU(),
         )
-        self.mean_layer = layer_init(nn.Linear(256, latent_dim))
-        self.logstd_layer = layer_init(nn.Linear(256, latent_dim))
-
+        self.mean_layer = nn.Linear(256, latent_dim)
+        self.logstd_layer = nn.Linear(256, latent_dim)
+        self.scale_l = scale_l
         self.decoder = nn.Sequential(
-            layer_init(nn.Linear(latent_dim, 256)),
+            nn.Linear(latent_dim, 256),
             nn.ReLU(),
-            layer_init(nn.Linear(256, 256)),
+            nn.Linear(256, 256),
             nn.ReLU(),
-            layer_init(nn.Linear(256, input_dim)),
+            nn.Linear(256, input_dim),
         )
 
     def encode(self, x):
@@ -228,14 +231,14 @@ class VAE(nn.Module):
         return self.decoder(z)
 
     def forward(self, x):
-        mean, logstd = self.encode(x)
+        mean, logstd = self.encode(x/ self.scale_l)
         z = mean + torch.randn_like(mean) * torch.exp(logstd)
         x_recon = self.decode(z)
         return x_recon, mean, logstd
     
     def loss(self, x, reduce=True):
         x_recon, mean, logstd = self(x)
-        recon_loss = F.mse_loss(x_recon, x, reduction='none').sum(-1)
+        recon_loss = F.mse_loss(x_recon, x/self.scale_l, reduction='none').sum(-1)
         kl_loss = -0.5 * (1 + 2 * logstd - mean ** 2 - torch.exp(2 * logstd)).sum(-1)
         loss = recon_loss + kl_loss
         if reduce:
@@ -356,6 +359,17 @@ if __name__ == "__main__":
                             args.env_id,
                             feature_extractor = args.feature_extractor).to(device)
     optimizer_classifier = optim.Adam(classifier.parameters(), lr=args.classifier_lr, eps=1e-5)
+    # check type_id 
+    type_id = config[args.env_id]['type_id']
+    if type_id == 'maze':
+        scale_l = 1.0
+    elif type_id == 'dmcs':
+        scale_l = 10.0
+    elif type_id == 'mujoco':
+        scale_l = 1000.0
+    else:
+        scale_l = 10.0
+    print('scale_l : ', scale_l)
     vae = VAE(np.array(envs.single_observation_space.shape).prod(), args.vae_latent_dim).to(device)
     optimizer_vae = optim.Adam(vae.parameters(), lr=args.vae_lr, eps=1e-5)
     replay_buffer = ReplayBuffer(capacity= int(1e6),
@@ -460,7 +474,7 @@ if __name__ == "__main__":
             # full intrinsic reward 
             intrinsic_reward = intrinsic_reward_classifier + intrinsic_reward_vae
 
-            extrinsic_rewards = rewards
+            extrinsic_rewards = rewards.clone()
             rewards = intrinsic_reward * args.coef_intrinsic + rewards * args.coef_extrinsic if args.keep_extrinsic_reward else intrinsic_reward*args.coef_intrinsic
         
         ########################### UPDATE UN ###############################
@@ -589,6 +603,11 @@ if __name__ == "__main__":
         y_pred, y_true = b_values.cpu().numpy(), b_returns.cpu().numpy()
         var_y = np.var(y_true)
         explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
+        # compute shannon entropy and coverage on mu 
+        if update % args.shannon_compute_freq == 0:
+            shannon_entropy_mu, coverage_mu = env_check.get_shanon_entropy_and_coverage_mu(obs_un)
+            wandb.log({"specific/shannon_entropy_mu": shannon_entropy_mu, "specific/coverage_mu": coverage_mu, "global_step": global_step})
+            
         # metric
         wandb.log({
             "losses/value_loss": v_loss.item(),
@@ -602,17 +621,27 @@ if __name__ == "__main__":
             "specific/coverage": env_check.get_coverage(),
             "specific/shanon_entropy": env_check.shanon_entropy(),
             "charts/SPS": int(global_step / (time.time() - start_time)),
+            "global_step": global_step,
+            "update": update,
+            "specific/rewards_max": rewards.max().item(),
+            "specific/rewards_min": rewards.min().item(),
+            "specific/rewards_mean": rewards.mean().item(),
+            "specific/rewards_std": rewards.std().item(),
+            # smm loss
+            "losses/smm_loss": loss.item() if obs_un is not None else 0.0,
         })
         # coverage matrix
-        if env_check.matrix_coverage.ndim > 2:
-        # Sum over all dimensions except the first two
-            reduced_matrix = env_check.matrix_coverage
-            for axis in reversed(range(2, reduced_matrix.ndim)):
-                reduced_matrix = np.sum(reduced_matrix, axis=axis)
-        else : 
-            reduced_matrix = env_check.matrix_coverage
-        normalized_matrix = (reduced_matrix - reduced_matrix.min()) / (reduced_matrix.max() - reduced_matrix.min()) * 255
-        send_matrix(wandb, np.rot90(normalized_matrix), "coverage", global_step) if update % args.fig_frequency == 0 else None
+        if args.make_gif:
+            # coverage matrix
+            if env_check.matrix_coverage.ndim > 2:
+            # Sum over all dimensions except the first two
+                reduced_matrix = env_check.matrix_coverage
+                for axis in reversed(range(2, reduced_matrix.ndim)):
+                    reduced_matrix = np.sum(reduced_matrix, axis=axis)
+            else : 
+                reduced_matrix = env_check.matrix_coverage
+            normalized_matrix = (reduced_matrix - reduced_matrix.min()) / (reduced_matrix.max() - reduced_matrix.min()) * 255
+            send_matrix(wandb, np.rot90(normalized_matrix), "coverage", global_step) if update % args.fig_frequency == 0 else None
         # log 
         print('shanon : ', env_check.shanon_entropy())
         print("SPS:", int(global_step / (time.time() - start_time)))

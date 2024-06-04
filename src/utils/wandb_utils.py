@@ -45,19 +45,35 @@ def find_run_id(project_name: str, run_name: str):
         if run.name == run_name:
             return run.id
     return None
+
+def get_failed_runs(project_name: str, status: list = ["failed", "crashed"], algo_name: str = None, remove: bool = False):
+    api = wandb.Api()
+    runs = api.runs(project_name)
+    failed_runs = []
+    for run in runs:
+        if run.state == "failed" or run.state == "crashed":
+            if algo_name is None:
+                failed_runs.append(run.name)
+            else:
+                if algo_name in run.name:
+                    failed_runs.append(run.name)
+                else:
+                    None
+    if remove:
+        for run_name in failed_runs:
+            run_id = find_run_id(project_name, run_name)
+            api.run(f"{project_name}/{run_id}").delete()
+    
+    return failed_runs
     
 
 
    
 if __name__ == "__main__":
-    wandb.login()
-
-    # project_name = "contrastive_exploration"
-    # # run_id = "Maze-Ur__aux_ppo__0"
-    # run_id = "HalfCheetah-v3__v1_ppo_lipshitz_adaptive_sampling__0"
-
-    # run_id = find_run_id(project_name, run_id)
-    # print(run_id)
+    project_name = "contrastive_exploration"
+    failed_runs = get_failed_runs(project_name, algo_name='ngu', remove=True)
+    print(failed_runs)
+    print('nb failed runs:', len(failed_runs))
     # # dataset
     # print('project_name:', project_name)
     # print('run_id:', run_id)
