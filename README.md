@@ -75,7 +75,6 @@ norm_adv = false
 
 ## v2_kl :
 maze/dmcs/robotics:
-maze/dmcs/robotics:
 beta_min = 0.001953125
 beta_max = 0.0078125
 beta_ratio = 0.015625
@@ -86,6 +85,24 @@ entropy = 0.05
 coef_intrinsic = 1.0
 classifier_epoch = 1
 norm_adv = false
+start_explore =  4
+lambda_im = 1.0
+lambda_ent = 1.0
+
+mujoco:
+beta_min = 0.001953125
+beta_max = 0.0078125
+beta_ratio = 0.00390625
+adaptive_beta = false
+beta_increment_bool = true
+entropy_mask = 0.05
+entropy = 0.05
+coef_intrinsic = 1.0
+classifier_epoch = 1
+norm_adv = false
+start_explore =  16
+lambda_im = 0.5
+lambda_ent = 1.0
 
 ## Metrics 
 * Coverage 
