@@ -37,7 +37,7 @@ class Args:
     """if toggled, cuda will be enabled by default"""
     track: bool = True
     """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "contrastive_exploration"
+    wandb_project_name: str = "contrastive_test"
     """the wandb's project name"""
     wandb_entity: str = None
     """the entity (team) of wandb's project"""
@@ -57,7 +57,7 @@ class Args:
     """the frequency of computing shannon entropy"""
 
     # RPO SPECIFIC
-    env_id: str = "HalfCheetah-v3"
+    env_id: str = "Hopper-v3"
     """the id of the environment"""
     total_timesteps: int = 500_000
     """total timesteps of the experiments"""
@@ -77,7 +77,7 @@ class Args:
     """the number of mini-batches"""
     update_epochs: int = 10
     """the K epochs to update the policy"""
-    norm_adv: bool = True
+    norm_adv: bool = False
     """Toggles advantages normalization"""
     clip_coef: float = 0.2
     """the surrogate clipping coefficient"""
@@ -85,9 +85,9 @@ class Args:
     """the mask clipping coefficient"""
     clip_vloss: bool = False #True
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
-    ent_coef: float = 0.01
+    ent_coef: float = 0.05
     """coefficient of the entropy"""
-    ent_mask_coef: float = 0.01
+    ent_mask_coef: float = 0.05
     """coefficient of the entropy mask"""
     vf_coef: float = 0.5
     """coefficient of the value function"""
@@ -101,7 +101,7 @@ class Args:
     """the learning rate of the classifier"""
     classifier_epochs: int = 1
     """the number of epochs to train the classifier"""
-    classifier_batch_size: int = 256
+    classifier_batch_size: int = 128
     """the batch size of the classifier"""
     feature_extractor: bool = False
     """if toggled, a feature extractor will be used"""
@@ -109,11 +109,11 @@ class Args:
     """the percentage of the time to use the classifier"""
     epsilon: float = 1e-3
     """the epsilon of the classifier"""
-    lambda_init: float = 25.0 #50 in mazes
+    lambda_init: float = 10.0 #50 in mazes
     """the lambda of the classifier"""
     bound_spectral: float = 1.0
     """the bound spectral of the classifier"""
-    clip_lim: float = 100.0
+    clip_lim: float = 50.0
     """the clipping limit of the classifier"""
     adaptive_sampling: bool = False
     """if toggled, the sampling will be adaptive"""
@@ -139,9 +139,18 @@ class Args:
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
-    beta_ratio: float = 1/64
+    beta_ratio: float = 1/256
     """the ratio of the beta"""
-    nb_max_steps: int = 50_000
+    beta_min: float = 1/1024
+    """the minimum of the beta"""
+    beta_max: float = 1/128
+    """the maximum of the beta"""
+    adaptive_beta: bool = False
+    """if toggled, the beta will be adaptive"""
+    beta_increment_bool: bool = False
+    """if toggled, the beta will be incremented"""
+
+    nb_max_steps: int = 20_000
     """the maximum number of step in un"""
     gamma_cte: float = 0.0
     """the constant gamma"""
@@ -327,9 +336,13 @@ if __name__ == "__main__":
     dones_un = None
     times_un = None
 
-    # INIT DKL_RHO_UN
-    dkl_rho_un = 0
-    last_dkl_rho_un = 0
+    # INIT Wasserstein Rho Un
+    w_rho_un = 0
+    max_w_rho_un = 0
+    min_w_rho_un = 0
+    last_w_rho_un = 0
+    beta_increment = 0
+    beta_adaptive = args.beta_ratio
 
     # TRY NOT TO MODIFY: start the game
     global_step = 0
@@ -380,12 +393,14 @@ if __name__ == "__main__":
        
 
        ########################### CLASSIFIER UPDATE ########################################
+        total_classification_loss = 0
+        total_lipshitz_regu = 0
         if update > args.start_explore:
             # CLASSIFIER TRAINING
             batch_obs_rho = obs.permute(1,0,2).reshape(-1, obs.shape[-1]).to(device)
             batch_dones_rho = dones.permute(1,0,2).reshape(-1).to(device)
             batch_times_rho = times.permute(1,0,2).reshape(-1).to(device)
-            prob_unorm = torch.clamp(1/torch.tensor(args.gamma-args.gamma_cte).pow(batch_times_rho.cpu()),1_00.0)
+            prob_unorm = torch.clamp(1/torch.tensor(args.gamma+0.009).pow(batch_times_rho.cpu()),1_00.0)
             prob = prob_unorm[:-1]/prob_unorm[:-1].sum()
             # classifier epoch 
             classifier_epochs = max((obs_un.shape[0] // args.classifier_batch_size) * args.classifier_epochs, (batch_obs_rho.shape[0] // args.classifier_batch_size) * args.classifier_epochs)
@@ -398,8 +413,8 @@ if __name__ == "__main__":
                 next_mb_rho = batch_obs_rho[mb_rho_idx+1].to(device)
                 done_mb_rho = batch_dones_rho[mb_rho_idx].to(device)
                 # mb un
-                beta_mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0]-1, int(args.classifier_batch_size*args.beta_ratio))
-                beta_mb_un_idx = np.random.randint(0, obs_un.shape[0],int(args.classifier_batch_size*(1-args.beta_ratio)))
+                beta_mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0]-1, int(args.classifier_batch_size*beta_adaptive))
+                beta_mb_un_idx = np.random.randint(0, obs_un.shape[0] - beta_increment ,int(args.classifier_batch_size*(1-beta_adaptive)))
                 mb_un = torch.tensor(np.concatenate((obs_un[beta_mb_un_idx], batch_obs_rho[beta_mb_rho_idx].cpu().numpy()), axis=0)).to(device)
                 next_mb_un = torch.tensor(np.concatenate((next_obs_un[beta_mb_un_idx], batch_obs_rho[beta_mb_rho_idx+1].cpu().numpy()), axis=0)).to(device)
                 done_mb_un = torch.tensor(np.concatenate((dones_un[beta_mb_un_idx], batch_dones_rho[beta_mb_rho_idx].cpu().numpy()), axis=0)).to(device)
@@ -410,6 +425,7 @@ if __name__ == "__main__":
                 classifier_optimizer.zero_grad()
                 loss.backward()
                 classifier_optimizer.step()
+                total_classification_loss += loss.item()/classifier_epochs
                 # lambda loss
                 _, lipshitz_regu = classifier.lipshitz_loss_ppo(batch_q= mb_rho, batch_p = mb_un, 
                                                         q_batch_s =  mb_rho, q_batch_next_s = next_mb_rho, q_dones = done_mb_rho,
@@ -418,28 +434,37 @@ if __name__ == "__main__":
                 classifier_optimizer.zero_grad()
                 lambda_loss.backward()
                 classifier_optimizer.step()
+                total_lipshitz_regu += lipshitz_regu.item()/classifier_epochs
 
 
 
         ############################ INTRINSIC REWARD ########################################
         with torch.no_grad():
-            log_rho_un = classifier(obs) 
-            # log_rho_un = log_rho_un - torch.min(log_rho_un)
-            # log_rho_un = torch.cat([classifier(obs[1:])-classifier(obs[:-1]), torch.zeros(1, args.num_envs, 1).to(device)], dim=0)
+            intrinsic_reward = classifier(obs)
+            # obs_d = classifier(obs[:-1])
+            # next_obs_d = classifier(obs[1:])
+            # intrinsic_reward = torch.cat([-(next_obs_d-obs_d), torch.zeros((1, args.num_envs,1)).to(device)], dim=0)
+
         extrinsic_rewards = rewards.clone()
-        rewards = args.coef_extrinsic * rewards + args.coef_intrinsic * log_rho_un if args.keep_extrinsic_reward else args.coef_intrinsic * log_rho_un
-        mask_pos = (log_rho_un > 0).float()
-        # UPDATE DKL average
-        # dkl_rho_un = args.polyak * dkl_rho_un + (1-args.polyak) * log_rho_un.mean().item()
-        dkl_rho_un = log_rho_un.mean().item()
-        last_dkl_rho_un = dkl_rho_un
-        rate_dkl = (dkl_rho_un - last_dkl_rho_un)
-        print(f"DKL_RHO_UN: {dkl_rho_un}, RATE_DKL: {rate_dkl}")
-        # print(f'UN SHAPE: {obs_un.shape}')
-        
-        # UPDATE UN
-        # if ((log_rho_un>=0)*log_rho_un).mean() > args.clip_lim * 0.5:
-        # if log_rho_un.mean().item() > 0:
+        rewards = args.coef_extrinsic * rewards + args.coef_intrinsic * intrinsic_reward if args.keep_extrinsic_reward else args.coef_intrinsic * intrinsic_reward
+        mask_pos = (intrinsic_reward > 0).float()
+
+        ############################ WASSERSTEIN SPEED ESTIMATION ########################################
+
+        w_rho_un = intrinsic_reward.mean().item()
+        rate_w_rho = w_rho_un - last_w_rho_un
+        last_w_rho_un = w_rho_un
+        # BETA INCREMENT
+        if args.beta_increment_bool:
+            beta_increment += int(args.num_envs * args.num_steps*beta_adaptive) if rate_w_rho < 0 else 0
+            beta_increment = int(max(min(beta_increment, obs_un.shape[0]-args.num_envs*args.num_steps*beta_adaptive),0)) if obs_un is not None else 0
+        # BETA ADAPTIVE
+        max_w_rho_un = max(max_w_rho_un, w_rho_un)
+        min_w_rho_un = min(min_w_rho_un, w_rho_un)
+        normalized_w_rho = (w_rho_un - min_w_rho_un) / (max_w_rho_un - min_w_rho_un)
+        beta_adaptive = args.beta_min + normalized_w_rho * (args.beta_max - args.beta_min) if args.adaptive_beta else args.beta_ratio
+        print(f"BETA ADAPTIVE : {beta_adaptive}, BETA INCREMENT : {beta_increment}, W_RHO : {w_rho_un}, RATE : {rate_w_rho}, OBS_UN : {obs_un.shape[0] if obs_un is not None else 0}")
+
         ########################### UPDATE UN ########################################
         # permute
         obs_permute = obs.permute(1,0,2)
@@ -454,7 +479,7 @@ if __name__ == "__main__":
         dones_reshaped = dones_permute.reshape(-1).cpu().numpy()
         times_reshaped = times_permute.reshape(-1).cpu().numpy()
         # update un
-        idx_un = np.random.randint(0, obs_reshaped.shape[0]-1, int(args.beta_ratio*obs_reshaped.shape[0]))
+        idx_un = np.random.randint(0, obs_reshaped.shape[0]-1, int(beta_adaptive*obs_reshaped.shape[0]))
         if obs_un is None:
                 obs_un = obs_reshaped[idx_un]
                 next_obs_un = obs_reshaped[idx_un+1]
@@ -498,6 +523,8 @@ if __name__ == "__main__":
         b_logprobs = logprobs.reshape(-1)
         b_actions = actions.reshape((-1,) + envs.single_action_space.shape)
         b_advantages = advantages.reshape(-1)
+        if args.norm_adv:
+            b_advantages = (b_advantages - b_advantages.mean()) / (b_advantages.std() + 1e-8)
         b_returns = returns.reshape(-1)
         b_values = values.reshape(-1)
         b_mask_pos = mask_pos.reshape(-1)
@@ -521,8 +548,6 @@ if __name__ == "__main__":
                     clipfracs += [((ratio - 1.0).abs() > args.clip_coef).float().mean().item()]
 
                 mb_advantages = b_advantages[mb_inds]
-                if args.norm_adv:
-                    mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
                 # Policy loss
                 pg_loss1 = -mb_advantages * ratio
                 pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - args.clip_coef, 1 + args.clip_coef)
@@ -584,6 +609,13 @@ if __name__ == "__main__":
             "specific/rewards_min": rewards.min().item(),
             "specific/rewards_mean": rewards.mean().item(),
             "specific/rewards_std": rewards.std().item(),
+            # LOSS SPECIFIC
+            "specific/classification_loss": total_classification_loss,
+            "specific/lipshitz_regu": total_lipshitz_regu,
+            "specific/beta_adaptive": beta_adaptive,
+            "specific/beta_increment": beta_increment,
+            "specific/w_rho_un": w_rho_un,
+            "specific/rate_w_rho": rate_w_rho,
         })
         if args.make_gif:
             # coverage matrix
@@ -607,7 +639,7 @@ if __name__ == "__main__":
             if args.make_gif : 
                 image = env_plot.gif(obs_un = obs_un,
                                 obs=obs,
-                                    classifier = None,
+                                    classifier = classifier,
                                     device= device)
                 send_matrix(wandb, image, "gif", global_step)
             if args.plotly:
