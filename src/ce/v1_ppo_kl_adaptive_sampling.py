@@ -138,6 +138,8 @@ class Args:
     """the minimum beta"""
     beta_max: float = 1/128
     """the maximum beta"""
+    adaptative_beta: bool = True
+    """if toggled, the beta will be adaptative"""
 
     # to be filled in runtime
     batch_size: int = 0
