@@ -84,6 +84,7 @@ entropy_mask = 0.05
 entropy = 0.05
 coef_intrinsic = 1.0
 classifier_epoch = 1
+classifier_lr = 1e-3
 norm_adv = false
 start_explore =  4
 lambda_im = 1.0
@@ -99,10 +100,13 @@ entropy_mask = 0.05
 entropy = 0.05
 coef_intrinsic = 1.0
 classifier_epoch = 1
+classifier_lr = 1e-4
 norm_adv = false
 start_explore =  16
 lambda_im = 0.5
 lambda_ent = 1.0
+
+## v2_lipshitz :
 
 ## Metrics 
 * Coverage 

@@ -57,7 +57,7 @@ class Args:
     """the frequency of computing shannon entropy"""
 
     # RPO SPECIFIC
-    env_id: str = "HalfCheetah-v3"
+    env_id: str = "Maze-Ur-v0"
     """the id of the environment"""
     total_timesteps: int = 500_000
     """total timesteps of the experiments"""
@@ -77,7 +77,7 @@ class Args:
     """the number of mini-batches"""
     update_epochs: int = 10
     """the K epochs to update the policy"""
-    norm_adv: bool = False  
+    norm_adv: bool = False 
     """Toggles advantages normalization"""
     clip_coef: float = 0.2
     """the surrogate clipping coefficient"""
@@ -97,7 +97,7 @@ class Args:
     """the target KL divergence threshold"""
 
     # CLASSIFIER SPECIFIC
-    classifier_lr: float = 1e-3
+    classifier_lr: float = 1e-4
     """the learning rate of the classifier"""
     classifier_epochs: int =1
     """the number of epochs to train the classifier"""
@@ -128,7 +128,7 @@ class Args:
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
-    beta_ratio: float = 1/2048
+    beta_ratio: float = 1/64
     """the ratio of the beta"""
     nb_max_steps: int = 50_000
     """the maximum number of step in un"""
@@ -141,12 +141,14 @@ class Args:
     """if toggled, the beta will be adaptive"""
     beta_increment_bool: bool = False
     """if toggled, the beta will be incremented"""
+    treshold_kl: float = 5.0
+    """the treshold of the kl divergence"""
 
 
     # DIAYN 
     nb_skill : int = 4
     """the number of skills"""
-    lambda_im: float = 0.5
+    lambda_im: float = 1.0
     """the lambda of the mutual information"""
     lambda_ent: float = 1.0
     """the lambda of the entropy"""
@@ -394,7 +396,6 @@ if __name__ == "__main__":
             batch_zs_rho = zs.reshape(-1, zs.shape[-1])
             prob_unorm = torch.clamp(1/torch.tensor(args.gamma+0.009).pow(batch_times_rho.cpu()),1_00.0)
             prob = (prob_unorm/prob_unorm.sum())
-            print('PROB:', prob.sum())
             # classifier epoch 
             classifier_epochs = max((obs_un.shape[0] // args.classifier_batch_size) * args.classifier_epochs, (batch_obs_rho.shape[0] // args.classifier_batch_size) * args.classifier_epochs)
             print('CLASSIFIER EPOCHS:', classifier_epochs)
@@ -440,7 +441,7 @@ if __name__ == "__main__":
         rate_dkl = (dkl_rho_un - last_dkl_rho_un)
         last_dkl_rho_un = dkl_rho_un
         if args.beta_increment_bool:
-            beta_increment += int(args.num_envs * args.num_steps*beta_adaptive) if rate_dkl < 0 else 0
+            beta_increment += int(args.num_envs * args.num_steps*beta_adaptive) if (rate_dkl < 0  ) else 0
             beta_increment = int(max(min(beta_increment, obs_un.shape[0]-args.num_envs*args.num_steps*beta_adaptive),0)) if obs_un is not None else 0
         max_dkl_rho_un = max(max_dkl_rho_un, dkl_rho_un)
         min_dkl_rho_un = min(min_dkl_rho_un, dkl_rho_un)
@@ -514,7 +515,8 @@ if __name__ == "__main__":
         b_zs = zs.reshape((-1,) + (args.nb_skill,))
         b_advantages = advantages.reshape(-1)
         if args.norm_adv:
-            b_advantages = (b_advantages - b_advantages.mean(dim = -1, keepdim = True)) / (b_advantages.std(dim = -1, keepdim = True) + 1e-8)
+            # normalize the advantages
+            b_advantages = (b_advantages - b_advantages.mean()) / (b_advantages.std() + 1e-8)
         b_returns = returns.reshape(-1)
         b_values = values.reshape(-1)
         b_mask_pos = mask_pos.reshape(-1)
