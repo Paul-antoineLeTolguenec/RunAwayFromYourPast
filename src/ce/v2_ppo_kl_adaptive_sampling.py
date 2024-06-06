@@ -122,31 +122,31 @@ class Args:
     """the number of rollouts"""
     keep_extrinsic_reward: bool = False
     """if toggled, the extrinsic reward will be kept"""
-    start_explore: int = 4
+    start_explore: int = 16
     """the number of updates to start exploring"""
     coef_intrinsic : float = 1.0
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
-    beta_ratio: float = 1/64
+    beta_ratio: float = 1/2048
     """the ratio of the beta"""
     nb_max_steps: int = 50_000
     """the maximum number of step in un"""
 
-    beta_min: float = 1/512
+    beta_min: float = 1/2048
     """the minimum of the beta"""
     beta_max: float = 1/128
     """the maximum of the beta"""
     adaptive_beta: bool = False
     """if toggled, the beta will be adaptive"""
-    beta_increment_bool: bool = True
+    beta_increment_bool: bool = False
     """if toggled, the beta will be incremented"""
 
 
     # DIAYN 
     nb_skill : int = 4
     """the number of skills"""
-    lambda_im: float = 1.0
+    lambda_im: float = 0.5
     """the lambda of the mutual information"""
     lambda_ent: float = 1.0
     """the lambda of the entropy"""
@@ -409,7 +409,7 @@ if __name__ == "__main__":
                 # un
                 if args.adaptive_sampling:
                     probs_un = update_probs(obs_un, classifier, device)
-                    beta_mb_un_idx = np.random.choice(np.arange(obs_un.shape[0]), int(args.classifier_batch_size), p=probs_un.numpy())
+                    beta_mb_un_idx = np.random.choice(np.arange(obs_un.shape[0]), int(args.classifier_batch_size), p=probs_un)
                 else:
                     beta_mb_un_idx = np.random.randint(0, obs_un.shape[0]-beta_increment,int(args.classifier_batch_size))
                 mb_un = torch.tensor(obs_un[beta_mb_un_idx]).to(device)
