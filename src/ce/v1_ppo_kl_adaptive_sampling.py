@@ -138,8 +138,10 @@ class Args:
     """the minimum beta"""
     beta_max: float = 1/128
     """the maximum beta"""
-    adaptative_beta: bool = False
+    adaptive_beta: bool = False
     """if toggled, the beta will be adaptative"""
+    beta_increment_bool: bool = False
+    """if toggled, the beta_increment will be used"""
 
     # to be filled in runtime
     batch_size: int = 0
@@ -421,7 +423,7 @@ if __name__ == "__main__":
         max_dkl_rho_un = max(max_dkl_rho_un, dkl_rho_un)
         min_dkl_rho_un = min(min_dkl_rho_un, dkl_rho_un)
         normalized_dkl = (dkl_rho_un - min_dkl_rho_un) / (max_dkl_rho_un - min_dkl_rho_un)
-        beta_adaptive = args.beta_min + normalized_dkl * (args.beta_max - args.beta_min) if args.adaptative_beta else args.beta_ratio
+        beta_adaptive = args.beta_min + normalized_dkl * (args.beta_max - args.beta_min) if args.adaptive_beta else args.beta_ratio
         print(f"DKL_RHO_UN: {dkl_rho_un}, RATE_DKL: {rate_dkl}, BETA_INCREMENT: {beta_increment}, OBS_UN: {obs_un.shape[0] if obs_un is not None else 0}, BETA_ADAPTIVE: {beta_adaptive}")
         
 
