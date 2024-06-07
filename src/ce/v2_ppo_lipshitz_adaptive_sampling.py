@@ -36,7 +36,7 @@ class Args:
     """if toggled, cuda will be enabled by default"""
     track: bool = True
     """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "contrastive_exploration"
+    wandb_project_name: str = "contrastive_test"
     """the wandb's project name"""
     wandb_entity: str = None
     """the entity (team) of wandb's project"""
@@ -56,7 +56,7 @@ class Args:
     """the frequency of computing shannon entropy"""
 
     # RPO SPECIFIC
-    env_id: str = "Maze-Ur"
+    env_id: str = "Maze-Ur-v0"
     """the id of the environment"""
     total_timesteps: int = 500_000
     """total timesteps of the experiments"""
@@ -84,9 +84,9 @@ class Args:
     """the mask clipping coefficient"""
     clip_vloss: bool = False #True
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
-    ent_coef: float = 0.01
+    ent_coef: float = 0.05
     """coefficient of the entropy"""
-    ent_mask_coef: float = 0.01
+    ent_mask_coef: float = 0.05
     """coefficient of the entropy mask"""
     vf_coef: float = 0.5
     """coefficient of the value function"""
@@ -98,9 +98,9 @@ class Args:
     # CLASSIFIER SPECIFIC
     classifier_lr: float = 1e-3
     """the learning rate of the classifier"""
-    classifier_epochs: int = 2
+    classifier_epochs: int = 1
     """the number of epochs to train the classifier"""
-    classifier_batch_size: int = 256
+    classifier_batch_size: int = 128
     """the batch size of the classifier"""
     feature_extractor: bool = False
     """if toggled, a feature extractor will be used"""
@@ -108,7 +108,7 @@ class Args:
     """the percentage of the time to use the classifier"""
     epsilon: float = 1e-3
     """the epsilon of the classifier"""
-    lambda_init: float = 25.0
+    lambda_init: float = 10.0
     """the lambda of the classifier"""
     bound_spectral: float = 1.0
     """the bound spectral of the classifier"""
@@ -137,7 +137,7 @@ class Args:
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
-    beta_ratio: float = 1/128
+    beta_ratio: float = 1/16
     """the ratio of the beta"""
     nb_max_steps: int = 50_000
     """the maximum number of step in un"""
@@ -529,7 +529,7 @@ if __name__ == "__main__":
         
         with torch.no_grad():
             log_rho_un = classifier(obs)
-            log_rho_un = (log_rho_un - torch.min(log_rho_un))
+            # log_rho_un = (log_rho_un - torch.min(log_rho_un))
             # log_rho_un = (classifier(obs[1:]) - classifier(obs[:-1]))*(1-dones[1:])
             # log_rho_un = torch.cat([log_rho_un, torch.zeros((1, args.n_agent,1)).to(device)], dim=0)
             # MI
@@ -721,7 +721,7 @@ if __name__ == "__main__":
             if args.make_gif : 
                 image = env_plot.gif(obs_un = obs_un,
                                 obs=obs,
-                                    classifier = None,
+                                    classifier = classifier,
                                     device= device)
                 send_matrix(wandb, image, "gif", global_step)
             if args.plotly:
