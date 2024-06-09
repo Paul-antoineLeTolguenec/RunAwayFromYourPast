@@ -56,9 +56,9 @@ class Args:
     """the frequency of computing shannon entropy"""
 
     # RPO SPECIFIC
-    env_id: str = "Maze-Ur-v0"
+    env_id: str = "Maze-Easy-v0"
     """the id of the environment"""
-    total_timesteps: int = 500_000
+    total_timesteps: int = 1_000_000
     """total timesteps of the experiments"""
     learning_rate: float = 5e-4
     """the learning rate of the optimizer"""
@@ -84,9 +84,9 @@ class Args:
     """the mask clipping coefficient"""
     clip_vloss: bool = False #True
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
-    ent_coef: float = 0.05
+    ent_coef: float = 0.01
     """coefficient of the entropy"""
-    ent_mask_coef: float = 0.05
+    ent_mask_coef: float = 0.01
     """coefficient of the entropy mask"""
     vf_coef: float = 0.5
     """coefficient of the value function"""
@@ -98,7 +98,7 @@ class Args:
     # CLASSIFIER SPECIFIC
     classifier_lr: float = 1e-3
     """the learning rate of the classifier"""
-    classifier_epochs: int = 1
+    classifier_epochs: int = 4
     """the number of epochs to train the classifier"""
     classifier_batch_size: int = 128
     """the batch size of the classifier"""
@@ -137,17 +137,17 @@ class Args:
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
-    beta_ratio: float = 1/16
+    beta_ratio: float = 1/32
     """the ratio of the beta"""
     nb_max_steps: int = 50_000
     """the maximum number of step in un"""
-    w_rho_un: float = 1.0
+    w_rho_un: float = 0.0
     """the weight of the rho un"""
     gamma_cte: float = 0.0
     """the constant gamma"""
 
     # METRA SPECIFIC
-    n_agent: int = 4
+    n_agent: int = 8
     """the number of agents"""
     lambda_im: float = 1.0
     """the lambda of the mutual information"""
@@ -315,6 +315,7 @@ if __name__ == "__main__":
     
     # METRA INIT
     z = -1/(args.n_agent-1)*torch.ones((args.n_agent, args.n_agent)).to(device) + (1+1/(args.n_agent-1))*torch.eye(args.n_agent).to(device)
+    z = z/z.norm(dim=0)
     z_one_hot = torch.eye(args.n_agent).to(device)
     args.num_envs = args.n_agent
 
@@ -459,7 +460,7 @@ if __name__ == "__main__":
             batch_obs_rho = obs.permute(1,0,2).reshape(-1, obs.shape[-1]).to(device)
             batch_dones_rho = dones.permute(1,0,2).reshape(-1).to(device)
             batch_times_rho = times.permute(1,0,2).reshape(-1).to(device)
-            prob_unorm = torch.clamp(1/torch.tensor(args.gamma-args.gamma_cte).pow(batch_times_rho.cpu()),1_00.0)
+            prob_unorm = torch.clamp(1/torch.tensor(args.gamma+0.09).pow(batch_times_rho.cpu()),1_00.0)
             prob = prob_unorm[:-1]/prob_unorm[:-1].sum()
             batch_zs_rho = zs.permute(1,0,2).reshape(-1, args.n_agent).to(device)
             # classifier epoch
@@ -500,7 +501,8 @@ if __name__ == "__main__":
 
                 # METRA
                 # beta = args.beta_ratio
-                beta = 0.5
+                # beta = args.beta_ratio
+                beta = 0.0
                 loss =beta*discriminator.lipshitz_loss(mb_rho, 
                                                    next_mb_rho, 
                                                    mb_z_un,
