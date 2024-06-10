@@ -133,7 +133,15 @@ class Maze(gym.Env):
 
             return (new_x, new_y)
 
-        
+        def render(self):
+            plt.figure()
+            # plt.plot(self.x,self.y, 'ro')
+            # plt.plot(self.target[0],self.target[1], 'go')
+            for wall in self.walls:
+                plt.plot([wall[0],wall[2]],[wall[1],wall[3]], 'k')
+            plt.xlim(-1,1)
+            plt.ylim(-1,1)
+            plt.show()
 
 
 Mazes = {
@@ -158,17 +166,18 @@ Mazes = {
                  (-0.25,-0.25,0.25,-0.25),
                  (0.5,-0.50,2,-0.50),
                  (0.50,0.0,0.50,2)],
-        'x_init':-0.5,
+        'x_init':-0.60,
         'y_init':-0.5, 
         'target': [-0.75, 0.75]
     }
 }
 if __name__ ==  '__main__' : 
-    env = Maze(name ='Hard', render=True)
+    env = Maze(name ='Ur')
     s=env.reset()
-    for k in range(env.max_steps):
-        env.step(np.array([-1,10]))
-        env.render()
-    env.close()
+    env.render()
+    # for k in range(env.max_steps):
+    #     env.step(np.array([-1,10]))
+    #     env.render()
+    # env.close()
 
         
