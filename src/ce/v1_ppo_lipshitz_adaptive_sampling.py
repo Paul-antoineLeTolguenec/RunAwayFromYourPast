@@ -57,7 +57,7 @@ class Args:
     """the frequency of computing shannon entropy"""
 
     # RPO SPECIFIC
-    env_id: str = "Hopper-v3"
+    env_id: str = "HalfCheetah-v3"
     """the id of the environment"""
     total_timesteps: int = 500_000
     """total timesteps of the experiments"""
@@ -85,9 +85,9 @@ class Args:
     """the mask clipping coefficient"""
     clip_vloss: bool = False #True
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
-    ent_coef: float = 0.05
+    ent_coef: float = 0.0
     """coefficient of the entropy"""
-    ent_mask_coef: float = 0.05
+    ent_mask_coef: float = 0.1
     """coefficient of the entropy mask"""
     vf_coef: float = 0.5
     """coefficient of the value function"""

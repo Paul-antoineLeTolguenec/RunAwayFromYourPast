@@ -40,7 +40,7 @@ class Maze(gym.Env):
                 self.x_init = Mazes[name]['x_init']
                 self.y_init = Mazes[name]['y_init']
                 for wall in Mazes[name]['walls'] : self.walls.append(wall)
-                target = Mazes[name]['target']
+                self.target = Mazes[name]['target']
             
 
         def reward(self):
@@ -133,15 +133,31 @@ class Maze(gym.Env):
 
             return (new_x, new_y)
 
-        def render(self):
-            plt.figure()
+        def save_fig(self):
+            # if no figure is open, create a new one
+            if plt.fignum_exists(1) == False:
+                self.fig = plt.figure()
+            # black cross start 
+            plt.plot(self.x_init,self.y_init, 'kx', markersize=20)
+            # green cross target
+            plt.plot(self.target[0],self.target[1], 'gx', markersize=20)
             # plt.plot(self.x,self.y, 'ro')
             # plt.plot(self.target[0],self.target[1], 'go')
             for wall in self.walls:
                 plt.plot([wall[0],wall[2]],[wall[1],wall[3]], 'k')
             plt.xlim(-1,1)
             plt.ylim(-1,1)
-            plt.show()
+            # remove axis
+            plt.axis('off')
+            # set the aspect of the plot to be equal
+            plt.gca().set_aspect('equal', adjustable='box')
+            # tight layout
+            plt.tight_layout(pad=1)
+            # plt.subplots_adjust(left=0.25, right=1.0, top=0.95, bottom=0.05) 
+
+            # save the figure
+            plt.savefig(self.name+'.png')
+        
 
 
 Mazes = {
@@ -149,7 +165,7 @@ Mazes = {
         'walls':[],
         'x_init':0.0,
         'y_init':0.0, 
-        'target': [1.0,1.0]
+        'target': [0.9,0.9]
     },
     'Ur' : { 
         'walls':[
@@ -157,7 +173,7 @@ Mazes = {
         ],
         'x_init':-0.5,
         'y_init':-0.5,
-        'target': [0.75, -0.75]
+        'target': [0.5, -0.5]
     },
     'Hard' : { 
         'walls':[(-0.25,-2,-0.25,-0.75),
@@ -172,9 +188,9 @@ Mazes = {
     }
 }
 if __name__ ==  '__main__' : 
-    env = Maze(name ='Ur')
+    env = Maze(name ='Hard')
     s=env.reset()
-    env.render()
+    env.save_fig()
     # for k in range(env.max_steps):
     #     env.step(np.array([-1,10]))
     #     env.render()

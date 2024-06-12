@@ -85,9 +85,9 @@ class Args:
     """the mask clipping coefficient"""
     clip_vloss: bool = False #True
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
-    ent_coef: float = 0.05
+    ent_coef: float = 0.0
     """coefficient of the entropy"""
-    ent_mask_coef: float = 0.05
+    ent_mask_coef: float = 0.1
     """coefficient of the entropy mask"""
     vf_coef: float = 0.5
     """coefficient of the value function"""
@@ -97,7 +97,7 @@ class Args:
     """the target KL divergence threshold"""
 
     # CLASSIFIER SPECIFIC
-    classifier_lr: float = 1e-4
+    classifier_lr: float = 1e-3
     """the learning rate of the classifier"""
     classifier_epochs: int =1
     """the number of epochs to train the classifier"""
@@ -128,7 +128,7 @@ class Args:
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
-    beta_ratio: float = 1/64
+    beta_ratio: float = 1/8
     """the ratio of the beta"""
     nb_max_steps: int = 50_000
     """the maximum number of step in un"""
@@ -148,11 +148,11 @@ class Args:
     # DIAYN 
     nb_skill : int = 4
     """the number of skills"""
-    lambda_im: float = 1.0
+    lambda_im: float = 0.5
     """the lambda of the mutual information"""
     lambda_ent: float = 1.0
     """the lambda of the entropy"""
-    gamma_cte: float = 0.0
+    gamma_cte: float = 0.05
     """the gamma constant"""
 
     # to be filled in runtime
@@ -394,7 +394,7 @@ if __name__ == "__main__":
             batch_dones_rho = dones.reshape(-1)
             batch_times_rho = times.reshape(-1)
             batch_zs_rho = zs.reshape(-1, zs.shape[-1])
-            prob_unorm = torch.clamp(1/torch.tensor(args.gamma+0.009).pow(batch_times_rho.cpu()),1_00.0)
+            prob_unorm = torch.clamp(1/torch.tensor(args.gamma+0.009-args.gamma_cte).pow(batch_times_rho.cpu()),1_00.0)
             prob = (prob_unorm/prob_unorm.sum())
             # classifier epoch 
             classifier_epochs = max((obs_un.shape[0] // args.classifier_batch_size) * args.classifier_epochs, (batch_obs_rho.shape[0] // args.classifier_batch_size) * args.classifier_epochs)
@@ -419,7 +419,7 @@ if __name__ == "__main__":
                 loss = classifier.ce_loss_ppo(batch_q=mb_rho, batch_p=mb_un, 
                                                 batch_s_q=mb_rho, batch_s_p=mb_un,
                                                 batch_q_z=mb_rho_z, batch_p_z=mb_un_z, 
-                                                beta=0.5)
+                                                beta=args.beta_ratio)
                                                 
                 classifier_optimizer.zero_grad()
                 loss.backward()

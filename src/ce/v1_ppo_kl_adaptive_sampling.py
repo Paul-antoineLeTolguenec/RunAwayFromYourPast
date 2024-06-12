@@ -58,7 +58,7 @@ class Args:
     """the frequency of computing shannon entropy"""
 
     # RPO SPECIFIC
-    env_id: str = "Maze-Ur-v0"
+    env_id: str = "HalfCheetah-v3"
     """the id of the environment"""
     total_timesteps: int = 2_000_000
     """total timesteps of the experiments"""
@@ -86,9 +86,9 @@ class Args:
     """the mask clipping coefficient"""
     clip_vloss: bool = False #True
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
-    ent_coef: float = 0.05
+    ent_coef: float = 0.0
     """coefficient of the entropy"""
-    ent_mask_coef: float = 0.05
+    ent_mask_coef: float = 0.1
     """coefficient of the entropy mask"""
     vf_coef: float = 0.5
     """coefficient of the value function"""
@@ -130,7 +130,7 @@ class Args:
     """the coefficient of the extrinsic reward"""
     beta_ratio: float = 1/16
     """the ratio of the beta"""
-    nb_max_steps: int = 10_000
+    nb_max_steps: int =50_000
     """the maximum number of step in un"""
     gamma_cte: float = 0.0
     """the gamma constant"""
@@ -379,7 +379,7 @@ if __name__ == "__main__":
             batch_obs_rho = obs.permute(1,0,2).reshape(-1, obs.shape[-1]).to(device)
             batch_dones_rho = dones.permute(1,0,2).reshape(-1).to(device)
             batch_times_rho = times.permute(1,0,2).reshape(-1).to(device)
-            prob_unorm = torch.clamp(1/torch.tensor(args.gamma+0.009).pow(batch_times_rho.cpu()),1_00.0)
+            prob_unorm = torch.clamp(1/torch.tensor(args.gamma+0.009 + args.gamma_cte).pow(batch_times_rho.cpu()),1_00.0)
             prob = prob_unorm/prob_unorm.sum()
             # classifier epoch 
             classifier_epochs = max((obs_un.shape[0] // args.classifier_batch_size) * args.classifier_epochs, (batch_obs_rho.shape[0] // args.classifier_batch_size) * args.classifier_epochs)
