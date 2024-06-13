@@ -9,3 +9,11 @@
 **/videos/
 **/artifacts/
 .venv/
+
+# file 
+**/*.pyc
+**/*.log
+**/*.csv
+**/scripts/*.tex
+**/scripts/*.md
+**/scripts/*.pdf
