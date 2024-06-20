@@ -128,7 +128,7 @@ class Args:
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
-    beta_ratio: float = 1/8
+    beta_ratio: float = 1/4
     """the ratio of the beta"""
     nb_max_steps: int = 50_000
     """the maximum number of step in un"""
@@ -148,7 +148,7 @@ class Args:
     # DIAYN 
     nb_skill : int = 4
     """the number of skills"""
-    lambda_im: float = 0.5
+    lambda_im: float = 0.75
     """the lambda of the mutual information"""
     lambda_ent: float = 1.0
     """the lambda of the entropy"""

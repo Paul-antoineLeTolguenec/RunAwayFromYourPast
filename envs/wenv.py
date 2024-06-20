@@ -139,7 +139,10 @@ class Wenv(gym.Env):
             # clear the plot
             self.ax.clear()
             # data  to plot
-            data_to_plot =torch.cat([torch.Tensor(obs_un.reshape(-1, *self.observation_space.shape)).to(device), torch.Tensor(obs.reshape(-1, *self.observation_space.shape))], dim=0)
+            if obs is not None:
+                data_to_plot =torch.cat([torch.Tensor(obs_un.reshape(-1, *self.observation_space.shape)).to(device), torch.Tensor(obs.reshape(-1, *self.observation_space.shape))], dim=0)
+            else : 
+                data_to_plot =torch.Tensor(obs_un.reshape(-1, *self.observation_space.shape)).to(device)
             # Plotting measure 
             m_n = classifier(data_to_plot).detach().cpu().numpy().squeeze(-1)if classifier is not None else None
             # normalize
