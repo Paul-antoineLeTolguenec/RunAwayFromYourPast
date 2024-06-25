@@ -281,7 +281,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         # if global_step > args.learning_starts:
         #     training_step = global_step
         # ALGO LOGIC: training.
-        if global_step%args.learning_frequency==0 and nb_rollouts >= args.nb_rollouts_freq:
+        if nb_rollouts >= args.nb_rollouts_freq and  global_step>args.learning_starts:
             for training_step in range(args.sac_training_steps):
                 data = rb.sample(args.batch_size)
                 with torch.no_grad():
