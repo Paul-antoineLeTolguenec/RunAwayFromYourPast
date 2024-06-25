@@ -79,6 +79,8 @@ class Args:
     """the number of training steps in each SAC training loop"""
     learning_frequency: int = 5000
     """the frequency of training the SAC"""
+    nb_rollouts_freq: int = 5
+    """the frequency of logging the number of rollouts"""
 
 
 def make_env(env_id, idx, capture_video, run_name):
@@ -244,7 +246,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         handle_timeout_termination=False,
     )
     start_time = time.time()
-
+    nb_rollouts = 0
     # TRY NOT TO MODIFY: start the game
     obs, _ = envs.reset(seed=args.seed)
     for global_step in range(args.total_timesteps):
@@ -270,6 +272,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         for idx, trunc in enumerate(truncations):
             if trunc:
                 real_next_obs[idx] = infos["final_observation"][idx]
+                nb_rollouts += 1
         rb.add(obs, real_next_obs, actions, rewards, terminations, infos)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
@@ -278,7 +281,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         # if global_step > args.learning_starts:
         #     training_step = global_step
         # ALGO LOGIC: training.
-        if global_step%args.learning_frequency==0 and global_step > args.learning_starts:
+        if global_step%args.learning_frequency==0 and nb_rollouts >= args.nb_rollouts_freq:
             for training_step in range(args.sac_training_steps):
                 data = rb.sample(args.batch_size)
                 with torch.no_grad():
@@ -342,6 +345,10 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     writer.add_scalar("charts/SPS", int(training_step / (time.time() - start_time)), global_step)
                     if args.autotune:
                         writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
+                # reinit
+                nb_rollouts = 0
+
+
         if global_step % args.fig_frequency == 0  and global_step > 0:
             if args.make_gif : 
                 image = env_plot.gif(obs_un = rb.observations[:rb.pos],
