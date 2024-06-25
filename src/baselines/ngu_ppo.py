@@ -517,7 +517,7 @@ if __name__ == "__main__":
             times_un = np.concatenate([times_un, times_reshaped[idx_un]])   
 
         
-        rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-8)
+        rewards = (rewards - rewards.mean()) / (rewards.std() + 1)
         rewards = extrinsic_rewards*args.coef_extrinsic + rewards*args.coef_intrinsic if args.keep_extrinsic_reward else rewards*args.coef_intrinsic
         print('max : ', rewards.max())
         print('min : ', rewards.min())
