@@ -346,8 +346,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     writer.add_scalar("charts/SPS", int(training_step / (time.time() - start_time)), global_step)
                     if args.autotune:
                         writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
-                # reinit
-                nb_rollouts = 0
+            # reinit
+            nb_rollouts = 0
 
 
         if global_step % args.fig_frequency == 0  and global_step > 0:
