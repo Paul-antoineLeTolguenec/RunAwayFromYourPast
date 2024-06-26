@@ -391,8 +391,11 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     qf1_next_target = qf1_target(data.next_observations, next_state_actions)
                     qf2_next_target = qf2_target(data.next_observations, next_state_actions)
                     min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
-                    intrinsic_reward = classifier(data.observations)
+                    intrinsic_reward = classifier(data.observations).squeeze()
                     batch_rewards = args.coef_extrinsic * data.rewards.flatten() + args.coef_intrinsic * intrinsic_reward if args.keep_extrinsic_reward else args.coef_intrinsic * intrinsic_reward
+                    print('intrinsic_reward', intrinsic_reward.shape)
+                    print('batch_rewards', batch_rewards.shape)
+                    
                     next_q_value = batch_rewards + (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
 
                 qf1_a_values = qf1(data.observations, data.actions).view(-1)
