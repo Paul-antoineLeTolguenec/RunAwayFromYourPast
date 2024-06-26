@@ -333,8 +333,11 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             # CLASSIFIER TRAINING
             # rho
             batch_obs_rho = rb.observations[rb.pos-nb_rollouts*max_step:rb.pos]
+            print('batch_obs_rho:', batch_obs_rho.shape)
             batch_next_obs_rho = rb.next_observations[rb.pos-nb_rollouts*max_step:rb.pos]
+            print('batch_next_obs_rho:', batch_next_obs_rho.shape)
             batch_dones_rho = rb.dones[rb.pos-nb_rollouts*max_step:rb.pos]        
+            print('batch_dones_rho:', batch_dones_rho.shape)
             # un
             nb_sample_un = int(args.classifier_batch_size*(1-args.beta_ratio))
             nb_sample_rho = int(args.classifier_batch_size*args.beta_ratio)
@@ -349,12 +352,16 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 # mb_rho_idx = np.random.choice(np.arange(batch_obs_rho.shape[0]-1), args.classifier_batch_size, p=prob.numpy())
                 mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], args.classifier_batch_size)
                 mb_rho = torch.tensor(batch_obs_rho[mb_rho_idx]).to(device)
+                print('mb_rho:', mb_rho.shape)
                 next_mb_rho = torch.tensor(batch_next_obs_rho[mb_rho_idx]).to(device)
+                print('next_mb_rho:', next_mb_rho.shape)
                 done_mb_rho = torch.tensor(batch_dones_rho[mb_rho_idx]).to(device)
+                print('done_mb_rho:', done_mb_rho.shape)
 
                 # mb un
                 beta_mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], nb_sample_rho)
                 mb_un = rb.sample(nb_sample_un)
+                print('torch.tensor(batch_obs_rho[beta_mb_rho_idx]).to(device).shape:', torch.tensor(batch_obs_rho[beta_mb_rho_idx]).to(device).shape)
                 mb_un = torch.cat([mb_un.observations, torch.tensor(batch_obs_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
                 next_mb_un = torch.cat([mb_un.next_observations, torch.tensor(batch_next_obs_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
                 done_mb_un = torch.cat([mb_un.dones, torch.tensor(batch_dones_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
