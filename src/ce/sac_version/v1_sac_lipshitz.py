@@ -49,7 +49,7 @@ class Args:
     """the frequency of computing shannon entropy"""
 
     # Algorithm specific arguments
-    env_id: str = "Maze-Ur-v0"
+    env_id: str = "HalfCheetah-v3"
     """the environment id of the task"""
     total_timesteps: int = 1000000
     """total timesteps of the experiments"""
@@ -114,7 +114,7 @@ class Args:
     """if toggled, the extrinsic reward will be kept"""
     coef_extrinsic: float = 1.0
     """the coefficient of the extrinsic reward"""
-    coef_intrinsic: float = 0.1
+    coef_intrinsic: float = 1.0
     """the coefficient of the intrinsic reward"""
 
 
