@@ -358,17 +358,17 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 mb_next_obs_un = torch.cat([mb_un.next_observations, torch.tensor(batch_next_obs_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
                 mb_done_un = torch.cat([mb_un.dones, torch.tensor(batch_dones_rho[beta_mb_rho_idx]).to(device).unsqueeze(-1)], axis=0).to(device)
                 # classifier loss + lipshitz regularization
-                loss, _ = classifier.lipshitz_loss_ppo(batch_q= mb_obs_rho, batch_p = mb_un, 
+                loss, _ = classifier.lipshitz_loss_ppo(batch_q= mb_obs_rho, batch_p = mb_obs_un, 
                                                         q_batch_s =  mb_obs_rho, q_batch_next_s = mb_next_obs_rho, q_dones = mb_done_rho,
-                                                        p_batch_s = mb_un, p_batch_next_s = mb_next_obs_un, p_dones = mb_done_un)       
+                                                        p_batch_s = mb_obs_un, p_batch_next_s = mb_next_obs_un, p_dones = mb_done_un)       
                 classifier_optimizer.zero_grad()
                 loss.backward()
                 classifier_optimizer.step()
                 total_classification_loss += loss.item()/classifier_epochs
                 # lambda loss
-                _, lipshitz_regu = classifier.lipshitz_loss_ppo(batch_q= mb_obs_rho, batch_p = mb_un, 
+                _, lipshitz_regu = classifier.lipshitz_loss_ppo(batch_q= mb_obs_rho, batch_p = mb_obs_un, 
                                                         q_batch_s =  mb_obs_rho, q_batch_next_s = mb_next_obs_rho, q_dones = mb_done_rho,
-                                                        p_batch_s = mb_un, p_batch_next_s = mb_next_obs_un, p_dones = mb_done_un)    
+                                                        p_batch_s = mb_obs_un, p_batch_next_s = mb_next_obs_un, p_dones = mb_done_un)    
                 lambda_loss = classifier.lambda_lip*lipshitz_regu
                 classifier_optimizer.zero_grad()
                 lambda_loss.backward()
