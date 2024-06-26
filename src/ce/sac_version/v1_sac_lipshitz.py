@@ -16,6 +16,7 @@ from torch.utils.tensorboard import SummaryWriter
 from envs.wenv import Wenv
 from envs.config_env import config
 from src.utils.wandb_utils import send_matrix
+from src.ce.classifier import Classifier
 
 @dataclass
 class Args:
@@ -27,7 +28,7 @@ class Args:
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
     cuda: bool = True
     """if toggled, cuda will be enabled by default"""
-    track: bool = True
+    track: bool = False
     """if toggled, this experiment will be tracked with Weights and Biases"""
     wandb_project_name: str = "contrastive_test"
     """the wandb's project name"""
@@ -81,6 +82,35 @@ class Args:
     """the frequency of training the SAC"""
     nb_rollouts_freq: int = 5
     """the frequency of logging the number of rollouts"""
+    #  CLASSIFIER SPECIFIC
+    classifier_lr: float = 1e-3
+    """the learning rate of the classifier"""
+    classifier_epochs: int = 1
+    """the number of epochs to train the classifier"""
+    classifier_batch_size: int = 128
+    """the batch size of the classifier"""
+    feature_extractor: bool = False
+    """if toggled, a feature extractor will be used"""
+    percentage_time: float = 0/4
+    """the percentage of the time to use the classifier"""
+    epsilon: float = 1e-3
+    """the epsilon of the classifier"""
+    lambda_init: float = 10.0 #50 in mazes
+    """the lambda of the classifier"""
+    bound_spectral: float = 1.0
+    """the bound spectral of the classifier"""
+    clip_lim: float = 50.0
+    """the clipping limit of the classifier"""
+    adaptive_sampling: bool = False
+    """if toggled, the sampling will be adaptive"""
+    lip_cte: float = 1.0
+    """the lip constant"""
+    use_sigmoid: bool = False
+    """if toggled, the sigmoid will be used"""
+    # ALGO specific 
+    beta_ratio: float = 1/4
+    """the ratio of the beta"""
+
 
 
 def make_env(env_id, idx, capture_video, run_name):
@@ -217,7 +247,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
 
     max_action = float(envs.single_action_space.high[0])
-
+    # variables + initilization
+    max_step = envs.envs[0].max_steps
     actor = Actor(envs).to(device)
     qf1 = SoftQNetwork(envs).to(device)
     qf2 = SoftQNetwork(envs).to(device)
@@ -227,7 +258,24 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     qf2_target.load_state_dict(qf2.state_dict())
     q_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()), lr=args.q_lr)
     actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.policy_lr)
-
+    # CLASSIFIER
+    classifier = Classifier(envs.single_observation_space, 
+                            env_max_steps=max_step,
+                            device=device, 
+                            n_agent=1, 
+                            lipshitz=False,
+                            feature_extractor=args.feature_extractor, 
+                            lim_up = args.clip_lim,
+                            lim_down = -args.clip_lim,
+                            env_id=args.env_id, 
+                            lipshitz_regu=True,
+                            bound_spectral=args.bound_spectral,
+                            lip_cte=args.lip_cte,
+                            lambda_init=args.lambda_init,
+                            epsilon=args.epsilon,
+                            use_sigmoid=args.use_sigmoid
+                            ).to(device)
+    classifier_optimizer = optim.Adam(classifier.parameters(), lr=args.classifier_lr)
     # Automatic entropy tuning
     if args.autotune:
         target_entropy = -torch.prod(torch.Tensor(envs.single_action_space.shape).to(device)).item()
@@ -273,7 +321,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             if trunc:
                 real_next_obs[idx] = infos["final_observation"][idx]
                 nb_rollouts += 1
-        rb.add(obs, real_next_obs, actions, rewards, terminations, infos)
+        rb.add(obs, real_next_obs, actions, rewards, terminations, infos) 
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
@@ -282,6 +330,54 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         #     training_step = global_step
         # ALGO LOGIC: training.
         if nb_rollouts >= args.nb_rollouts_freq and  global_step>args.learning_starts:
+            # CLASSIFIER TRAINING
+            # rho
+            batch_obs_rho = rb.observations[rb.pos-nb_rollouts*max_step:rb.pos]
+            batch_next_obs_rho = rb.next_observations[rb.pos-nb_rollouts*max_step:rb.pos]
+            batch_dones_rho = rb.dones[rb.pos-nb_rollouts*max_step:rb.pos]        
+            # un
+            nb_sample_un = int(args.classifier_batch_size*(1-args.beta_ratio))
+            nb_sample_rho = int(args.classifier_batch_size*args.beta_ratio)
+            # classifier epoch 
+            classifier_epochs = max((rb.pos // args.classifier_batch_size) * args.classifier_epochs, (batch_obs_rho.shape[0] // args.classifier_batch_size) * args.classifier_epochs)
+            print('classifier_epochs:', classifier_epochs)
+            total_classification_loss = 0
+            total_lipshitz_regu = 0
+            for epoch in range(classifier_epochs):
+
+                # mb rho
+                # mb_rho_idx = np.random.choice(np.arange(batch_obs_rho.shape[0]-1), args.classifier_batch_size, p=prob.numpy())
+                mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], args.classifier_batch_size)
+                mb_rho = torch.tensor(batch_obs_rho[mb_rho_idx]).to(device)
+                next_mb_rho = torch.tensor(batch_next_obs_rho[mb_rho_idx]).to(device)
+                done_mb_rho = torch.tensor(batch_dones_rho[mb_rho_idx]).to(device)
+
+                # mb un
+                beta_mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], nb_sample_rho)
+                mb_un = rb.sample(nb_sample_un)
+                mb_un = torch.cat([mb_un.observations, torch.tensor(batch_obs_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
+                next_mb_un = torch.cat([mb_un.next_observations, torch.tensor(batch_next_obs_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
+                done_mb_un = torch.cat([mb_un.dones, torch.tensor(batch_dones_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
+                # classifier loss + lipshitz regularization
+                loss, _ = classifier.lipshitz_loss_ppo(batch_q= mb_rho, batch_p = mb_un, 
+                                                        q_batch_s =  mb_rho, q_batch_next_s = next_mb_rho, q_dones = done_mb_rho,
+                                                        p_batch_s = mb_un, p_batch_next_s = next_mb_un, p_dones = done_mb_un)       
+                classifier_optimizer.zero_grad()
+                loss.backward()
+                classifier_optimizer.step()
+                total_classification_loss += loss.item()/classifier_epochs
+                # lambda loss
+                _, lipshitz_regu = classifier.lipshitz_loss_ppo(batch_q= mb_rho, batch_p = mb_un, 
+                                                        q_batch_s =  mb_rho, q_batch_next_s = next_mb_rho, q_dones = done_mb_rho,
+                                                        p_batch_s = mb_un, p_batch_next_s = next_mb_un, p_dones = done_mb_un)    
+                lambda_loss = classifier.lambda_lip*lipshitz_regu
+                classifier_optimizer.zero_grad()
+                lambda_loss.backward()
+                classifier_optimizer.step()
+                total_lipshitz_regu += lipshitz_regu.item()/classifier_epochs
+
+
+            # ALGO LOGIC: training.
             for training_step in range(args.sac_training_steps):
                 data = rb.sample(args.batch_size)
                 with torch.no_grad():
@@ -289,7 +385,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     qf1_next_target = qf1_target(data.next_observations, next_state_actions)
                     qf2_next_target = qf2_target(data.next_observations, next_state_actions)
                     min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
-                    next_q_value = data.rewards.flatten() + (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
+                    batch_rewards = data.rewards.flatten() 
+                    next_q_value = batch_rewards + (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
 
                 qf1_a_values = qf1(data.observations, data.actions).view(-1)
                 qf2_a_values = qf2(data.observations, data.actions).view(-1)
