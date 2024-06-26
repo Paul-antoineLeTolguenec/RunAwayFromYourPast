@@ -76,10 +76,8 @@ class Args:
     """automatic tuning of the entropy coefficient"""
     num_envs: int = 1
     """the number of parallel environments"""
-    sac_training_steps: int = 1000
+    sac_training_steps: int = 50
     """the number of training steps in each SAC training loop"""
-    learning_frequency: int = 5000
-    """the frequency of training the SAC"""
     nb_rollouts_freq: int = 5
     """the frequency of logging the number of rollouts"""
     #  CLASSIFIER SPECIFIC
@@ -346,7 +344,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             nb_sample_un = int(args.classifier_batch_size*(1-args.beta_ratio))
             nb_sample_rho = int(args.classifier_batch_size*args.beta_ratio)
             # classifier epoch 
-            classifier_epochs = max((rb.pos // args.classifier_batch_size) * args.classifier_epochs, (batch_obs_rho.shape[0] // args.classifier_batch_size) * args.classifier_epochs)
+            # classifier_epochs = max((rb.pos // args.classifier_batch_size) * args.classifier_epochs, (batch_obs_rho.shape[0] // args.classifier_batch_size) * args.classifier_epochs)
+            classifier_epochs = args.classifier_epochs
             total_classification_loss = 0
             total_lipshitz_regu = 0
             for epoch in range(classifier_epochs):
@@ -393,9 +392,6 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
                     intrinsic_reward = classifier(data.observations).squeeze()
                     batch_rewards = args.coef_extrinsic * data.rewards.flatten() + args.coef_intrinsic * intrinsic_reward if args.keep_extrinsic_reward else args.coef_intrinsic * intrinsic_reward
-                    print('intrinsic_reward', intrinsic_reward.shape)
-                    print('batch_rewards', batch_rewards.shape)
-                    
                     next_q_value = batch_rewards + (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
 
                 qf1_a_values = qf1(data.observations, data.actions).view(-1)
