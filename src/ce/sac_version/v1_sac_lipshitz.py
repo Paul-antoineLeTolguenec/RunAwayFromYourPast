@@ -107,7 +107,7 @@ class Args:
     use_sigmoid: bool = False
     """if toggled, the sigmoid will be used"""
     # ALGO specific 
-    beta_ratio: float = 1/2
+    beta_ratio: float = 1/4
     """the ratio of the beta"""
     # rewards
     keep_extrinsic_reward: bool = False
@@ -402,18 +402,27 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
             # ALGO LOGIC: training.
             for training_step in range(args.sac_training_steps):
-                data = rb.sample(args.batch_size)
+                nb_sample_rho = int(args.classifier_batch_size*(1-args.beta_ratio))
+                nb_sample_un = int(args.classifier_batch_size*args.beta_ratio)
+                # sample from replay buffer
+                idx_un = np.random.randint(0, rb.pos-pos_rho, nb_sample_un)
+                idx_rho = np.random.randint(rb.pos-pos_rho, rb.pos, nb_sample_rho)
+                observations = torch.cat([rb.observations[idx_un].squeeze(axis=1), rb.observations[idx_rho].squeeze(axis=1)], axis=0).to(device)
+                next_observations = torch.cat([rb.next_observations[idx_un].squeeze(axis=1), rb.next_observations[idx_rho].squeeze(axis=1)], axis=0).to(device)
+                actions = torch.cat([rb.actions[idx_un].squeeze(axis=1), rb.actions[idx_rho].squeeze(axis=1)], axis=0).to(device)
+                rewards = torch.cat([rb.rewards[idx_un].squeeze(axis=1), rb.rewards[idx_rho].squeeze(axis=1)], axis=0).to(device)
+                dones = torch.cat([rb.dones[idx_un].squeeze(axis=1), rb.dones[idx_rho].squeeze(axis=1)], axis=0).to(device)
                 with torch.no_grad():
-                    next_state_actions, next_state_log_pi, _ = actor.get_action(data.next_observations)
-                    qf1_next_target = qf1_target(data.next_observations, next_state_actions)
-                    qf2_next_target = qf2_target(data.next_observations, next_state_actions)
+                    next_state_actions, next_state_log_pi, _ = actor.get_action(next_observations)
+                    qf1_next_target = qf1_target(next_observations, next_state_actions)
+                    qf2_next_target = qf2_target(next_observations, next_state_actions)
                     min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
-                    intrinsic_reward = classifier(data.next_observations).squeeze() - classifier(data.observations).squeeze()
-                    batch_rewards = args.coef_extrinsic * data.rewards.flatten() + args.coef_intrinsic * intrinsic_reward if args.keep_extrinsic_reward else args.coef_intrinsic * intrinsic_reward
-                    next_q_value = batch_rewards + (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
+                    intrinsic_reward = classifier(next_observations).squeeze() - classifier(observations).squeeze()
+                    batch_rewards = args.coef_extrinsic * rewards.flatten() + args.coef_intrinsic * intrinsic_reward if args.keep_extrinsic_reward else args.coef_intrinsic * intrinsic_reward
+                    next_q_value = batch_rewards + (1 - dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
 
-                qf1_a_values = qf1(data.observations, data.actions).view(-1)
-                qf2_a_values = qf2(data.observations, data.actions).view(-1)
+                qf1_a_values = qf1(observations, actions).view(-1)
+                qf2_a_values = qf2(observations, actions).view(-1)
                 qf1_loss = F.mse_loss(qf1_a_values, next_q_value)
                 qf2_loss = F.mse_loss(qf2_a_values, next_q_value)
                 qf_loss = qf1_loss + qf2_loss
@@ -427,9 +436,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     for _ in range(
                         args.policy_frequency
                     ):  # compensate for the delay by doing 'actor_update_interval' instead of 1
-                        pi, log_pi, _ = actor.get_action(data.observations)
-                        qf1_pi = qf1(data.observations, pi)
-                        qf2_pi = qf2(data.observations, pi)
+                        pi, log_pi, _ = actor.get_action(observations)
+                        qf1_pi = qf1(observations, pi)
+                        qf2_pi = qf2(observations, pi)
                         min_qf_pi = torch.min(qf1_pi, qf2_pi)
                         actor_loss = ((alpha * log_pi) - min_qf_pi).mean()
 
@@ -439,7 +448,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
                         if args.autotune:
                             with torch.no_grad():
-                                _, log_pi, _ = actor.get_action(data.observations)
+                                _, log_pi, _ = actor.get_action(observations)
                             alpha_loss = (-log_alpha.exp() * (log_pi + target_entropy)).mean()
 
                             a_optimizer.zero_grad()
