@@ -121,7 +121,7 @@ def make_env(env_id, idx, capture_video, run_name):
         if capture_video:
             if idx == 0:
                 env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-        env = gym.wrappers.ClipAction(env)
+        # env = gym.wrappers.ClipAction(env)
         return env
 
     return thunk
