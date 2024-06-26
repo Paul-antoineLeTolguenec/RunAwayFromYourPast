@@ -94,7 +94,7 @@ class Args:
     """the percentage of the time to use the classifier"""
     epsilon: float = 1e-3
     """the epsilon of the classifier"""
-    lambda_init: float = 100.0 #50 in mazes
+    lambda_init: float = 50.0 #50 in mazes
     """the lambda of the classifier"""
     bound_spectral: float = 1.0
     """the bound spectral of the classifier"""
@@ -102,12 +102,12 @@ class Args:
     """the clipping limit of the classifier"""
     adaptive_sampling: bool = False
     """if toggled, the sampling will be adaptive"""
-    lip_cte: float = 1.0
+    lip_cte: float = 0.5
     """the lip constant"""
     use_sigmoid: bool = False
     """if toggled, the sigmoid will be used"""
     # ALGO specific 
-    beta_ratio: float = 1/4
+    beta_ratio: float = 1/2
     """the ratio of the beta"""
     # rewards
     keep_extrinsic_reward: bool = False
@@ -408,7 +408,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     qf1_next_target = qf1_target(data.next_observations, next_state_actions)
                     qf2_next_target = qf2_target(data.next_observations, next_state_actions)
                     min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
-                    intrinsic_reward = classifier(data.observations).squeeze()
+                    intrinsic_reward = classifier(data.next_observations).squeeze() - classifier(data.observations).squeeze()
                     batch_rewards = args.coef_extrinsic * data.rewards.flatten() + args.coef_intrinsic * intrinsic_reward if args.keep_extrinsic_reward else args.coef_intrinsic * intrinsic_reward
                     next_q_value = batch_rewards + (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
 
