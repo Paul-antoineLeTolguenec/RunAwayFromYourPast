@@ -29,7 +29,7 @@ class Args:
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
     cuda: bool = False
     """if toggled, cuda will be enabled by default"""
-    track: bool = True
+    track: bool = False
     """if toggled, this experiment will be tracked with Weights and Biases"""
     wandb_project_name: str = "contrastive_test"
     """the wandb's project name"""
@@ -104,10 +104,10 @@ class Args:
     """if toggled, the sampling will be adaptive"""
     lip_cte: float = 0.5
     """the lip constant"""
-    use_sigmoid: bool = False
+    use_sigmoid: bool = True
     """if toggled, the sigmoid will be used"""
     # ALGO specific 
-    beta_ratio: float = 1/4
+    beta_ratio: float = 1/8
     """the ratio of the beta"""
     # rewards
     keep_extrinsic_reward: bool = False
@@ -417,7 +417,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     qf1_next_target = qf1_target(next_observations, next_state_actions)
                     qf2_next_target = qf2_target(next_observations, next_state_actions)
                     min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
-                    intrinsic_reward = classifier(next_observations).squeeze() - classifier(observations).squeeze()
+                    intrinsic_reward = classifier(observations).squeeze()
                     batch_rewards = args.coef_extrinsic * rewards.flatten() + args.coef_intrinsic * intrinsic_reward if args.keep_extrinsic_reward else args.coef_intrinsic * intrinsic_reward
                     next_q_value = batch_rewards + (1 - dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
 
