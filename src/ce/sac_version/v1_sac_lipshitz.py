@@ -332,11 +332,11 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         if nb_rollouts >= args.nb_rollouts_freq and  global_step>args.learning_starts:
             # CLASSIFIER TRAINING
             # rho
-            batch_obs_rho = rb.observations[rb.pos-nb_rollouts*max_step:rb.pos]
+            batch_obs_rho = rb.observations[rb.pos-nb_rollouts*max_step:rb.pos].squeeze(axis=1)
             print('batch_obs_rho:', batch_obs_rho.shape)
-            batch_next_obs_rho = rb.next_observations[rb.pos-nb_rollouts*max_step:rb.pos]
+            batch_next_obs_rho = rb.next_observations[rb.pos-nb_rollouts*max_step:rb.pos].squeeze(axis=1)
             print('batch_next_obs_rho:', batch_next_obs_rho.shape)
-            batch_dones_rho = rb.dones[rb.pos-nb_rollouts*max_step:rb.pos]        
+            batch_dones_rho = rb.dones[rb.pos-nb_rollouts*max_step:rb.pos].squeeze(axis=1)        
             print('batch_dones_rho:', batch_dones_rho.shape)
             # un
             nb_sample_un = int(args.classifier_batch_size*(1-args.beta_ratio))
@@ -362,6 +362,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 beta_mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], nb_sample_rho)
                 mb_un = rb.sample(nb_sample_un)
                 print('torch.tensor(batch_obs_rho[beta_mb_rho_idx]).to(device).shape:', torch.tensor(batch_obs_rho[beta_mb_rho_idx]).to(device).shape)
+                print('data:', mb_un.observations.shape)
                 mb_un = torch.cat([mb_un.observations, torch.tensor(batch_obs_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
                 next_mb_un = torch.cat([mb_un.next_observations, torch.tensor(batch_next_obs_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
                 done_mb_un = torch.cat([mb_un.dones, torch.tensor(batch_dones_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
