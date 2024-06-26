@@ -107,14 +107,14 @@ class Args:
     use_sigmoid: bool = False
     """if toggled, the sigmoid will be used"""
     # ALGO specific 
-    beta_ratio: float = 1/8
+    beta_ratio: float = 1/16
     """the ratio of the beta"""
     # rewards
     keep_extrinsic_reward: bool = False
     """if toggled, the extrinsic reward will be kept"""
     coef_extrinsic: float = 1.0
     """the coefficient of the extrinsic reward"""
-    coef_intrinsic: float = 1.0
+    coef_intrinsic: float = 0.1
     """the coefficient of the intrinsic reward"""
 
 
