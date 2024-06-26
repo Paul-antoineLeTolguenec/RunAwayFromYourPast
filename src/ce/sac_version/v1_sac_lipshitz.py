@@ -351,33 +351,30 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 # mb rho
                 # mb_rho_idx = np.random.choice(np.arange(batch_obs_rho.shape[0]-1), args.classifier_batch_size, p=prob.numpy())
                 mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], args.classifier_batch_size)
-                mb_rho = torch.tensor(batch_obs_rho[mb_rho_idx]).to(device)
-                print('mb_rho:', mb_rho.shape)
-                next_mb_rho = torch.tensor(batch_next_obs_rho[mb_rho_idx]).to(device)
-                print('next_mb_rho:', next_mb_rho.shape)
-                done_mb_rho = torch.tensor(batch_dones_rho[mb_rho_idx]).to(device)
-                print('done_mb_rho:', done_mb_rho.shape)
+                mb_obs_rho = torch.tensor(batch_obs_rho[mb_rho_idx]).to(device)
+                mb_next_obs_rho = torch.tensor(batch_next_obs_rho[mb_rho_idx]).to(device)
+                mb_done_rho = torch.tensor(batch_dones_rho[mb_rho_idx]).to(device)
 
                 # mb un
                 beta_mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], nb_sample_rho)
                 mb_un = rb.sample(nb_sample_un)
-                print('torch.tensor(batch_obs_rho[beta_mb_rho_idx]).to(device).shape:', torch.tensor(batch_obs_rho[beta_mb_rho_idx]).to(device).shape)
-                print('data:', mb_un.observations.shape)
-                mb_un = torch.cat([mb_un.observations, torch.tensor(batch_obs_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
-                next_mb_un = torch.cat([mb_un.next_observations, torch.tensor(batch_next_obs_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
-                done_mb_un = torch.cat([mb_un.dones, torch.tensor(batch_dones_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
+                print('mb_un.observations', mb_un.observations)
+                print(' torch.tensor(batch_obs_rho[beta_mb_rho_idx]).to(device).shape',  torch.tensor(batch_obs_rho[beta_mb_rho_idx]).to(device).shape)
+                mb_obs_un = torch.cat([mb_un.observations, torch.tensor(batch_obs_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
+                mb_next_obs_un = torch.cat([mb_un.next_observations, torch.tensor(batch_next_obs_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
+                mb_done_un = torch.cat([mb_un.dones, torch.tensor(batch_dones_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
                 # classifier loss + lipshitz regularization
-                loss, _ = classifier.lipshitz_loss_ppo(batch_q= mb_rho, batch_p = mb_un, 
-                                                        q_batch_s =  mb_rho, q_batch_next_s = next_mb_rho, q_dones = done_mb_rho,
-                                                        p_batch_s = mb_un, p_batch_next_s = next_mb_un, p_dones = done_mb_un)       
+                loss, _ = classifier.lipshitz_loss_ppo(batch_q= mb_obs_rho, batch_p = mb_un, 
+                                                        q_batch_s =  mb_obs_rho, q_batch_next_s = mb_next_obs_rho, q_dones = mb_done_rho,
+                                                        p_batch_s = mb_un, p_batch_next_s = mb_next_obs_un, p_dones = mb_done_un)       
                 classifier_optimizer.zero_grad()
                 loss.backward()
                 classifier_optimizer.step()
                 total_classification_loss += loss.item()/classifier_epochs
                 # lambda loss
-                _, lipshitz_regu = classifier.lipshitz_loss_ppo(batch_q= mb_rho, batch_p = mb_un, 
-                                                        q_batch_s =  mb_rho, q_batch_next_s = next_mb_rho, q_dones = done_mb_rho,
-                                                        p_batch_s = mb_un, p_batch_next_s = next_mb_un, p_dones = done_mb_un)    
+                _, lipshitz_regu = classifier.lipshitz_loss_ppo(batch_q= mb_obs_rho, batch_p = mb_un, 
+                                                        q_batch_s =  mb_obs_rho, q_batch_next_s = mb_next_obs_rho, q_dones = mb_done_rho,
+                                                        p_batch_s = mb_un, p_batch_next_s = mb_next_obs_un, p_dones = mb_done_un)    
                 lambda_loss = classifier.lambda_lip*lipshitz_regu
                 classifier_optimizer.zero_grad()
                 lambda_loss.backward()
