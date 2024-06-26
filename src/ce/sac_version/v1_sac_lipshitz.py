@@ -107,7 +107,7 @@ class Args:
     use_sigmoid: bool = False
     """if toggled, the sigmoid will be used"""
     # ALGO specific 
-    beta_ratio: float = 1/2
+    beta_ratio: float = 1/4
     """the ratio of the beta"""
     # rewards
     keep_extrinsic_reward: bool = False
@@ -462,6 +462,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     writer.add_scalar("losses/qf_loss", qf_loss.item() / 2.0, global_step)
                     writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
                     writer.add_scalar("losses/alpha", alpha, global_step)
+                    writer.add_scalar("losses/total_classification_loss", total_classification_loss, global_step)
+                    writer.add_scalar("losses/total_lipshitz_regu", total_lipshitz_regu, global_step)
                     writer.add_scalar("stats/nb_rollouts", nb_rollouts, global_step)
                     writer.add_scalar("stats/pos_rho", pos_rho, global_step)
                     print("SPS:", int(training_step / (time.time() - start_time)))
