@@ -110,7 +110,13 @@ class Args:
     # ALGO specific 
     beta_ratio: float = 1/4
     """the ratio of the beta"""
-
+    # rewards
+    keep_extrinsic_reward: bool = False
+    """if toggled, the extrinsic reward will be kept"""
+    coef_extrinsic: float = 1.0
+    """the coefficient of the extrinsic reward"""
+    coef_intrinsic: float = 1.0
+    """the coefficient of the intrinsic reward"""
 
 
 def make_env(env_id, idx, capture_video, run_name):
@@ -330,6 +336,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         #     training_step = global_step
         # ALGO LOGIC: training.
         if nb_rollouts >= args.nb_rollouts_freq and  global_step>args.learning_starts:
+            print('CLASSIFIER TRAINING')
             # CLASSIFIER TRAINING
             # rho
             batch_obs_rho = rb.observations[rb.pos-nb_rollouts*max_step:rb.pos].squeeze(axis=1)
@@ -343,7 +350,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             total_classification_loss = 0
             total_lipshitz_regu = 0
             for epoch in range(classifier_epochs):
-
+                print('classifier epoch', epoch)
                 # mb rho
                 # mb_rho_idx = np.random.choice(np.arange(batch_obs_rho.shape[0]-1), args.classifier_batch_size, p=prob.numpy())
                 mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], args.classifier_batch_size)
@@ -384,7 +391,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     qf1_next_target = qf1_target(data.next_observations, next_state_actions)
                     qf2_next_target = qf2_target(data.next_observations, next_state_actions)
                     min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
-                    batch_rewards = data.rewards.flatten() 
+                    intrinsic_reward = classifier(data.observations)
+                    batch_rewards = args.coef_extrinsic * data.rewards.flatten() + args.coef_intrinsic * intrinsic_reward if args.keep_extrinsic_reward else args.coef_intrinsic * intrinsic_reward
                     next_q_value = batch_rewards + (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
 
                 qf1_a_values = qf1(data.observations, data.actions).view(-1)
@@ -449,7 +457,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         if global_step % args.fig_frequency == 0  and global_step > 0:
             if args.make_gif : 
                 image = env_plot.gif(obs_un = rb.observations[:rb.pos],
-                                    classifier = None,
+                                    classifier = classifier,
                                     device= device)
                 send_matrix(wandb, image, "gif", global_step)
             
