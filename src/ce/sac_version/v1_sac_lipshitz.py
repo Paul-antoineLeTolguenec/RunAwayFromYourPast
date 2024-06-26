@@ -107,7 +107,7 @@ class Args:
     use_sigmoid: bool = True
     """if toggled, the sigmoid will be used"""
     # ALGO specific 
-    beta_ratio: float = 1/8
+    beta_ratio: float = 1/32
     """the ratio of the beta"""
     # rewards
     keep_extrinsic_reward: bool = False
