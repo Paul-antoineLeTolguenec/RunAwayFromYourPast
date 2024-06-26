@@ -117,7 +117,7 @@ def make_env(env_id, idx, capture_video, run_name):
     def thunk():
         env = Wenv(env_id=env_id, xp_id=run_name, **config[env_id])
         env = gym.wrappers.FlattenObservation(env)  # deal with dm_control's Dict observation space
-        env = gym.wrappers.RecordEpisodeStatistics(env)
+        # env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
             if idx == 0:
                 env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
