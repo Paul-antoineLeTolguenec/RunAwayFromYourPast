@@ -358,10 +358,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 # mb un
                 beta_mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], nb_sample_rho)
                 mb_un = rb.sample(nb_sample_un)
-                print('mb_un.observations', mb_un.observations)
-                print(' torch.tensor(batch_obs_rho[beta_mb_rho_idx]).to(device).shape',  torch.tensor(batch_obs_rho[beta_mb_rho_idx]).to(device).shape)
                 mb_obs_un = torch.cat([mb_un.observations, torch.tensor(batch_obs_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
                 mb_next_obs_un = torch.cat([mb_un.next_observations, torch.tensor(batch_next_obs_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
+                print('mb_done_un:', mb_un.dones.shape, torch.tensor(batch_dones_rho[beta_mb_rho_idx]).shape)
                 mb_done_un = torch.cat([mb_un.dones, torch.tensor(batch_dones_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
                 # classifier loss + lipshitz regularization
                 loss, _ = classifier.lipshitz_loss_ppo(batch_q= mb_obs_rho, batch_p = mb_un, 
