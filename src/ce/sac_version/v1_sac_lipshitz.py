@@ -102,7 +102,7 @@ class Args:
     """the clipping limit of the classifier"""
     adaptive_sampling: bool = False
     """if toggled, the sampling will be adaptive"""
-    lip_cte: float = 1.0
+    lip_cte: float = 0.1
     """the lip constant"""
     use_sigmoid: bool = False
     """if toggled, the sigmoid will be used"""
