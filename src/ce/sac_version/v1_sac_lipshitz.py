@@ -248,7 +248,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
     max_action = float(envs.single_action_space.high[0])
     # variables + initilization
-    max_step = envs.envs[0].max_steps
+    max_step = config[args.env_id]['kwargs']['max_episode_steps']
     actor = Actor(envs).to(device)
     qf1 = SoftQNetwork(envs).to(device)
     qf2 = SoftQNetwork(envs).to(device)
