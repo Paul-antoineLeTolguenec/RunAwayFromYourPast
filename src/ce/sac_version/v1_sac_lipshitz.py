@@ -407,11 +407,11 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 # sample from replay buffer
                 idx_un = np.random.randint(0, rb.pos-pos_rho, nb_sample_un)
                 idx_rho = np.random.randint(rb.pos-pos_rho, rb.pos, nb_sample_rho)
-                observations = torch.cat([rb.observations[idx_un].squeeze(axis=1), rb.observations[idx_rho].squeeze(axis=1)], axis=0).to(device)
-                next_observations = torch.cat([rb.next_observations[idx_un].squeeze(axis=1), rb.next_observations[idx_rho].squeeze(axis=1)], axis=0).to(device)
-                actions = torch.cat([rb.actions[idx_un].squeeze(axis=1), rb.actions[idx_rho].squeeze(axis=1)], axis=0).to(device)
-                rewards = torch.cat([rb.rewards[idx_un].squeeze(axis=1), rb.rewards[idx_rho].squeeze(axis=1)], axis=0).to(device)
-                dones = torch.cat([rb.dones[idx_un].squeeze(axis=1), rb.dones[idx_rho].squeeze(axis=1)], axis=0).to(device)
+                observations = torch.cat([torch.tensor(rb.observations[idx_un]).to(device).squeeze(axis=1), torch.tensor(rb.observations[idx_rho]).to(device).squeeze(axis=1)], axis=0).to(device)
+                next_observations = torch.cat([torch.tensor(rb.next_observations[idx_un]).to(device).squeeze(axis=1), torch.tensor(rb.next_observations[idx_rho]).to(device).squeeze(axis=1)], axis=0).to(device)
+                actions = torch.cat([torch.tensor(rb.actions[idx_un]).to(device).squeeze(axis=1), torch.tensor(rb.actions[idx_rho]).to(device).squeeze(axis=1)], axis=0).to(device)
+                rewards = torch.cat([torch.tensor(rb.rewards[idx_un]).to(device).squeeze(axis=1), torch.tensor(rb.rewards[idx_rho]).to(device).squeeze(axis=1)], axis=0).to(device)
+                dones = torch.cat([torch.tensor(rb.dones[idx_un]).to(device).squeeze(axis=1), torch.tensor(rb.dones[idx_rho]).to(device).squeeze(axis=1)], axis=0).to(device)
                 with torch.no_grad():
                     next_state_actions, next_state_log_pi, _ = actor.get_action(next_observations)
                     qf1_next_target = qf1_target(next_observations, next_state_actions)
