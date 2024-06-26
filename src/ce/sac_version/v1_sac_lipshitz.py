@@ -334,7 +334,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             # rho
             batch_obs_rho = rb.observations[rb.pos-nb_rollouts*max_step:rb.pos].squeeze(axis=1)
             batch_next_obs_rho = rb.next_observations[rb.pos-nb_rollouts*max_step:rb.pos].squeeze(axis=1)
-            batch_dones_rho = rb.dones[rb.pos-nb_rollouts*max_step:rb.pos].squeeze(axis=1).unsqueeze(-1)      
+            batch_dones_rho = rb.dones[rb.pos-nb_rollouts*max_step:rb.pos].squeeze(axis=1) 
             # un
             nb_sample_un = int(args.classifier_batch_size*(1-args.beta_ratio))
             nb_sample_rho = int(args.classifier_batch_size*args.beta_ratio)
@@ -356,7 +356,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 mb_un = rb.sample(nb_sample_un)
                 mb_obs_un = torch.cat([mb_un.observations, torch.tensor(batch_obs_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
                 mb_next_obs_un = torch.cat([mb_un.next_observations, torch.tensor(batch_next_obs_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
-                mb_done_un = torch.cat([mb_un.dones, torch.tensor(batch_dones_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
+                mb_done_un = torch.cat([mb_un.dones, torch.tensor(batch_dones_rho[beta_mb_rho_idx]).to(device).unsqueeze(-1)], axis=0).to(device)
                 # classifier loss + lipshitz regularization
                 loss, _ = classifier.lipshitz_loss_ppo(batch_q= mb_obs_rho, batch_p = mb_un, 
                                                         q_batch_s =  mb_obs_rho, q_batch_next_s = mb_next_obs_rho, q_dones = mb_done_rho,
