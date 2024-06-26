@@ -333,17 +333,13 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             # CLASSIFIER TRAINING
             # rho
             batch_obs_rho = rb.observations[rb.pos-nb_rollouts*max_step:rb.pos].squeeze(axis=1)
-            print('batch_obs_rho:', batch_obs_rho.shape)
             batch_next_obs_rho = rb.next_observations[rb.pos-nb_rollouts*max_step:rb.pos].squeeze(axis=1)
-            print('batch_next_obs_rho:', batch_next_obs_rho.shape)
-            batch_dones_rho = rb.dones[rb.pos-nb_rollouts*max_step:rb.pos].squeeze(axis=1)        
-            print('batch_dones_rho:', batch_dones_rho.shape)
+            batch_dones_rho = rb.dones[rb.pos-nb_rollouts*max_step:rb.pos].squeeze(axis=1).unsqueeze(-1)      
             # un
             nb_sample_un = int(args.classifier_batch_size*(1-args.beta_ratio))
             nb_sample_rho = int(args.classifier_batch_size*args.beta_ratio)
             # classifier epoch 
             classifier_epochs = max((rb.pos // args.classifier_batch_size) * args.classifier_epochs, (batch_obs_rho.shape[0] // args.classifier_batch_size) * args.classifier_epochs)
-            print('classifier_epochs:', classifier_epochs)
             total_classification_loss = 0
             total_lipshitz_regu = 0
             for epoch in range(classifier_epochs):
@@ -360,7 +356,6 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 mb_un = rb.sample(nb_sample_un)
                 mb_obs_un = torch.cat([mb_un.observations, torch.tensor(batch_obs_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
                 mb_next_obs_un = torch.cat([mb_un.next_observations, torch.tensor(batch_next_obs_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
-                print('mb_done_un:', mb_un.dones.shape, torch.tensor(batch_dones_rho[beta_mb_rho_idx]).shape)
                 mb_done_un = torch.cat([mb_un.dones, torch.tensor(batch_dones_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
                 # classifier loss + lipshitz regularization
                 loss, _ = classifier.lipshitz_loss_ppo(batch_q= mb_obs_rho, batch_p = mb_un, 
