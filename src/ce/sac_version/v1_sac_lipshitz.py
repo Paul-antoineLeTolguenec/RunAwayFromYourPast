@@ -77,12 +77,13 @@ class Args:
     """automatic tuning of the entropy coefficient"""
     num_envs: int = 1
     """the number of parallel environments"""
-    sac_training_steps: int = 100
+    sac_training_steps: int = 20
     """the number of training steps in each SAC training loop"""
     nb_rollouts_freq: int = 5
     """the frequency of logging the number of rollouts"""
+
     #  CLASSIFIER SPECIFIC
-    classifier_lr: float = 1e-3
+    classifier_lr: float = 1e-4
     """the learning rate of the classifier"""
     classifier_epochs: int = 1
     """the number of epochs to train the classifier"""
@@ -107,7 +108,7 @@ class Args:
     use_sigmoid: bool = True
     """if toggled, the sigmoid will be used"""
     # ALGO specific 
-    beta_ratio: float = 1/32
+    beta_ratio: float = 1/128
     """the ratio of the beta"""
     # rewards
     keep_extrinsic_reward: bool = False
@@ -122,7 +123,7 @@ def make_env(env_id, idx, capture_video, run_name):
     def thunk():
         env = Wenv(env_id=env_id, xp_id=run_name, **config[env_id])
         env = gym.wrappers.FlattenObservation(env)  # deal with dm_control's Dict observation space
-        env = gym.wrappers.RecordEpisodeStatistics(env)
+        # env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
             if idx == 0:
                 env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
