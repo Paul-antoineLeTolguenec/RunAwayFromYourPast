@@ -36,27 +36,27 @@ class Args:
     """if toggled, cuda will be enabled by default"""
     track: bool = True
     """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "contrastive_exploration"
+    wandb_project_name: str = "contrastive_test"
     """the wandb's project name"""
     wandb_entity: str = None
     """the entity (team) of wandb's project"""
     capture_video: bool = False
     """whether to capture videos of the agent performances (check out `videos` folder)"""
-    save_data: bool = True
+    save_data: bool = False
     """whether to save the data of the experiment"""
 
     # GIF
-    make_gif: bool = False
+    make_gif: bool = True
     """if toggled, will make gif """
     plotly: bool = False
     """if toggled, will use plotly instead of matplotlib"""
-    fig_frequency: int = 50
+    fig_frequency: int = 10
     """the frequency of plotting figures"""
     shannon_compute_freq: int = 5
     """the frequency of computing shannon entropy"""
 
     # RPO SPECIFIC
-    env_id: str = "Hopper-v3"
+    env_id: str = "Maze-Ur-v0"
     """the id of the environment"""
     total_timesteps: int = 1_000_000
     """total timesteps of the experiments"""
@@ -110,7 +110,7 @@ class Args:
     """the clipping of the intrinsic reward"""
     vae_lr: float = 1e-3
     """the learning rate of the VAE"""
-    vae_epochs: int = 16
+    vae_epochs: int = 32
     """the number of epochs for the VAE"""
     vae_latent_dim: int = 32
     """the latent dimension of the VAE"""
@@ -405,6 +405,8 @@ if __name__ == "__main__":
 
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, terminations, truncations, infos = envs.step(action.cpu().numpy())
+            # clip rewards
+            reward = np.clip(reward, -1, 1)
             times[step] = torch.tensor(np.array([infos["l"]])).transpose(0,1).to(device)
             done = np.logical_or(terminations, truncations)
             rewards[step] = torch.tensor(reward).to(device).unsqueeze(-1)

@@ -434,6 +434,8 @@ if __name__ == "__main__":
 
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, terminations, truncations, infos = envs.step(action.cpu().numpy())
+            # clip the reward
+            reward = np.clip(reward, -1, 1)
             extrinsic_rewards[step] = torch.tensor(reward).to(device).unsqueeze(-1).clone()
             ########################### INTRINSIC REWARD ###############################
             for idx in range(args.num_envs):

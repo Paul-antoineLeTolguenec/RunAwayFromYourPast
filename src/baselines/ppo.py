@@ -300,6 +300,8 @@ if __name__ == "__main__":
 
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, terminations, truncations, infos = envs.step(action.cpu().numpy())
+            # clip reward 
+            reward = np.clip(reward, -1, 1)
             extrinsic_rewards[step] = torch.tensor(reward).to(device).unsqueeze(-1).clone()
             reward = reward if args.keep_extrinsic_reward else reward * 0.0
             times[step] = torch.tensor(np.array([infos["l"]])).transpose(0,1).to(device)

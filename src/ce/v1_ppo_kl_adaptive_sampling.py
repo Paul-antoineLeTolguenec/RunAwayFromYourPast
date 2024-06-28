@@ -44,7 +44,7 @@ class Args:
     """the entity (team) of wandb's project"""
     capture_video: bool = False
     """whether to capture videos of the agent performances (check out `videos` folder)"""
-    save_data : bool = True
+    save_data : bool = False
     """if toggled, the data will be saved"""
 
     # GIF
@@ -58,9 +58,9 @@ class Args:
     """the frequency of computing shannon entropy"""
 
     # RPO SPECIFIC
-    env_id: str = "HalfCheetah-v3"
+    env_id: str = "Maze-Ur-v0"
     """the id of the environment"""
-    total_timesteps: int = 2_000_000
+    total_timesteps: int = 1_000_000
     """total timesteps of the experiments"""
     learning_rate: float = 5e-4
     """the learning rate of the optimizer"""
@@ -128,7 +128,7 @@ class Args:
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
-    beta_ratio: float = 1/16
+    beta_ratio: float = 1/4
     """the ratio of the beta"""
     nb_max_steps: int =50_000
     """the maximum number of step in un"""
@@ -399,7 +399,7 @@ if __name__ == "__main__":
                     beta_mb_un_idx = np.random.randint(0, obs_un.shape[0]-beta_increment,int(args.classifier_batch_size*(1-beta_adaptive)))
                 mb_un = torch.tensor(np.concatenate((obs_un[beta_mb_un_idx], batch_obs_rho[beta_mb_rho_idx].cpu().numpy()), axis=0)).to(device)
                 # classifier loss + lipshitz regularization
-                loss = classifier.ce_loss_ppo(batch_q=mb_rho, batch_p=mb_un)
+                loss = classifier.ce_loss_ppo(batch_q=mb_rho, batch_p=mb_un, N_un = obs_un.shape[0], N_rho = batch_obs_rho.shape[0])
                 classifier_optimizer.zero_grad()
                 loss.backward()
                 classifier_optimizer.step()

@@ -35,13 +35,13 @@ class Args:
     """if toggled, cuda will be enabled by default"""
     track: bool = True
     """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "contrastive_exploration"
+    wandb_project_name: str = "contrastive_test"
     """the wandb's project name"""
     wandb_entity: str = None
     """the entity (team) of wandb's project"""
     capture_video: bool = False
     """whether to capture videos of the agent performances (check out `videos` folder)"""
-    save_data: bool = True
+    save_data: bool = False
     """whether to save the data of the experiment"""
 
     # GIF
@@ -55,9 +55,9 @@ class Args:
     """the frequency of computing shannon entropy"""
 
     # RPO SPECIFIC
-    env_id: str = "HalfCheetah-v3"
+    env_id: str = "Maze-Ur-v0"
     """the id of the environment"""
-    total_timesteps: int = 500_000
+    total_timesteps: int = 100_000
     """total timesteps of the experiments"""
     learning_rate: float = 5e-4
     """the learning rate of the optimizer"""
@@ -75,7 +75,7 @@ class Args:
     """the number of mini-batches"""
     update_epochs: int = 10
     """the K epochs to update the policy"""
-    norm_adv: bool = False
+    norm_adv: bool = True
     """Toggles advantages normalization"""
     clip_coef: float = 0.2
     """the surrogate clipping coefficient"""
@@ -92,11 +92,7 @@ class Args:
     rpo_alpha: float = 0.0
     """the alpha parameter for RPO"""
 
-    # ICM SPECIFIC
-    icm_lr: float = 1e-3
-    """the learning rate of the intrinsic curiosity module"""
-    beta: float = 0.2
-    """the beta parameter for the intrinsic curiosity module"""
+    # icm SPECIFIC
     ratio_reward: float = 1.0
     """the ratio of the intrinsic reward"""
     episodic_return: bool = True
@@ -109,11 +105,15 @@ class Args:
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
+    icm_lr: float = 1e-3
+    """the learning rate of the icm"""
     icm_epochs: int = 32
-    """the number of epochs for the ICM"""
+    """the number of epochs for the icm"""
+    beta: float = 0.2
+    """the beta of the icm"""
     feature_extractor: bool = False
     """if toggled, the feature extractor will be used"""
-    clip_intrinsic: float = 10.0
+    clip_intrinsic_reward: float = 10.0
     """the clipping of the intrinsic reward"""
 
     # to be filled in runtime
@@ -125,59 +125,10 @@ class Args:
     """the number of iterations (computed in runtime)"""
 
     # dataset 
-    beta_ratio: float = 1/4
+    beta_ratio: float = 1/128
     """the ratio of the beta"""
     nb_max_steps: int = 50_000
     """the maximum number of step in un"""
-
-
-class ICM(nn.Module):   
-    def __init__(self, state_dim, action_dim,feature_dim=16, beta = 0.2, device='cpu'):
-        super(ICM, self).__init__()
-        # Intrinsic Curiosity Module
-        # feature encoder
-        self.feature_1 = nn.Linear(state_dim, 128, device = device)
-        self.feature_2 = nn.Linear(128, feature_dim, device = device)
-        # inverse model
-        self.inverse_1 = nn.Linear(2*feature_dim, 32, device = device)
-        self.inverse_2 = nn.Linear(32, action_dim, device = device)
-        # forward model
-        self.forward_1 = nn.Linear(feature_dim+action_dim, 32, device = device)
-        self.forward_2 = nn.Linear(32, feature_dim, device = device)
-        # beta 
-        self.beta = beta
-        
-    def feature(self, x):
-        x = F.relu(self.feature_1(x))
-        x = self.feature_2(x)
-        return x
-    
-    def forward(self, x, a):
-        x = torch.cat([x, a], 1)
-        x = F.relu(self.forward_1(x))
-        x = self.forward_2(x)
-        return x
-    
-    def inverse(self, x, next_x):
-        x = torch.cat([x, next_x], 1)
-        x = F.relu(self.inverse_1(x))
-        x = self.inverse_2(x)
-        return x
-
-    def loss(self, obs, next_obs, action, dones, reduce=True):
-        # feature encoding
-        phi = self.feature(obs)
-        next_phi = self.feature(next_obs)
-        # inverse model
-        pred_a = self.inverse(phi, next_phi) * (1-dones)
-        # forward model
-        pred_phi = self.forward(phi, action) * (1-dones)
-        # losses
-        # inverse_loss : MSE for continuous action space
-        inverse_loss = F.mse_loss(pred_a, action)
-        # forward_loss : MSE for continuous action space
-        forward_loss = torch.sqrt(F.mse_loss(pred_phi, next_phi, reduction='none').sum(1))
-        return ((1-self.beta)*inverse_loss + self.beta*forward_loss.mean(), inverse_loss, forward_loss.mean()) if reduce else forward_loss
 
 
 
@@ -195,6 +146,56 @@ def make_env(env_id, idx, capture_video, run_name):
 
     return thunk
 
+
+
+class ICM(nn.Module):   
+    def __init__(self, state_dim, action_dim, feature_dim = 64, beta = 0.2, device = 'cpu'):
+        super(ICM, self).__init__()
+        # feature network
+        self.f1 = nn.Linear(state_dim, 256, device=device)
+        self.f2 = nn.Linear(256, 64, device=device)
+        self.f3 = nn.Linear(64, feature_dim, device=device)
+        # inverse model
+        self.i1 = nn.Linear(2*feature_dim, 64, device=device)
+        self.i2 = nn.Linear(64, action_dim, device=device)
+        # forward model
+        self.fo1 = nn.Linear(feature_dim + action_dim, 64, device=device)
+        self.fo2 = nn.Linear(64, feature_dim, device=device)
+        # beta
+        self.beta = beta
+        self.device = device
+
+
+    def feature(self, x):
+        x = F.relu(self.f1(x))
+        x = F.relu(self.f2(x))
+        x = self.f3(x)
+        return x
+    def inverse(self, f1, f2):
+        x = torch.cat([f1, f2], dim = 1)
+        x = F.relu(self.i1(x))
+        x = self.i2(x)
+        return x
+    def forward_t(self, f1, a):
+        x = torch.cat([f1, a], dim = 1)
+        x = F.relu(self.fo1(x))
+        x = self.fo2(x)
+        return x
+    
+   
+    
+    def loss(self, obs, next_obs, action, dones, reduce = True):
+        # feature
+        f = self.feature(obs)
+        f_next = self.feature(next_obs)
+        # inverse
+        a_pred = self.inverse(f, f_next)
+        # forward
+        f_next_pred = self.forward_t(f, action)
+        # loss
+        loss_inverse = F.mse_loss(a_pred, action, reduction = 'none').sum(1) if not reduce else F.mse_loss(a_pred, action)
+        loss_forward = F.mse_loss(f_next_pred, f_next, reduction = 'none').sum(1) if not reduce else F.mse_loss(f_next_pred, f_next)
+        return self.beta * loss_forward + (1 - self.beta) * loss_inverse
 
 
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
@@ -233,7 +234,7 @@ class Agent(nn.Module):
         if action is None:
             action = probs.sample()
         return action, probs.log_prob(action).sum(1), probs.entropy().sum(1), self.critic(x)
-
+    
 def update_un(obs_un, next_obs_un, actions_un, rewards_un,  dones_un, times_un,
               obs_reshaped, next_obs_reshaped, actions_reshaped, rewards_reshaped, dones_reshaped, times_reshaped,
               args):
@@ -305,7 +306,11 @@ if __name__ == "__main__":
     # Agent
     agent = Agent(envs).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
-    icm = ICM(envs.single_observation_space.shape[0], envs.single_action_space.shape[0], device=device)
+    icm = ICM(state_dim=np.array(envs.single_observation_space.shape).prod(),
+              action_dim=np.array(envs.single_action_space.shape).prod(),
+              feature_dim=64,
+              beta=args.beta,
+              device=device).to(device)
     optimizer_icm = optim.Adam(icm.parameters(), lr=args.icm_lr, eps=1e-5)
 
     # ALGO Logic: Storage setup
@@ -313,7 +318,6 @@ if __name__ == "__main__":
     actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
     logprobs = torch.zeros((args.num_steps, args.num_envs) + (1,)).to(device)
     rewards = torch.zeros((args.num_steps, args.num_envs) + (1,)).to(device)
-    extrinsic_rewards = torch.zeros((args.num_steps, args.num_envs) + (1,)).to(device)
     dones = torch.zeros((args.num_steps, args.num_envs) + (1,)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)+ (1,)).to(device)
     times = torch.zeros((args.num_steps, args.num_envs)+ (1,)).to(device)
@@ -363,19 +367,8 @@ if __name__ == "__main__":
 
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, terminations, truncations, infos = envs.step(action.cpu().numpy())
-            extrinsic_rewards[step] = torch.tensor(reward).to(device).unsqueeze(-1).clone()
-
-            # intrinsic reward
-            with torch.no_grad():
-                rewards_intrinsic = icm.loss(obs=obs[step].to(torch.float32),
-                                             action=actions[step].to(torch.float32),
-                                             next_obs=torch.tensor(next_obs, device = device).to(torch.float32),
-                                             dones=dones[step], 
-                                             reduce=False).detach().cpu().numpy()
-                clipped_rewards_intrinsic = np.clip(rewards_intrinsic, -args.clip_intrinsic, args.clip_intrinsic)
-                rewards[step] = torch.tensor(clipped_rewards_intrinsic).to(device).unsqueeze(-1)
-
-
+            # clip reward 
+            reward = np.clip(reward, -1, 1)
             times[step] = torch.tensor(np.array([infos["l"]])).transpose(0,1).to(device)
             done = np.logical_or(terminations, truncations)
             rewards[step] = torch.tensor(reward).to(device).unsqueeze(-1)
@@ -385,27 +378,32 @@ if __name__ == "__main__":
                     if info and "episode" in info:
                         # print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                         wandb.log({"specific/episodic_return": info["episode"]["r"], "specific/episodic_length": info["episode"]["l"], "global_step": global_step})
-
-        ########################### ICM UPDATE ###############################
-        obs_reshaped = obs.permute(1,0,2).reshape(-1, obs.shape[-1])[:-1]
-        actions_reshaped = actions.permute(1,0,2).reshape(-1, actions.shape[-1])[:-1]
-        next_obs_reshaped = obs.permute(1,0,2).reshape(-1, obs.shape[-1])[1:]
-        dones_reshaped = dones.permute(1,0,2).reshape(-1, dones.shape[-1])[:-1]
-        for icm_update in range(args.icm_epochs):
-            idx_mb = np.random.randint(0, obs_reshaped.shape[0], args.minibatch_size)
-            obs_reshaped_mb = obs_reshaped[idx_mb]
-            actions_reshaped_mb = actions_reshaped[idx_mb]
-            next_obs_reshaped_mb = next_obs_reshaped[idx_mb]
-            dones_reshaped_mb = dones_reshaped[idx_mb]
-            icm_loss, inverse_loss, forward_loss = icm.loss(obs = obs_reshaped_mb,
-                                                            next_obs = next_obs_reshaped_mb,
-                                                            action = actions_reshaped_mb,
-                                                            dones = dones_reshaped_mb,
-                                                            reduce=True)
+                        
+        ########################### icm UPDATE ###############################
+        batch_obs = obs.permute(1,0,2).reshape(-1, obs.shape[-1])[:-1].to(device)
+        batch_next_obs = obs.permute(1,0,2).reshape(-1, obs.shape[-1])[1:].to(device)
+        batch_actions = actions.permute(1,0,2).reshape(-1, actions.shape[-1])[:-1].to(device)
+        batch_dones = dones.permute(1,0,2).reshape(-1, dones.shape[-1])[:-1].to(device)
+        total_loss = 0
+        for _ in range(args.icm_epochs):
+            idx_obs = np.random.randint(0, batch_obs.shape[0], size = args.minibatch_size)
+            icm_loss = icm.loss(batch_obs[idx_obs], batch_next_obs[idx_obs], batch_actions[idx_obs], batch_dones[idx_obs])
             optimizer_icm.zero_grad()
             icm_loss.backward()
             optimizer_icm.step()
+            total_loss += icm_loss.item()
+
+        ############################ REWARD ##################################
+        with torch.no_grad():
+            # update the reward
             
+            rewards_nn = icm.loss(batch_obs, batch_next_obs, batch_actions, batch_dones, reduce = False).unsqueeze(-1)
+            rewards_nn = torch.cat([rewards_nn, torch.zeros((1, 1)).to(device)], dim = 0).view(rewards.shape[0], rewards.shape[1], 1)
+            rewards_nn = torch.clamp(rewards_nn, -args.clip_intrinsic_reward, args.clip_intrinsic_reward)
+
+        extrinsic_rewards = rewards.clone()
+        rewards = args.coef_intrinsic * rewards_nn + args.coef_extrinsic * rewards if args.keep_extrinsic_reward else args.coef_intrinsic * rewards_nn
+
 
         ########################### UPDATE UN ###############################
         # permute
@@ -443,14 +441,6 @@ if __name__ == "__main__":
             dones_un = np.concatenate([dones_un, dones_reshaped[idx_un]])
             times_un = np.concatenate([times_un, times_reshaped[idx_un]])   
         
-    
-        # normalize rewards
-        rewards = (rewards - rewards.mean()) / (rewards.std() + 1)
-        rewards = extrinsic_rewards * args.coef_extrinsic + rewards * args.coef_intrinsic if args.keep_extrinsic_reward else rewards*args.coef_intrinsic
-
-        print('reward max : ', rewards.max())
-        print('reward min : ', rewards.min())
-
         ########################### PPO UPDATE ###############################
         # bootstrap value if not done
         with torch.no_grad():
@@ -560,10 +550,10 @@ if __name__ == "__main__":
             "specific/rewards_min": rewards.min().item(),
             "specific/rewards_mean": rewards.mean().item(),
             "specific/rewards_std": rewards.std().item(),
-            # losses
-            "losses/icm_loss": icm_loss.item() if obs_un is not None else 0,
-            "losses/inverse_loss": inverse_loss.item() if obs_un is not None else 0,
+            # icm loss
+            "icm/loss": total_loss,
         })
+        # coverage matrix
         if args.make_gif:
             # coverage matrix
             if env_check.matrix_coverage.ndim > 2:

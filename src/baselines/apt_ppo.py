@@ -36,27 +36,27 @@ class Args:
     """if toggled, cuda will be enabled by default"""
     track: bool = True
     """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "contrastive_exploration"
+    wandb_project_name: str = "contrastive_test"
     """the wandb's project name"""
     wandb_entity: str = None
     """the entity (team) of wandb's project"""
     capture_video: bool = False
     """whether to capture videos of the agent performances (check out `videos` folder)"""
-    save_data: bool = True
+    save_data: bool = False
     """whether to save the data of the experiment"""
 
     # GIF
-    make_gif: bool = False
+    make_gif: bool = True
     """if toggled, will make gif """
     plotly: bool = False
     """if toggled, will use plotly instead of matplotlib"""
-    fig_frequency: int = 50
+    fig_frequency: int = 10
     """the frequency of plotting figures"""
     shannon_compute_freq: int = 5
     """the frequency of computing shannon entropy"""
 
     # RPO SPECIFIC
-    env_id: str = "Maze-Ur"
+    env_id: str = "Maze-Ur-v0"
     """the id of the environment"""
     total_timesteps: int = 50_000
     """total timesteps of the experiments"""
@@ -118,9 +118,9 @@ class Args:
     """if toggled, the feature extractor will be used"""
     latent_dim: int = 32
     """the dimension of the latent space"""
-    sigma: float = 0.01
+    sigma: float = 0.5
     """the sigma for the data augmentation"""
-    knn: int = 5
+    knn: int = 16
 
 
     # to be filled in runtime
@@ -408,6 +408,8 @@ if __name__ == "__main__":
 
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, terminations, truncations, infos = envs.step(action.cpu().numpy())
+            # clip 
+            reward = np.clip(reward, -1, 1)
             extrinsic_rewards[step] = torch.tensor(reward).to(device).unsqueeze(-1).clone()
             if obs_un is not None:
                 with torch.no_grad():

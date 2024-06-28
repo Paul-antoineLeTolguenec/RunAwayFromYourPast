@@ -3,7 +3,7 @@
 
       "maze": {
         "v1_ppo_kl_adaptive_sampling": {
-                                        "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
+                                        "cuda": true, "wandb_project_name": "contrastive_exploration", "shannon_compute_freq": 5,
                                         "save_data": false,
                                         "make_gif": true, "fig_frequency": 10,
                                         "total_timesteps": 500000,
@@ -35,7 +35,7 @@
                                         },
 
         "v2_ppo_kl_adaptive_sampling": {
-                                        "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
+                                        "cuda": true, "wandb_project_name": "contrastive_exploration", "shannon_compute_freq": 5,
                                         "save_data": false,
                                         "make_gif": true, "fig_frequency": 10,
                                         "total_timesteps": 500000,
@@ -70,7 +70,7 @@
                                         },
 
         "v1_ppo_lipshitz_adaptive_sampling": {
-                                        "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
+                                        "cuda": true, "wandb_project_name": "contrastive_exploration", "shannon_compute_freq": 5,
                                         "save_data": false,
                                         "make_gif": true, "fig_frequency": 10,
                                         "total_timesteps": 500000,
@@ -105,7 +105,7 @@
                                         },
 
         "v2_ppo_lipshitz_adaptive_sampling": {
-                                        "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
+                                        "cuda": true, "wandb_project_name": "contrastive_exploration", "shannon_compute_freq": 5,
                                         "save_data": false,
                                         "make_gif": true, "fig_frequency": 10,
                                         "total_timesteps": 500000,
@@ -149,7 +149,7 @@
     "dmcs": {
 
     "v1_ppo_kl_adaptive_sampling": {
-                                "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
+                                "cuda": true, "wandb_project_name": "contrastive_exploration", "shannon_compute_freq": 5,
                                 "save_data": false,
                                 "make_gif": true, "fig_frequency": 10,
                                 "total_timesteps": 5000000,
@@ -181,7 +181,7 @@
                                     },
 
     "v2_ppo_kl_adaptive_sampling": {
-                                "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
+                                "cuda": true, "wandb_project_name": "contrastive_exploration", "shannon_compute_freq": 5,
                                 "save_data": false,
                                 "make_gif": true, "fig_frequency": 10,
                                 "total_timesteps": 5000000,
@@ -216,7 +216,7 @@
                                     },
 
     "v1_ppo_lipshitz_adaptive_sampling": {
-                                    "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
+                                    "cuda": true, "wandb_project_name": "contrastive_exploration", "shannon_compute_freq": 5,
                                     "save_data": false,
                                     "make_gif": true, "fig_frequency": 10,
                                     "total_timesteps": 5000000,
@@ -251,7 +251,7 @@
                                     },
 
     "v2_ppo_lipshitz_adaptive_sampling": {
-                                    "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
+                                    "cuda": true, "wandb_project_name": "contrastive_exploration", "shannon_compute_freq": 5,
                                     "save_data": false,
                                     "make_gif": true, "fig_frequency": 10,
                                     "total_timesteps": 5000000,
@@ -295,7 +295,7 @@
     "robotics": {
 
         "v1_ppo_kl_adaptive_sampling": {
-                                        "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
+                                        "cuda": true, "wandb_project_name": "contrastive_exploration", "shannon_compute_freq": 5,
                                         "save_data": false,
                                         "make_gif": true, "fig_frequency": 10,
                                         "total_timesteps": 500000,
@@ -327,7 +327,7 @@
                                         },
     
         "v2_ppo_kl_adaptive_sampling": {
-                                        "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
+                                        "cuda": true, "wandb_project_name": "contrastive_exploration", "shannon_compute_freq": 5,
                                         "save_data": false,
                                         "make_gif": true, "fig_frequency": 10,
                                         "total_timesteps": 500000,
@@ -362,7 +362,7 @@
                                         },
     
         "v1_ppo_lipshitz_adaptive_sampling": {
-                                        "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
+                                        "cuda": true, "wandb_project_name": "contrastive_exploration", "shannon_compute_freq": 5,
                                         "save_data": false,
                                         "make_gif": true, "fig_frequency": 10,
                                         "total_timesteps": 500000,
@@ -397,7 +397,7 @@
                                         },
     
         "v2_ppo_lipshitz_adaptive_sampling": {
-                                        "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
+                                        "cuda": true, "wandb_project_name": "contrastive_exploration", "shannon_compute_freq": 5,
                                         "save_data": false,
                                         "make_gif": true, "fig_frequency": 10,
                                         "total_timesteps": 500000,
@@ -441,7 +441,7 @@
         "mujoco": {
 
             "v1_ppo_kl_adaptive_sampling": {
-                                            "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
+                                            "cuda": true, "wandb_project_name": "contrastive_exploration", "shannon_compute_freq": 5,
                                             "save_data": false,
                                             "make_gif": true, "fig_frequency": 10,
                                             "total_timesteps": 5000000,
@@ -473,7 +473,7 @@
                                             },
         
             "v2_ppo_kl_adaptive_sampling": {
-                                            "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
+                                            "cuda": true, "wandb_project_name": "contrastive_exploration", "shannon_compute_freq": 5,
                                             "save_data": false,
                                             "make_gif": true, "fig_frequency": 10,
                                             "total_timesteps": 5000000,
@@ -508,7 +508,7 @@
                                             },
         
             "v1_ppo_lipshitz_adaptive_sampling": {
-                                            "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
+                                            "cuda": true, "wandb_project_name": "contrastive_exploration", "shannon_compute_freq": 5,
                                             "save_data": false,
                                             "make_gif": true, "fig_frequency": 10,
                                             "total_timesteps": 5000000,
@@ -543,7 +543,7 @@
                                             },
         
             "v2_ppo_lipshitz_adaptive_sampling": {
-                                            "cuda": true, "wandb_project_name": "contrastive_exploration_newest", "shannon_compute_freq": 5,
+                                            "cuda": true, "wandb_project_name": "contrastive_exploration", "shannon_compute_freq": 5,
                                             "save_data": false,
                                             "make_gif": true, "fig_frequency": 10,
                                             "total_timesteps": 5000000,
