@@ -77,7 +77,7 @@ class Args:
     """automatic tuning of the entropy coefficient"""
     num_envs: int = 1
     """the number of parallel environments"""
-    sac_training_steps: int = 100
+    sac_training_steps: int = 50
     """the number of training steps in each SAC training loop"""
     nb_rollouts_freq: int = 5
     """the frequency of logging the number of rollouts"""
@@ -118,7 +118,7 @@ class Args:
     coef_intrinsic: float = 1.0
     """the coefficient of the intrinsic reward"""
     # rho update frequency
-    rho_update_freq: int = 3
+    rho_update_freq: int = 4
     """the frequency of updating rho"""
 
 
@@ -336,11 +336,11 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         
         if True in terminations:
             rb.add(obs, real_next_obs, actions, rewards, terminations, infos) 
-            # pos_rho+=1
+            pos_rho+=1
         else:
             if bernoulli.rvs(args.beta_ratio):
                 rb.add(obs, real_next_obs, actions, rewards, terminations, infos)
-                # pos_rho+=1
+                pos_rho+=1
             
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
@@ -350,8 +350,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         #     training_step = global_step
         # ALGO LOGIC: training.
         if nb_rollouts >= args.nb_rollouts_freq and  global_step>=args.learning_starts:
-            # pos_rho=int(pos_rho/2) if global_step == args.learning_starts else pos_rho
-            pos_rho = min(int(rb.pos*args.beta_ratio)+1, args.nb_rollouts_freq*max_step)
+            pos_rho=int(pos_rho/2) if global_step == args.learning_starts else pos_rho
+            # pos_rho = min(int(rb.pos*args.beta_ratio)+1, args.nb_rollouts_freq*max_step)
             print('pos_rho', pos_rho)
             print('rb.pos', rb.pos)
             print('CLASSIFIER TRAINING')
@@ -378,7 +378,13 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
                 # mb un
                 beta_mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], nb_sample_rho)
-                beta_mb_un_idx = np.random.randint(0, rb.pos-pos_rho, nb_sample_un)
+                add_pos = args.rho_update_freq*max_step*(1-args.beta_ratio)
+                print('add_pos_before : ', add_pos)
+                print('pos_rho' , pos_rho)
+                print('rb pos', rb.pos)
+                add_pos = 0 if rb.pos-(pos_rho+add_pos)<= 0 else add_pos
+                print('add poss : ', add_pos)
+                beta_mb_un_idx = np.random.randint(0, rb.pos-(pos_rho+add_pos), nb_sample_un)
                 # sampling part of (1-beta) from un 
                 mb_un_obs = torch.tensor(rb.observations[beta_mb_un_idx]).to(device).squeeze(axis=1)
                 mb_un_next_obs = torch.tensor(rb.next_observations[beta_mb_un_idx]).to(device).squeeze(axis=1)
@@ -411,8 +417,6 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 nb_sample_rho = int(args.classifier_batch_size*(1-args.beta_ratio))
                 nb_sample_un = int(args.classifier_batch_size*args.beta_ratio)
                 # sample from replay buffer
-                print('pos_rho', pos_rho)
-                print('rb.pos', rb.pos)
                 idx_un = np.random.randint(0, rb.pos-pos_rho, nb_sample_un)
                 idx_rho = np.random.randint(rb.pos-pos_rho, rb.pos, nb_sample_rho)
                 observations = torch.cat([torch.tensor(rb.observations[idx_un]).to(device).squeeze(axis=1), torch.tensor(rb.observations[idx_rho]).to(device).squeeze(axis=1)], axis=0).to(device)
@@ -489,6 +493,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                         writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
             # reinit
             nb_rollouts = 0
+            rb_pos = 0
             
 
         if global_step % args.fig_frequency == 0  and global_step > 0:
