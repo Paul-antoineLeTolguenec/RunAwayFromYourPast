@@ -49,7 +49,7 @@ class Args:
     """the frequency of computing shannon entropy"""
 
     # Algorithm specific arguments
-    env_id: str = "HalfCheetah-v3"
+    env_id: str = "Maze-Ur-v0"
     """the environment id of the task"""
     total_timesteps: int = 1000000
     """total timesteps of the experiments"""
