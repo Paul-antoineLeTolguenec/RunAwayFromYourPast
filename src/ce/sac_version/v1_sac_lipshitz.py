@@ -77,7 +77,7 @@ class Args:
     """automatic tuning of the entropy coefficient"""
     num_envs: int = 1
     """the number of parallel environments"""
-    sac_training_steps: int = 20
+    sac_training_steps: int = 100
     """the number of training steps in each SAC training loop"""
     nb_rollouts_freq: int = 5
     """the frequency of logging the number of rollouts"""
@@ -108,7 +108,7 @@ class Args:
     use_sigmoid: bool = True
     """if toggled, the sigmoid will be used"""
     # ALGO specific 
-    beta_ratio: float = 1/128
+    beta_ratio: float = 1/4
     """the ratio of the beta"""
     # rewards
     keep_extrinsic_reward: bool = False
@@ -117,6 +117,9 @@ class Args:
     """the coefficient of the extrinsic reward"""
     coef_intrinsic: float = 1.0
     """the coefficient of the intrinsic reward"""
+    # rho update frequency
+    rho_update_freq: int = 3
+    """the frequency of updating rho"""
 
 
 def make_env(env_id, idx, capture_video, run_name):
@@ -303,6 +306,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     start_time = time.time()
     nb_rollouts = 0
     pos_rho = 0
+    nb_epoch_rho = 0
     # TRY NOT TO MODIFY: start the game
     obs, _ = envs.reset(seed=args.seed)
     for global_step in range(args.total_timesteps):
@@ -332,11 +336,11 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         
         if True in terminations:
             rb.add(obs, real_next_obs, actions, rewards, terminations, infos) 
-            pos_rho+=1
+            # pos_rho+=1
         else:
             if bernoulli.rvs(args.beta_ratio):
                 rb.add(obs, real_next_obs, actions, rewards, terminations, infos)
-                pos_rho+=1
+                # pos_rho+=1
             
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
@@ -346,7 +350,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         #     training_step = global_step
         # ALGO LOGIC: training.
         if nb_rollouts >= args.nb_rollouts_freq and  global_step>=args.learning_starts:
-            pos_rho=int(pos_rho/2) if global_step == args.learning_starts else pos_rho
+            # pos_rho=int(pos_rho/2) if global_step == args.learning_starts else pos_rho
+            pos_rho = min(int(rb.pos*args.beta_ratio)+1, args.nb_rollouts_freq*max_step)
             print('pos_rho', pos_rho)
             print('rb.pos', rb.pos)
             print('CLASSIFIER TRAINING')
@@ -406,6 +411,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 nb_sample_rho = int(args.classifier_batch_size*(1-args.beta_ratio))
                 nb_sample_un = int(args.classifier_batch_size*args.beta_ratio)
                 # sample from replay buffer
+                print('pos_rho', pos_rho)
+                print('rb.pos', rb.pos)
                 idx_un = np.random.randint(0, rb.pos-pos_rho, nb_sample_un)
                 idx_rho = np.random.randint(rb.pos-pos_rho, rb.pos, nb_sample_rho)
                 observations = torch.cat([torch.tensor(rb.observations[idx_un]).to(device).squeeze(axis=1), torch.tensor(rb.observations[idx_rho]).to(device).squeeze(axis=1)], axis=0).to(device)
@@ -475,14 +482,14 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     writer.add_scalar("losses/total_classification_loss", total_classification_loss, global_step)
                     writer.add_scalar("losses/total_lipshitz_regu", total_lipshitz_regu, global_step)
                     writer.add_scalar("stats/nb_rollouts", nb_rollouts, global_step)
-                    writer.add_scalar("stats/pos_rho", pos_rho, global_step)
+                    # writer.add_scalar("stats/pos_rho", pos_rho, global_step)
                     print("SPS:", int(training_step / (time.time() - start_time)))
                     writer.add_scalar("charts/SPS", int(training_step / (time.time() - start_time)), global_step)
                     if args.autotune:
                         writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
             # reinit
             nb_rollouts = 0
-            pos_rho = 0
+            
 
         if global_step % args.fig_frequency == 0  and global_step > 0:
             if args.make_gif : 
