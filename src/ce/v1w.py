@@ -57,9 +57,9 @@ class Args:
     """the frequency of computing shannon entropy"""
 
     # RPO SPECIFIC
-    env_id: str = "Maze-Ur-v0"
+    env_id: str = "HalfCheetah-v3"
     """the id of the environment"""
-    total_timesteps: int = 500_000
+    total_timesteps: int = 5_000_000
     """total timesteps of the experiments"""
     learning_rate: float = 5e-4
     """the learning rate of the optimizer"""
@@ -85,7 +85,7 @@ class Args:
     """the mask clipping coefficient"""
     clip_vloss: bool = False #True
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
-    ent_coef: float = 0.0
+    ent_coef: float = 0.1
     """coefficient of the entropy"""
     ent_mask_coef: float = 0.1
     """coefficient of the entropy mask"""
@@ -97,7 +97,7 @@ class Args:
     """the target KL divergence threshold"""
 
     # CLASSIFIER SPECIFIC
-    classifier_lr: float = 1e-3
+    classifier_lr: float = 1e-4
     """the learning rate of the classifier"""
     classifier_epochs: int = 1
     """the number of epochs to train the classifier"""
@@ -119,7 +119,7 @@ class Args:
     """if toggled, the sampling will be adaptive"""
     lip_cte: float = 1.0
     """the lip constant"""
-    use_sigmoid: bool = True
+    use_sigmoid: bool = False
     """if toggled, the sigmoid will be used"""
 
     
@@ -129,7 +129,7 @@ class Args:
     """if toggled, the episodic return will be used"""
     polyak: float = 0.75
     """the polyak averaging coefficient"""
-    n_rollouts: int = 1
+    n_rollouts: int = 4
     """the number of rollouts"""
     keep_extrinsic_reward: bool = False
     """if toggled, the extrinsic reward will be kept"""
@@ -139,7 +139,7 @@ class Args:
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
-    beta_ratio: float = 1/16
+    beta_ratio: float = 1/128
     """the ratio of the beta"""
     beta_min: float = 1/1024
     """the minimum of the beta"""
