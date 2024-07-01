@@ -49,7 +49,7 @@ class Args:
     """the frequency of computing shannon entropy"""
 
     # Algorithm specific arguments
-    env_id: str = "Maze-Ur-v0"
+    env_id: str = "HalfCheetah-v3"
     """the environment id of the task"""
     total_timesteps: int = 1000000
     """total timesteps of the experiments"""
@@ -77,9 +77,9 @@ class Args:
     """automatic tuning of the entropy coefficient"""
     num_envs: int = 1
     """the number of parallel environments"""
-    sac_training_steps: int = 100
+    sac_training_steps: int = 200
     """the number of training steps in each SAC training loop"""
-    nb_rollouts_freq: int = 2
+    nb_rollouts_freq: int = 4
     """the frequency of logging the number of rollouts"""
 
     #  CLASSIFIER SPECIFIC
@@ -126,7 +126,7 @@ def make_env(env_id, idx, capture_video, run_name):
     def thunk():
         env = Wenv(env_id=env_id, xp_id=run_name, **config[env_id])
         env = gym.wrappers.FlattenObservation(env)  # deal with dm_control's Dict observation space
-        # env = gym.wrappers.RecordEpisodeStatistics(env)
+        env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
             if idx == 0:
                 env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
@@ -351,7 +351,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         # ALGO LOGIC: training.
         if nb_rollouts >= args.nb_rollouts_freq and  global_step>=args.learning_starts:
             pos_rho=int(pos_rho/2) if global_step == args.learning_starts else pos_rho
-            # pos_rho = min(int(rb.pos*args.beta_ratio)+1, args.nb_rollouts_freq*max_step)
+            pos_rho = min(rb.pos - 64, pos_rho)
+            print('global step ', global_step)
             print('pos_rho', pos_rho)
             print('rb.pos', rb.pos)
             print('CLASSIFIER TRAINING')
@@ -393,7 +394,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 # classifier loss + lipshitz regularization
                 loss, _ = classifier.lipshitz_loss_ppo(batch_q= mb_obs_rho, batch_p = mb_obs_un, 
                                                         q_batch_s =  mb_obs_rho, q_batch_next_s = mb_next_obs_rho, q_dones = mb_done_rho,
-                                                        p_batch_s = mb_obs_un, p_batch_next_s = mb_next_obs_un, p_dones = mb_done_un)       
+                                                        p_batch_s = mb_obs_un, p_batch_next_s = mb_next_obs_un, p_dones = mb_done_un, 
+                                                        N_rho = batch_obs_rho.shape[0], N_un = rb.pos)       
                 classifier_optimizer.zero_grad()
                 loss.backward()
                 classifier_optimizer.step()
