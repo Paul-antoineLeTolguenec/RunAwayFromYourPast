@@ -120,7 +120,7 @@ class Args:
     """the polyak averaging coefficient"""
     n_rollouts: int = 1
     """the number of rollouts"""
-    keep_extrinsic_reward: bool = False
+    keep_extrinsic_reward: bool =  False
     """if toggled, the extrinsic reward will be kept"""
     start_explore: int = 4
     """the number of updates to start exploring"""
@@ -128,7 +128,7 @@ class Args:
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
-    beta_ratio: float = 1/4
+    beta_ratio: float = 1/8
     """the ratio of the beta"""
     nb_max_steps: int =50_000
     """the maximum number of step in un"""
