@@ -61,7 +61,7 @@ class Args:
     """target smoothing coefficient (default: 0.005)"""
     batch_size: int = 256
     """the batch size of sample from the reply memory"""
-    learning_starts: int = 5e3
+    learning_starts: int = 1e3
     """timestep to start learning"""
     policy_lr: float = 3e-4
     """the learning rate of the policy network optimizer"""
@@ -71,19 +71,19 @@ class Args:
     """the frequency of training policy (delayed)"""
     target_network_frequency: int = 1  # Denis Yarats' implementation delays this by 2.
     """the frequency of updates for the target nerworks"""
-    alpha: float = 0.2
+    alpha: float = 0.1
     """Entropy regularization coefficient."""
     autotune: bool = False
     """automatic tuning of the entropy coefficient"""
     num_envs: int = 1
     """the number of parallel environments"""
-    sac_training_steps: int = 50
+    sac_training_steps: int = 100
     """the number of training steps in each SAC training loop"""
-    nb_rollouts_freq: int = 5
+    nb_rollouts_freq: int = 2
     """the frequency of logging the number of rollouts"""
 
     #  CLASSIFIER SPECIFIC
-    classifier_lr: float = 1e-4
+    classifier_lr: float = 1e-3
     """the learning rate of the classifier"""
     classifier_epochs: int = 1
     """the number of epochs to train the classifier"""
@@ -108,7 +108,7 @@ class Args:
     use_sigmoid: bool = True
     """if toggled, the sigmoid will be used"""
     # ALGO specific 
-    beta_ratio: float = 1/4
+    beta_ratio: float = 1/32
     """the ratio of the beta"""
     # rewards
     keep_extrinsic_reward: bool = False
@@ -118,7 +118,7 @@ class Args:
     coef_intrinsic: float = 1.0
     """the coefficient of the intrinsic reward"""
     # rho update frequency
-    rho_update_freq: int = 4
+    rho_update_freq: int = 1
     """the frequency of updating rho"""
 
 
@@ -322,7 +322,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if "final_info" in infos:
             for info in infos["final_info"]:
-                print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
+                # print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                 writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
                 writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
                 break
@@ -335,11 +335,11 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 nb_rollouts += 1
         
         if True in terminations:
-            rb.add(obs, real_next_obs, actions, rewards, terminations, infos) 
+            rb.add(obs.copy(), real_next_obs.copy(), actions.copy(), rewards.copy(), terminations.copy(), infos.copy()) 
             pos_rho+=1
         else:
             if bernoulli.rvs(args.beta_ratio):
-                rb.add(obs, real_next_obs, actions, rewards, terminations, infos)
+                rb.add(obs.copy(), real_next_obs.copy(), actions.copy(), rewards.copy(), terminations.copy(), infos.copy())
                 pos_rho+=1
             
 
@@ -365,10 +365,10 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             nb_sample_rho = int(args.classifier_batch_size*args.beta_ratio)
             # classifier epoch 
             classifier_epochs = max((rb.pos // args.classifier_batch_size) * args.classifier_epochs, (batch_obs_rho.shape[0] // args.classifier_batch_size) * args.classifier_epochs)
+            # classifier_epochs = (batch_obs_rho.shape[0] // args.classifier_batch_size) * args.classifier_epochs
             total_classification_loss = 0
             total_lipshitz_regu = 0
             for epoch in range(classifier_epochs):
-                print('classifier epoch', epoch)
                 # mb rho
                 # mb_rho_idx = np.random.choice(np.arange(batch_obs_rho.shape[0]-1), args.classifier_batch_size, p=prob.numpy())
                 mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], args.classifier_batch_size)
@@ -378,12 +378,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
                 # mb un
                 beta_mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], nb_sample_rho)
-                add_pos = args.rho_update_freq*max_step*(1-args.beta_ratio)
-                print('add_pos_before : ', add_pos)
-                print('pos_rho' , pos_rho)
-                print('rb pos', rb.pos)
-                add_pos = 0 if rb.pos-(pos_rho+add_pos)<= 0 else add_pos
-                print('add poss : ', add_pos)
+                # add_pos = args.rho_update_freq*max_step*(1-args.beta_ratio)
+                # add_pos = 0 if rb.pos-(pos_rho+add_pos)<= 0 else add_pos
+                add_pos = 0
                 beta_mb_un_idx = np.random.randint(0, rb.pos-(pos_rho+add_pos), nb_sample_un)
                 # sampling part of (1-beta) from un 
                 mb_un_obs = torch.tensor(rb.observations[beta_mb_un_idx]).to(device).squeeze(axis=1)
@@ -414,8 +411,10 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
             # ALGO LOGIC: training.
             for training_step in range(args.sac_training_steps):
-                nb_sample_rho = int(args.classifier_batch_size*(1-args.beta_ratio))
-                nb_sample_un = int(args.classifier_batch_size*args.beta_ratio)
+                # nb_sample_rho = int(args.classifier_batch_size*(1-args.beta_ratio))
+                # nb_sample_un = int(args.classifier_batch_size*args.beta_ratio)
+                nb_sample_rho = int(args.classifier_batch_size/2)
+                nb_sample_un = int(args.classifier_batch_size/2)
                 # sample from replay buffer
                 idx_un = np.random.randint(0, rb.pos-pos_rho, nb_sample_un)
                 idx_rho = np.random.randint(rb.pos-pos_rho, rb.pos, nb_sample_rho)
@@ -487,13 +486,13 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     writer.add_scalar("losses/total_lipshitz_regu", total_lipshitz_regu, global_step)
                     writer.add_scalar("stats/nb_rollouts", nb_rollouts, global_step)
                     # writer.add_scalar("stats/pos_rho", pos_rho, global_step)
-                    print("SPS:", int(training_step / (time.time() - start_time)))
+                    # print("SPS:", int(training_step / (time.time() - start_time)))
                     writer.add_scalar("charts/SPS", int(training_step / (time.time() - start_time)), global_step)
                     if args.autotune:
                         writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
             # reinit
             nb_rollouts = 0
-            rb_pos = 0
+            pos_rho = 0
             
 
         if global_step % args.fig_frequency == 0  and global_step > 0:
