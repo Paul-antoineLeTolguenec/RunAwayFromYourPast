@@ -49,7 +49,7 @@ class Args:
     """the frequency of computing shannon entropy"""
 
     # Algorithm specific arguments
-    env_id: str = "HalfCheetah-v3"
+    env_id: str = "Maze-Ur-v0"
     """the environment id of the task"""
     total_timesteps: int = 1000000
     """total timesteps of the experiments"""
@@ -71,7 +71,7 @@ class Args:
     """the frequency of training policy (delayed)"""
     target_network_frequency: int = 1  # Denis Yarats' implementation delays this by 2.
     """the frequency of updates for the target nerworks"""
-    alpha: float = 0.05
+    alpha: float = 0.1
     """Entropy regularization coefficient."""
     autotune: bool = False
     """automatic tuning of the entropy coefficient"""
@@ -83,7 +83,7 @@ class Args:
     """the frequency of logging the number of rollouts"""
 
     #  CLASSIFIER SPECIFIC
-    classifier_lr: float = 1e-4
+    classifier_lr: float = 1e-3
     """the learning rate of the classifier"""
     classifier_epochs: int = 1
     """the number of epochs to train the classifier"""
@@ -118,7 +118,7 @@ class Args:
     coef_intrinsic: float = 1.0
     """the coefficient of the intrinsic reward"""
     # rho update frequency
-    rho_update_freq: int = 4
+    rho_update_freq: int = 2
     """the frequency of updating rho"""
 
 
@@ -126,7 +126,7 @@ def make_env(env_id, idx, capture_video, run_name):
     def thunk():
         env = Wenv(env_id=env_id, xp_id=run_name, **config[env_id])
         env = gym.wrappers.FlattenObservation(env)  # deal with dm_control's Dict observation space
-        env = gym.wrappers.RecordEpisodeStatistics(env)
+        # env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
             if idx == 0:
                 env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")

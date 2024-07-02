@@ -56,7 +56,7 @@ class Args:
     """the frequency of computing shannon entropy"""
 
     # RPO SPECIFIC
-    env_id: str = "Maze-Easy-v0"
+    env_id: str = "Maze-Ur-v0"
     """the id of the environment"""
     total_timesteps: int = 1_000_000
     """total timesteps of the experiments"""
@@ -98,7 +98,7 @@ class Args:
     # CLASSIFIER SPECIFIC
     classifier_lr: float = 1e-3
     """the learning rate of the classifier"""
-    classifier_epochs: int = 4
+    classifier_epochs: int = 1
     """the number of epochs to train the classifier"""
     classifier_batch_size: int = 128
     """the batch size of the classifier"""
@@ -137,7 +137,7 @@ class Args:
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
-    beta_ratio: float = 1/32
+    beta_ratio: float = 1/4
     """the ratio of the beta"""
     nb_max_steps: int = 50_000
     """the maximum number of step in un"""
@@ -147,7 +147,7 @@ class Args:
     """the constant gamma"""
 
     # METRA SPECIFIC
-    n_agent: int = 8
+    n_agent: int = 4
     """the number of agents"""
     lambda_im: float = 1.0
     """the lambda of the mutual information"""
@@ -500,8 +500,8 @@ if __name__ == "__main__":
 
                 # METRA
                 # beta = args.beta_ratio
-                # beta = args.beta_ratio
-                beta = 0.0
+                beta = args.beta_ratio
+                # beta = 0.0
                 loss =beta*discriminator.lipshitz_loss(mb_rho, 
                                                    next_mb_rho, 
                                                    mb_z_un,
@@ -535,7 +535,9 @@ if __name__ == "__main__":
             # log_rho_un = torch.cat([log_rho_un, torch.zeros((1, args.n_agent,1)).to(device)], dim=0)
             # MI
             r_mi = (((discriminator.forward(obs[1:])-discriminator.forward(obs[:-1]))*zs[1:]).sum(dim=-1).unsqueeze(-1))*dones[1:]
-            r_mi = torch.cat([r_mi, torch.zeros((1, args.n_agent,1)).to(device)], dim=0) * args.w_mi
+            r_mi = torch.cat([r_mi, torch.zeros((1, args.n_agent,1)).to(device)], dim=0) 
+            # r_mi -= r_mi.min()
+            r_mi *= args.w_mi
             reward_intrinsic = r_mi*args.lambda_im + log_rho_un*args.w_rho_un if update > args.start_explore else r_mi*args.lambda_im
 
         extrinsic_rewards = rewards.clone()
@@ -722,8 +724,8 @@ if __name__ == "__main__":
             if args.make_gif : 
                 image = env_plot.gif(obs_un = obs_un,
                                 obs=obs,
-                                    classifier = classifier,
-                                    device= device)
+                                classifier = classifier,
+                                device= device)
                 send_matrix(wandb, image, "gif", global_step)
             if args.plotly:
                 env_plot.plotly(obs_un = obs_un, 

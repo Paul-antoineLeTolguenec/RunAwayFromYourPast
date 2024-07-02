@@ -58,7 +58,7 @@ class Args:
     """the frequency of computing shannon entropy"""
 
     # RPO SPECIFIC
-    env_id: str = "Maze-Ur-v0"
+    env_id: str = "Maze-Hard-v0"
     """the id of the environment"""
     total_timesteps: int = 1_000_000
     """total timesteps of the experiments"""
