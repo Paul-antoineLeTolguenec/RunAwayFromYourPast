@@ -83,7 +83,7 @@ class Args:
     """the frequency of logging the number of rollouts"""
 
     #  CLASSIFIER SPECIFIC
-    classifier_lr: float = 1e-3
+    classifier_lr: float = 1e-4
     """the learning rate of the classifier"""
     classifier_epochs: int = 1
     """the number of epochs to train the classifier"""
@@ -99,16 +99,16 @@ class Args:
     """the lambda of the classifier"""
     bound_spectral: float = 1.0
     """the bound spectral of the classifier"""
-    clip_lim: float = 50.0
+    clip_lim: float = 100.0
     """the clipping limit of the classifier"""
     adaptive_sampling: bool = False
     """if toggled, the sampling will be adaptive"""
     lip_cte: float = 0.5
     """the lip constant"""
-    use_sigmoid: bool = True
+    use_sigmoid: bool = False
     """if toggled, the sigmoid will be used"""
     # ALGO specific 
-    beta_ratio: float = 1/128
+    beta_ratio: float = 1/8
     """the ratio of the beta"""
     # rewards
     keep_extrinsic_reward: bool = False
@@ -272,12 +272,12 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                             env_max_steps=max_step,
                             device=device, 
                             n_agent=1, 
-                            lipshitz=False,
+                            lipshitz=True,
                             feature_extractor=args.feature_extractor, 
                             lim_up = args.clip_lim,
                             lim_down = -args.clip_lim,
                             env_id=args.env_id, 
-                            lipshitz_regu=True,
+                            lipshitz_regu=False,
                             bound_spectral=args.bound_spectral,
                             lip_cte=args.lip_cte,
                             lambda_init=args.lambda_init,
@@ -404,14 +404,14 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 classifier_optimizer.step()
                 total_classification_loss += loss.item()/classifier_epochs
                 # lambda loss
-                _, lipshitz_regu = classifier.lipshitz_loss_ppo(batch_q= mb_obs_rho, batch_p = mb_obs_un, 
-                                                        q_batch_s =  mb_obs_rho, q_batch_next_s = mb_next_obs_rho, q_dones = mb_done_rho,
-                                                        p_batch_s = mb_obs_un, p_batch_next_s = mb_next_obs_un, p_dones = mb_done_un)    
-                lambda_loss = classifier.lambda_lip*lipshitz_regu
-                classifier_optimizer.zero_grad()
-                lambda_loss.backward()
-                classifier_optimizer.step()
-                total_lipshitz_regu += lipshitz_regu.item()/classifier_epochs
+                # _, lipshitz_regu = classifier.lipshitz_loss_ppo(batch_q= mb_obs_rho, batch_p = mb_obs_un, 
+                #                                         q_batch_s =  mb_obs_rho, q_batch_next_s = mb_next_obs_rho, q_dones = mb_done_rho,
+                #                                         p_batch_s = mb_obs_un, p_batch_next_s = mb_next_obs_un, p_dones = mb_done_un)    
+                # lambda_loss = classifier.lambda_lip*lipshitz_regu
+                # classifier_optimizer.zero_grad()
+                # lambda_loss.backward()
+                # classifier_optimizer.step()
+                # total_lipshitz_regu += lipshitz_regu.item()/classifier_epochs
 
 
             # ALGO LOGIC: training.

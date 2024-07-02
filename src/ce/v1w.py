@@ -29,7 +29,7 @@ class Args:
     # XP RECORD
     exp_name: str = os.path.basename(__file__)[: -len(".py")]
     """the name of this experiment"""
-    seed: int = 1
+    seed: int = 0
     """seed of the experiment"""
     torch_deterministic: bool = True
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
@@ -97,7 +97,7 @@ class Args:
     """the target KL divergence threshold"""
 
     # CLASSIFIER SPECIFIC
-    classifier_lr: float = 1e-3
+    classifier_lr: float = 1e-4
     """the learning rate of the classifier"""
     classifier_epochs: int = 1
     """the number of epochs to train the classifier"""
@@ -119,7 +119,7 @@ class Args:
     """if toggled, the sampling will be adaptive"""
     lip_cte: float = 1.0
     """the lip constant"""
-    use_sigmoid: bool = False
+    use_sigmoid: bool = True
     """if toggled, the sigmoid will be used"""
 
     
@@ -139,7 +139,7 @@ class Args:
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
-    beta_ratio: float = 1/512
+    beta_ratio: float = 1/256
     """the ratio of the beta"""
     beta_min: float = 1/1024
     """the minimum of the beta"""
@@ -443,7 +443,7 @@ if __name__ == "__main__":
         ############################ INTRINSIC REWARD ########################################
         with torch.no_grad():
             intrinsic_reward = classifier(obs)
-            # intrinsic_reward += intrinsic_reward.min()
+            intrinsic_reward += intrinsic_reward.min()
             # obs_d = classifier(obs[:-1])
             # next_obs_d = classifier(obs[1:])
             # intrinsic_reward = torch.cat([(next_obs_d-obs_d), torch.zeros((1, args.num_envs,1)).to(device)], dim=0) * 10.0

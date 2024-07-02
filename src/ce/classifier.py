@@ -156,4 +156,7 @@ class Classifier(torch.nn.Module):
         lipshitz_loss = (self.lipshits_regu(q_batch_s, q_batch_next_s, q_dones.squeeze(-1)) + self.lipshits_regu(p_batch_s, p_batch_next_s, p_dones))
         # if self.learn_z:
         #     L += self.mlh_loss(batch_q, batch_q_z) + self.mlh_loss(batch_p, batch_p_z)
-        return L+lipshitz_loss*self.lambda_lip.detach(), -lipshitz_loss.detach()
+        if self.lipshitz_regu:
+            return L+lipshitz_loss*self.lambda_lip.detach(), -lipshitz_loss.detach()
+        else : 
+            return L, 0.0
