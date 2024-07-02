@@ -23,7 +23,7 @@ from scipy.stats import bernoulli
 class Args:
     exp_name: str = os.path.basename(__file__)[: -len(".py")]
     """the name of this experiment"""
-    seed: int = 1
+    seed: int = 0
     """seed of the experiment"""
     torch_deterministic: bool = True
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
@@ -71,13 +71,13 @@ class Args:
     """the frequency of training policy (delayed)"""
     target_network_frequency: int = 1  # Denis Yarats' implementation delays this by 2.
     """the frequency of updates for the target nerworks"""
-    alpha: float = 0.1
+    alpha: float = 0.05
     """Entropy regularization coefficient."""
     autotune: bool = False
     """automatic tuning of the entropy coefficient"""
     num_envs: int = 1
     """the number of parallel environments"""
-    sac_training_steps: int = 200
+    sac_training_steps: int = 500
     """the number of training steps in each SAC training loop"""
     nb_rollouts_freq: int = 4
     """the frequency of logging the number of rollouts"""
@@ -87,7 +87,7 @@ class Args:
     """the learning rate of the classifier"""
     classifier_epochs: int = 1
     """the number of epochs to train the classifier"""
-    classifier_batch_size: int = 128
+    classifier_batch_size: int = 256
     """the batch size of the classifier"""
     feature_extractor: bool = False
     """if toggled, a feature extractor will be used"""
@@ -95,7 +95,7 @@ class Args:
     """the percentage of the time to use the classifier"""
     epsilon: float = 1e-3
     """the epsilon of the classifier"""
-    lambda_init: float = 50.0 #50 in mazes
+    lambda_init: float = 10.0 #50 in mazes
     """the lambda of the classifier"""
     bound_spectral: float = 1.0
     """the bound spectral of the classifier"""
@@ -108,7 +108,7 @@ class Args:
     use_sigmoid: bool = True
     """if toggled, the sigmoid will be used"""
     # ALGO specific 
-    beta_ratio: float = 1/32
+    beta_ratio: float = 1/128
     """the ratio of the beta"""
     # rewards
     keep_extrinsic_reward: bool = False
@@ -118,7 +118,7 @@ class Args:
     coef_intrinsic: float = 1.0
     """the coefficient of the intrinsic reward"""
     # rho update frequency
-    rho_update_freq: int = 1
+    rho_update_freq: int = 4
     """the frequency of updating rho"""
 
 
@@ -307,6 +307,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     nb_rollouts = 0
     pos_rho = 0
     nb_epoch_rho = 0
+    obs_rho_list = []
+    next_obs_rho_list = []
+    dones_rho_list = []
     # TRY NOT TO MODIFY: start the game
     obs, _ = envs.reset(seed=args.seed)
     for global_step in range(args.total_timesteps):
@@ -336,12 +339,15 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         
         if True in terminations:
             rb.add(obs.copy(), real_next_obs.copy(), actions.copy(), rewards.copy(), terminations.copy(), infos.copy()) 
-            pos_rho+=1
+            pos_rho += 1
         else:
             if bernoulli.rvs(args.beta_ratio):
                 rb.add(obs.copy(), real_next_obs.copy(), actions.copy(), rewards.copy(), terminations.copy(), infos.copy())
-                pos_rho+=1
-            
+                pos_rho += 1
+        # rho
+        obs_rho_list.append(obs)
+        next_obs_rho_list.append(real_next_obs)
+        dones_rho_list.append(terminations)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
@@ -350,17 +356,17 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         #     training_step = global_step
         # ALGO LOGIC: training.
         if nb_rollouts >= args.nb_rollouts_freq and  global_step>=args.learning_starts:
-            pos_rho=int(pos_rho/2) if global_step == args.learning_starts else pos_rho
-            pos_rho = min(rb.pos - 64, pos_rho)
-            print('global step ', global_step)
+            pos_rho = min(pos_rho, rb.pos-16)
+            add_pos = args.rho_update_freq*max_step*(args.beta_ratio)*args.nb_rollouts_freq 
+            add_pos = 0 if rb.pos-(pos_rho+add_pos)<= 0 else add_pos
             print('pos_rho', pos_rho)
             print('rb.pos', rb.pos)
-            print('CLASSIFIER TRAINING')
+            print('add_pos', add_pos)
             # CLASSIFIER TRAINING
             # rho
-            batch_obs_rho = rb.observations[rb.pos-pos_rho:rb.pos].squeeze(axis=1)
-            batch_next_obs_rho = rb.next_observations[rb.pos-pos_rho:rb.pos].squeeze(axis=1)
-            batch_dones_rho = rb.dones[rb.pos-pos_rho:rb.pos].squeeze(axis=1)
+            batch_obs_rho = torch.tensor(np.array(obs_rho_list), dtype=torch.float32).to(device).squeeze(axis=1)
+            batch_next_obs_rho = torch.tensor(np.array(next_obs_rho_list), dtype=torch.float32 ).to(device).squeeze(axis=1)
+            batch_dones_rho = torch.tensor(np.array(dones_rho_list)).to(device)
             # un
             nb_sample_un = int(args.classifier_batch_size*(1-args.beta_ratio))
             nb_sample_rho = int(args.classifier_batch_size*args.beta_ratio)
@@ -375,13 +381,10 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], args.classifier_batch_size)
                 mb_obs_rho = torch.tensor(batch_obs_rho[mb_rho_idx]).to(device)
                 mb_next_obs_rho = torch.tensor(batch_next_obs_rho[mb_rho_idx]).to(device)
-                mb_done_rho = torch.tensor(batch_dones_rho[mb_rho_idx]).to(device)
+                mb_done_rho = torch.tensor(batch_dones_rho[mb_rho_idx], dtype=torch.float32).to(device)
 
                 # mb un
                 beta_mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], nb_sample_rho)
-                # add_pos = args.rho_update_freq*max_step*(1-args.beta_ratio)
-                # add_pos = 0 if rb.pos-(pos_rho+add_pos)<= 0 else add_pos
-                add_pos = 0
                 beta_mb_un_idx = np.random.randint(0, rb.pos-(pos_rho+add_pos), nb_sample_un)
                 # sampling part of (1-beta) from un 
                 mb_un_obs = torch.tensor(rb.observations[beta_mb_un_idx]).to(device).squeeze(axis=1)
@@ -390,7 +393,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 # sampling part of beta from rho + concat
                 mb_obs_un = torch.cat([mb_un_obs, torch.tensor(batch_obs_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
                 mb_next_obs_un = torch.cat([mb_un_next_obs, torch.tensor(batch_next_obs_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
-                mb_done_un = torch.cat([mb_un_done, torch.tensor(batch_dones_rho[beta_mb_rho_idx]).to(device).unsqueeze(-1)], axis=0).to(device)
+                mb_done_un = torch.cat([mb_un_done, torch.tensor(batch_dones_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
                 # classifier loss + lipshitz regularization
                 loss, _ = classifier.lipshitz_loss_ppo(batch_q= mb_obs_rho, batch_p = mb_obs_un, 
                                                         q_batch_s =  mb_obs_rho, q_batch_next_s = mb_next_obs_rho, q_dones = mb_done_rho,
@@ -430,7 +433,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     qf1_next_target = qf1_target(next_observations, next_state_actions)
                     qf2_next_target = qf2_target(next_observations, next_state_actions)
                     min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
-                    intrinsic_reward = classifier(observations).squeeze()
+                    intrinsic_reward = (classifier(next_observations).squeeze() - classifier(observations).squeeze())*10.0
+                    # intrinsic_reward += intrinsic_reward.min()
                     batch_rewards = args.coef_extrinsic * rewards.flatten() + args.coef_intrinsic * intrinsic_reward if args.keep_extrinsic_reward else args.coef_intrinsic * intrinsic_reward
                     next_q_value = batch_rewards + (1 - dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
 
@@ -495,6 +499,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             # reinit
             nb_rollouts = 0
             pos_rho = 0
+            obs_rho_list = []
+            next_obs_rho_list = []
+            dones_rho_list = []
             
 
         if global_step % args.fig_frequency == 0  and global_step > 0:

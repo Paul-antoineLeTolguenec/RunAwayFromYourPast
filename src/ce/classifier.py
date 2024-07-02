@@ -151,7 +151,7 @@ class Classifier(torch.nn.Module):
         label_p = torch.ones_like(s_p)
         # classification loss
         # L = -((label_q*torch.log(s_q_p)) +(label_p*torch.log(1 - s_p_p))).mean() 
-        L =-((1/N_un*s_q.mean() - 1/N_rho*s_p.mean())) if not self.use_sigmoid else  -((1/N_un * label_q*torch.log(s_q_p)).mean() +(1/N_rho * label_p*torch.log(1 - s_p_p)).mean()) 
+        L = -((s_q.mean() -  s_p.mean())) if not self.use_sigmoid else  -((label_q*torch.log(s_q_p)).mean() +(label_p*torch.log(1 - s_p_p)).mean()) 
         # lipshitz regularization
         lipshitz_loss = (self.lipshits_regu(q_batch_s, q_batch_next_s, q_dones.squeeze(-1)) + self.lipshits_regu(p_batch_s, p_batch_next_s, p_dones))
         # if self.learn_z:

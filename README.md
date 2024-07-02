@@ -14,7 +14,7 @@ TODO :
 * -3 : local optimum escape 
 
 # FIRST THING TO DO
-* check save dataset and sac working 
+* kl estimator 
 
 
 

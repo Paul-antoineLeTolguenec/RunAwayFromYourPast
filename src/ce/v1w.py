@@ -29,7 +29,7 @@ class Args:
     # XP RECORD
     exp_name: str = os.path.basename(__file__)[: -len(".py")]
     """the name of this experiment"""
-    seed: int = 0
+    seed: int = 1
     """seed of the experiment"""
     torch_deterministic: bool = True
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
@@ -85,7 +85,7 @@ class Args:
     """the mask clipping coefficient"""
     clip_vloss: bool = False #True
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
-    ent_coef: float = 0.1
+    ent_coef: float = 0.0
     """coefficient of the entropy"""
     ent_mask_coef: float = 0.1
     """coefficient of the entropy mask"""
@@ -97,11 +97,11 @@ class Args:
     """the target KL divergence threshold"""
 
     # CLASSIFIER SPECIFIC
-    classifier_lr: float = 1e-4
+    classifier_lr: float = 1e-3
     """the learning rate of the classifier"""
     classifier_epochs: int = 1
     """the number of epochs to train the classifier"""
-    classifier_batch_size: int = 128
+    classifier_batch_size: int = 256
     """the batch size of the classifier"""
     feature_extractor: bool = False
     """if toggled, a feature extractor will be used"""
@@ -113,7 +113,7 @@ class Args:
     """the lambda of the classifier"""
     bound_spectral: float = 1.0
     """the bound spectral of the classifier"""
-    clip_lim: float = 50.0
+    clip_lim: float = 100.0
     """the clipping limit of the classifier"""
     adaptive_sampling: bool = False
     """if toggled, the sampling will be adaptive"""
@@ -129,7 +129,7 @@ class Args:
     """if toggled, the episodic return will be used"""
     polyak: float = 0.75
     """the polyak averaging coefficient"""
-    n_rollouts: int = 4
+    n_rollouts: int = 1
     """the number of rollouts"""
     keep_extrinsic_reward: bool = False
     """if toggled, the extrinsic reward will be kept"""
@@ -139,7 +139,7 @@ class Args:
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
-    beta_ratio: float = 1/128
+    beta_ratio: float = 1/512
     """the ratio of the beta"""
     beta_min: float = 1/1024
     """the minimum of the beta"""
@@ -443,10 +443,10 @@ if __name__ == "__main__":
         ############################ INTRINSIC REWARD ########################################
         with torch.no_grad():
             intrinsic_reward = classifier(obs)
-            intrinsic_reward += intrinsic_reward.min()
+            # intrinsic_reward += intrinsic_reward.min()
             # obs_d = classifier(obs[:-1])
             # next_obs_d = classifier(obs[1:])
-            # intrinsic_reward = torch.cat([-(next_obs_d-obs_d), torch.zeros((1, args.num_envs,1)).to(device)], dim=0)
+            # intrinsic_reward = torch.cat([(next_obs_d-obs_d), torch.zeros((1, args.num_envs,1)).to(device)], dim=0) * 10.0
 
         extrinsic_rewards = rewards.clone()
         rewards = args.coef_extrinsic * rewards + args.coef_intrinsic * intrinsic_reward if args.keep_extrinsic_reward else args.coef_intrinsic * intrinsic_reward
