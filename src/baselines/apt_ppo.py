@@ -58,7 +58,7 @@ class Args:
     # RPO SPECIFIC
     env_id: str = "Maze-Ur-v0"
     """the id of the environment"""
-    total_timesteps: int = 50_000
+    total_timesteps: int = 500_000
     """total timesteps of the experiments"""
     learning_rate: float = 5e-4
     """the learning rate of the optimizer"""
@@ -76,7 +76,7 @@ class Args:
     """the number of mini-batches"""
     update_epochs: int = 10
     """the K epochs to update the policy"""
-    norm_adv: bool = False
+    norm_adv: bool = True
     """Toggles advantages normalization"""
     clip_coef: float = 0.2
     """the surrogate clipping coefficient"""
@@ -100,7 +100,7 @@ class Args:
     """if toggled, the episodic return will be used"""
     n_rollouts: int = 1
     """the number of rollouts"""
-    keep_extrinsic_reward: bool = False
+    keep_extrinsic_reward: bool = True
     """if toggled, the extrinsic reward will be kept"""
     coef_intrinsic : float = 1.0
     """the coefficient of the intrinsic reward"""
@@ -118,7 +118,7 @@ class Args:
     """if toggled, the feature extractor will be used"""
     latent_dim: int = 32
     """the dimension of the latent space"""
-    sigma: float = 0.5
+    sigma: float = 0.1
     """the sigma for the data augmentation"""
     knn: int = 16
 
