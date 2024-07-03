@@ -35,7 +35,7 @@ class Args:
     """if toggled, cuda will be enabled by default"""
     track: bool = True
     """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "contrastive_exploration"
+    wandb_project_name: str = "contrastive_test"
     """the wandb's project name"""
     wandb_entity: str = None
     """the entity (team) of wandb's project"""
@@ -55,9 +55,9 @@ class Args:
     """the frequency of computing shannon entropy"""
 
     # RPO SPECIFIC
-    env_id: str = "Maze-Ur"
+    env_id: str = "Maze-Ur-v0"
     """the id of the environment"""
-    total_timesteps: int = 10_000
+    total_timesteps: int = 1_000_000
     """total timesteps of the experiments"""
     learning_rate: float = 5e-4
     """the learning rate of the optimizer"""
@@ -99,7 +99,7 @@ class Args:
     """if toggled, the episodic return will be used"""
     n_rollouts: int = 1
     """the number of rollouts"""
-    keep_extrinsic_reward: bool = False
+    keep_extrinsic_reward: bool = True
     """if toggled, the extrinsic reward will be kept"""
     coef_intrinsic : float = 1.0
     """the coefficient of the intrinsic reward"""

@@ -99,7 +99,7 @@ class Args:
     """if toggled, the episodic return will be used"""
     n_rollouts: int = 1
     """the number of rollouts"""
-    keep_extrinsic_reward: bool = False
+    keep_extrinsic_reward: bool = True
     """if toggled, the extrinsic reward will be kept"""
     coef_intrinsic : float = 1.0
     """the coefficient of the intrinsic reward"""
