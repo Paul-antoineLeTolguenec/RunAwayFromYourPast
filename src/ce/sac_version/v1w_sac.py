@@ -31,7 +31,7 @@ class Args:
     """if toggled, cuda will be enabled by default"""
     track: bool = True
     """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "contrastive_test"
+    wandb_project_name: str = "contrastive_test_2"
     """the wandb's project name"""
     wandb_entity: str = None
     """the entity (team) of wandb's project"""
@@ -71,13 +71,13 @@ class Args:
     """the frequency of training policy (delayed)"""
     target_network_frequency: int = 1  # Denis Yarats' implementation delays this by 2.
     """the frequency of updates for the target nerworks"""
-    alpha: float = 0.1
+    alpha: float = 0.2
     """Entropy regularization coefficient."""
     autotune: bool = False
     """automatic tuning of the entropy coefficient"""
     num_envs: int = 1
     """the number of parallel environments"""
-    sac_training_steps: int = 500
+    sac_training_steps: int = 100
     """the number of training steps in each SAC training loop"""
     nb_rollouts_freq: int = 4
     """the frequency of logging the number of rollouts"""
@@ -87,7 +87,7 @@ class Args:
     """the learning rate of the classifier"""
     classifier_epochs: int = 1
     """the number of epochs to train the classifier"""
-    classifier_batch_size: int = 256
+    classifier_batch_size: int = 128
     """the batch size of the classifier"""
     feature_extractor: bool = False
     """if toggled, a feature extractor will be used"""
@@ -95,20 +95,20 @@ class Args:
     """the percentage of the time to use the classifier"""
     epsilon: float = 1e-3
     """the epsilon of the classifier"""
-    lambda_init: float = 10.0 #50 in mazes
+    lambda_init: float = 1000.0 #50 in mazes
     """the lambda of the classifier"""
     bound_spectral: float = 1.0
     """the bound spectral of the classifier"""
-    clip_lim: float = 100.0
+    clip_lim: float = 1000.0
     """the clipping limit of the classifier"""
     adaptive_sampling: bool = False
     """if toggled, the sampling will be adaptive"""
-    lip_cte: float = 0.5
+    lip_cte: float = 1.0
     """the lip constant"""
     use_sigmoid: bool = False
     """if toggled, the sigmoid will be used"""
     # ALGO specific 
-    beta_ratio: float = 1/8
+    beta_ratio: float = 1/512
     """the ratio of the beta"""
     # rewards
     keep_extrinsic_reward: bool = False
@@ -118,7 +118,7 @@ class Args:
     coef_intrinsic: float = 1.0
     """the coefficient of the intrinsic reward"""
     # rho update frequency
-    rho_update_freq: int = 2
+    rho_update_freq: int = 0
     """the frequency of updating rho"""
 
 
@@ -218,7 +218,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             config=vars(args),
             name=run_name,
             monitor_gym=True,
-            save_code=True,
+            save_code=False,
         )
     writer = SummaryWriter(f"runs/{run_name}")
     writer.add_text(
@@ -272,12 +272,12 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                             env_max_steps=max_step,
                             device=device, 
                             n_agent=1, 
-                            lipshitz=True,
+                            lipshitz=False,
                             feature_extractor=args.feature_extractor, 
                             lim_up = args.clip_lim,
                             lim_down = -args.clip_lim,
                             env_id=args.env_id, 
-                            lipshitz_regu=False,
+                            lipshitz_regu=True,
                             bound_spectral=args.bound_spectral,
                             lip_cte=args.lip_cte,
                             lambda_init=args.lambda_init,
@@ -310,6 +310,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     obs_rho_list = []
     next_obs_rho_list = []
     dones_rho_list = []
+    count_episode = 0
     # TRY NOT TO MODIFY: start the game
     obs, _ = envs.reset(seed=args.seed)
     for global_step in range(args.total_timesteps):
@@ -336,6 +337,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             if trunc:
                 real_next_obs[idx] = infos["final_observation"][idx]
                 nb_rollouts += 1
+                count_episode += 1
+                print('NB EPISODES', count_episode)
         
         if True in terminations:
             rb.add(obs.copy(), real_next_obs.copy(), actions.copy(), rewards.copy(), terminations.copy(), infos.copy()) 
@@ -356,7 +359,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         #     training_step = global_step
         # ALGO LOGIC: training.
         if nb_rollouts >= args.nb_rollouts_freq and  global_step>=args.learning_starts:
-            pos_rho = min(pos_rho, rb.pos-16)
+            pos_rho = max(min(pos_rho, rb.pos-16),4)
             add_pos = args.rho_update_freq*max_step*(args.beta_ratio)*args.nb_rollouts_freq 
             add_pos = 0 if rb.pos-(pos_rho+add_pos)<= 0 else add_pos
             print('pos_rho', pos_rho)
@@ -404,22 +407,22 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 classifier_optimizer.step()
                 total_classification_loss += loss.item()/classifier_epochs
                 # lambda loss
-                # _, lipshitz_regu = classifier.lipshitz_loss_ppo(batch_q= mb_obs_rho, batch_p = mb_obs_un, 
-                #                                         q_batch_s =  mb_obs_rho, q_batch_next_s = mb_next_obs_rho, q_dones = mb_done_rho,
-                #                                         p_batch_s = mb_obs_un, p_batch_next_s = mb_next_obs_un, p_dones = mb_done_un)    
-                # lambda_loss = classifier.lambda_lip*lipshitz_regu
-                # classifier_optimizer.zero_grad()
-                # lambda_loss.backward()
-                # classifier_optimizer.step()
-                # total_lipshitz_regu += lipshitz_regu.item()/classifier_epochs
+                _, lipshitz_regu = classifier.lipshitz_loss_ppo(batch_q= mb_obs_rho, batch_p = mb_obs_un, 
+                                                        q_batch_s =  mb_obs_rho, q_batch_next_s = mb_next_obs_rho, q_dones = mb_done_rho,
+                                                        p_batch_s = mb_obs_un, p_batch_next_s = mb_next_obs_un, p_dones = mb_done_un)    
+                lambda_loss = classifier.lambda_lip*lipshitz_regu
+                classifier_optimizer.zero_grad()
+                lambda_loss.backward()
+                classifier_optimizer.step()
+                total_lipshitz_regu += lipshitz_regu.item()/classifier_epochs
 
 
             # ALGO LOGIC: training.
             for training_step in range(args.sac_training_steps):
                 # nb_sample_rho = int(args.classifier_batch_size*(1-args.beta_ratio))
                 # nb_sample_un = int(args.classifier_batch_size*args.beta_ratio)
-                nb_sample_rho = int(args.classifier_batch_size/2)
-                nb_sample_un = int(args.classifier_batch_size/2)
+                nb_sample_rho = int(1)
+                nb_sample_un = int(args.classifier_batch_size-1)
                 # sample from replay buffer
                 idx_un = np.random.randint(0, rb.pos-pos_rho, nb_sample_un)
                 idx_rho = np.random.randint(rb.pos-pos_rho, rb.pos, nb_sample_rho)
@@ -434,6 +437,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     qf2_next_target = qf2_target(next_observations, next_state_actions)
                     min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
                     intrinsic_reward = (classifier(next_observations).squeeze() - classifier(observations).squeeze())*10.0
+                    # intrinsic_reward = classifier(observations).squeeze()
+                    # print('intrinsic_reward', intrinsic_reward.mean().item())
                     # intrinsic_reward += intrinsic_reward.min()
                     batch_rewards = args.coef_extrinsic * rewards.flatten() + args.coef_intrinsic * intrinsic_reward if args.keep_extrinsic_reward else args.coef_intrinsic * intrinsic_reward
                     next_q_value = batch_rewards + (1 - dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
@@ -491,6 +496,10 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     writer.add_scalar("losses/total_classification_loss", total_classification_loss, global_step)
                     writer.add_scalar("losses/total_lipshitz_regu", total_lipshitz_regu, global_step)
                     writer.add_scalar("stats/nb_rollouts", nb_rollouts, global_step)
+                    writer.add_scalar("stats/intrinsic_reward", intrinsic_reward.mean().item(), global_step)
+                    writer.add_scalar("stats/intrinsic_reward_max", intrinsic_reward.max().item(), global_step)
+                    writer.add_scalar("stats/intrinsic_reward_min", intrinsic_reward.min().item(), global_step)
+                    
                     # writer.add_scalar("stats/pos_rho", pos_rho, global_step)
                     # print("SPS:", int(training_step / (time.time() - start_time)))
                     writer.add_scalar("charts/SPS", int(training_step / (time.time() - start_time)), global_step)
