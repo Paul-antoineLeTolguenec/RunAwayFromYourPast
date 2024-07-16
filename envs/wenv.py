@@ -248,6 +248,7 @@ class Wenv(gym.Env):
         # check in bounds
         coords_mat = np.clip(coords_mat, 0, self.coverage_accuracy-1)
         self.matrix_coverage[tuple([coords_mat[:, i] for i in range(coords_mat.shape[1])])] += 1
+        
        
                 
             
@@ -256,7 +257,7 @@ class Wenv(gym.Env):
 
     def shanon_entropy(self) : 
         probabilities = self.matrix_coverage/self.matrix_coverage.sum()
-        entropy = (-probabilities*np.log(probabilities+1e-1)).sum()
+        entropy = (-probabilities*np.log(probabilities+1e-6)).sum()
         return entropy
     
    
@@ -273,7 +274,7 @@ class Wenv(gym.Env):
         coverage = np.sum(matrix/(matrix+1e-6))/reduce(mul, matrix.shape)*100.0
         # entropy
         probabilities = matrix/matrix.sum()
-        entropy = (-probabilities*np.log(probabilities+1e-1)).sum()
+        entropy = (-probabilities*np.log(probabilities+1e-6)).sum()
         return entropy, coverage
     
     def get_rooms(self):
