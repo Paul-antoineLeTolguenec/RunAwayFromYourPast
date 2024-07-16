@@ -38,7 +38,7 @@ class Args:
     """if toggled, cuda will be enabled by default"""
     track: bool = True
     """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "contrastive_test"
+    wandb_project_name: str = "contrastive_test_2"
     """the wandb's project name"""
     wandb_entity: str = None
     """the entity (team) of wandb's project"""
@@ -58,7 +58,7 @@ class Args:
     """the frequency of computing shannon entropy"""
 
     # RPO SPECIFIC
-    env_id: str = "Maze-Hard-v0"
+    env_id: str = "Maze-Ur-v0"
     """the id of the environment"""
     total_timesteps: int = 1_000_000
     """total timesteps of the experiments"""
@@ -86,9 +86,9 @@ class Args:
     """the mask clipping coefficient"""
     clip_vloss: bool = False #True
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
-    ent_coef: float = 0.0
+    ent_coef: float = 0.2
     """coefficient of the entropy"""
-    ent_mask_coef: float = 0.1
+    ent_mask_coef: float = 0.2
     """coefficient of the entropy mask"""
     vf_coef: float = 0.5
     """coefficient of the value function"""
@@ -140,8 +140,6 @@ class Args:
     """the maximum beta"""
     adaptive_beta: bool = False
     """if toggled, the beta will be adaptative"""
-    beta_increment_bool: bool = False
-    """if toggled, the beta_increment will be used"""
 
     # to be filled in runtime
     batch_size: int = 0
@@ -417,9 +415,9 @@ if __name__ == "__main__":
         # dkl_rho_un = args.polyak * dkl_rho_un + (1-args.polyak) * log_rho_un.mean().item()
         dkl_rho_un = log_rho_un.mean().item()
         rate_dkl = (dkl_rho_un - last_dkl_rho_un)
-        # last_dkl_rho_un = dkl_rho_un
-        # beta_increment += int(args.num_envs * args.num_steps*beta_adaptive) if rate_dkl < 0 else 0
-        # beta_increment = int(max(min(beta_increment, obs_un.shape[0]-args.num_envs*args.num_steps*beta_adaptive),0)) if obs_un is not None else 0
+        last_dkl_rho_un = dkl_rho_un
+        beta_increment += int(args.num_envs * args.num_steps*beta_adaptive) if rate_dkl < 0 else -int(args.num_envs * args.num_steps*beta_adaptive)
+        beta_increment = int(max(min(beta_increment, obs_un.shape[0]-args.num_envs*args.num_steps*beta_adaptive),0)) if obs_un is not None else 0
         max_dkl_rho_un = max(max_dkl_rho_un, dkl_rho_un)
         min_dkl_rho_un = min(min_dkl_rho_un, dkl_rho_un)
         normalized_dkl = (dkl_rho_un - min_dkl_rho_un) / (max_dkl_rho_un - min_dkl_rho_un)
@@ -586,6 +584,10 @@ if __name__ == "__main__":
                     reduced_matrix = np.sum(reduced_matrix, axis=axis)
             else : 
                 reduced_matrix = env_check.matrix_coverage
+                # max 10 
+                reduced_matrix = np.clip(reduced_matrix, 0, 10)
+                print('MAX : REDUCED MATRIX', reduced_matrix.max())
+                print('MIN : REDUCED MATRIX', reduced_matrix.min())
             normalized_matrix = (reduced_matrix - reduced_matrix.min()) / (reduced_matrix.max() - reduced_matrix.min()) * 255
             send_matrix(wandb, np.rot90(normalized_matrix), "coverage", global_step) if update % args.fig_frequency == 0 else None
         # log 

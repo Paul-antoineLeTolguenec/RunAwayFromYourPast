@@ -29,7 +29,7 @@ class Args:
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
     cuda: bool = True
     """if toggled, cuda will be enabled by default"""
-    track: bool = True
+    track: bool = False
     """if toggled, this experiment will be tracked with Weights and Biases"""
     wandb_project_name: str = "contrastive_test_2"
     """the wandb's project name"""
@@ -75,7 +75,7 @@ class Args:
     """Entropy regularization coefficient."""
     autotune: bool = False
     """automatic tuning of the entropy coefficient"""
-    num_envs: int = 1
+    num_envs: int = 6
     """the number of parallel environments"""
     sac_training_steps: int = 500
     """the number of training steps in each SAC training loop"""
@@ -110,6 +110,11 @@ class Args:
     # ALGO specific 
     beta_ratio: float = 1/256
     """the ratio of the beta"""
+    rho_update_freq: int = 0
+    """the frequency of updating rho"""
+
+
+    # REWARD SPECIFIC
     # rewards
     keep_extrinsic_reward: bool = False
     """if toggled, the extrinsic reward will be kept"""
@@ -117,9 +122,7 @@ class Args:
     """the coefficient of the extrinsic reward"""
     coef_intrinsic: float = 1.0
     """the coefficient of the intrinsic reward"""
-    # rho update frequency
-    rho_update_freq: int = 0
-    """the frequency of updating rho"""
+    
 
 
 def make_env(env_id, idx, capture_video, run_name):
@@ -301,7 +304,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         envs.single_action_space,
         device,
         handle_timeout_termination=False,
-        optimize_memory_usage = False
+        optimize_memory_usage = False,
+        n_envs = args.num_envs
     )
     start_time = time.time()
     nb_rollouts = 0
