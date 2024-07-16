@@ -36,7 +36,7 @@ class Args:
     """if toggled, cuda will be enabled by default"""
     track: bool = True
     """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "contrastive_test"
+    wandb_project_name: str = "contrastive_test_2"
     """the wandb's project name"""
     wandb_entity: str = None
     """the entity (team) of wandb's project"""
@@ -137,7 +137,7 @@ class Args:
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
-    beta_ratio: float = 1/4
+    beta_ratio: float = 1/16
     """the ratio of the beta"""
     nb_max_steps: int = 50_000
     """the maximum number of step in un"""
@@ -504,7 +504,7 @@ if __name__ == "__main__":
                 # beta = 0.0
                 loss =beta*discriminator.lipshitz_loss(mb_rho, 
                                                    next_mb_rho, 
-                                                   mb_z_un,
+                                                   z_mb_rho,
                                                    done_mb_rho) + (1-beta)*discriminator.lipshitz_loss(mb_obs_un,
                                                                                                 mb_next_obs_un,
                                                                                                 mb_z_un,
@@ -515,7 +515,7 @@ if __name__ == "__main__":
                 # lambda loss
                 lambda_loss =beta*discriminator.lambda_loss(mb_rho, 
                                                    next_mb_rho, 
-                                                   mb_z_un,
+                                                   z_mb_rho,
                                                    done_mb_rho) + (1-beta)*discriminator.lambda_loss(mb_obs_un,
                                                                                                 mb_next_obs_un,
                                                                                                 mb_z_un,

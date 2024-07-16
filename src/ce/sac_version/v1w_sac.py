@@ -382,9 +382,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 # mb rho
                 # mb_rho_idx = np.random.choice(np.arange(batch_obs_rho.shape[0]-1), args.classifier_batch_size, p=prob.numpy())
                 mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], args.classifier_batch_size)
-                mb_obs_rho = torch.tensor(batch_obs_rho[mb_rho_idx]).to(device)
-                mb_next_obs_rho = torch.tensor(batch_next_obs_rho[mb_rho_idx]).to(device)
-                mb_done_rho = torch.tensor(batch_dones_rho[mb_rho_idx], dtype=torch.float32).to(device)
+                mb_obs_rho = batch_obs_rho[mb_rho_idx].clone().detach().to(device)
+                mb_next_obs_rho = batch_next_obs_rho[mb_rho_idx].clone().detach().to(device)
+                mb_done_rho = batch_dones_rho[mb_rho_idx].to(torch.float32).clone().detach().to(device)
 
                 # mb un
                 beta_mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], nb_sample_rho)
@@ -394,9 +394,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 mb_un_next_obs = torch.tensor(rb.next_observations[beta_mb_un_idx]).to(device).squeeze(axis=1)
                 mb_un_done = torch.tensor(rb.dones[beta_mb_un_idx]).to(device)
                 # sampling part of beta from rho + concat
-                mb_obs_un = torch.cat([mb_un_obs, torch.tensor(batch_obs_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
-                mb_next_obs_un = torch.cat([mb_un_next_obs, torch.tensor(batch_next_obs_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
-                mb_done_un = torch.cat([mb_un_done, torch.tensor(batch_dones_rho[beta_mb_rho_idx]).to(device)], axis=0).to(device)
+                mb_obs_un = torch.cat([mb_un_obs, batch_obs_rho[beta_mb_rho_idx].clone().detach().to(device)], axis=0).to(device)
+                mb_next_obs_un = torch.cat([mb_un_next_obs, batch_next_obs_rho[beta_mb_rho_idx].clone().detach().to(device)], axis=0).to(device)
+                mb_done_un = torch.cat([mb_un_done, batch_dones_rho[beta_mb_rho_idx].clone().detach().to(device)], axis=0).to(device)
                 # classifier loss + lipshitz regularization
                 loss, _ = classifier.lipshitz_loss_ppo(batch_q= mb_obs_rho, batch_p = mb_obs_un, 
                                                         q_batch_s =  mb_obs_rho, q_batch_next_s = mb_next_obs_rho, q_dones = mb_done_rho,

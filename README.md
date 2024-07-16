@@ -1,11 +1,9 @@
 # contrastive_exploration
 
 TODO : 
-1/ xp untar (almost done)
-2/ update our versions of the algorithme (KL rho and un-k)
-3/ why data is not sent properly baselines ? 
-3/ beta tune
-4/ Offline and online SAC (IQL XP)
+1/ maze 200k steps 
+2/ Adapt beta to max steps 
+3/ relaunch all xps 
 
 # XP 
 3 XP : 
