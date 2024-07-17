@@ -125,20 +125,63 @@ def transfer_finished_runs(source_project, target_project):
                 for entry in history:
                     wandb.log(entry)
                 
-                # Transfer artifacts if any
-                # for artifact in run.logged_artifacts():
-                #     artifact.download(root="artifacts")
-                #     sanitized_name = sanitize_name(artifact.name)
-                #     new_artifact = wandb.Artifact(sanitized_name, type=artifact.type)
-                #     new_artifact.add_dir("artifacts")
-                #     wandb.log_artifact(new_artifact)
-                
                 # Finish the run
                 wandb.finish()
             
             print(f"Run {run.id} transferred successfully.")
 
     print(f"Transferred {nb_transfered_runs} runs from {source_project} to {target_project}.")
+
+def transfer_run(source_project, target_project, conditions):
+    """
+    Transfers runs from one Weights & Biases (wandb) project to another based on specified conditions.
+    
+    Args:
+        source_project (str): The name of the source project from which to fetch runs.
+        target_project (str): The name of the target project to which runs will be uploaded.
+        conditions (dict): A dictionary of conditions to be met for a run to be transferred.
+                        Example: {'keep_extrinsic_reward': True, 'algo_contains': '__ppo'}
+    """
+    # Initialize a new wandb API client
+    api = wandb.Api()
+    
+    # Fetch all runs from the source project
+    source_runs = api.runs(source_project)
+    nb_transfered_runs = 0
+    for run in source_runs:
+        # Check if the run meets the specified conditions
+        meets_conditions = True
+        for key, value in conditions.items():
+            if key == 'exp_name':
+                if value!=run.config['exp_name']:
+                    meets_conditions = False
+                    break
+            elif not run.config['keep_extrinsic_reward'] :
+                meets_conditions = False
+                break
+            # elif key == 'status':
+            #     if run.state != value:
+            #         meets_conditions = False
+            #         break
+
+        if meets_conditions:
+            # Check if the run already exists in the target project
+            if run_exists_in_target_project(api, target_project, run.id):
+                print(f"Run {run.id} already exists in {target_project}, skipping transfer.")
+                continue
+            
+            print(f"Transferring run {run.id} from {source_project} to {target_project}")
+            
+            # Initialize a new run in the target project
+            with wandb.init(project=target_project, name=run.name, config=run.config):
+                
+                # Transfer metrics and other information
+                history = run.history(pandas=False)
+                for entry in history:
+                    wandb.log(entry)
+            
+            print(f"Run {run.id} transferred successfully.")
+    print(f'Transferred {nb_transfered_runs} runs from {source_project} to {target_project}.')
    
 if __name__ == "__main__":
     # project_name = "contrastive_exploration"
@@ -161,4 +204,10 @@ if __name__ == "__main__":
     source_project_name = "contrastive_test"
     target_project_name = "contrastive_exploration_reward_max"
 
-    transfer_finished_runs(source_project_name, target_project_name)
+    # transfer_finished_runs(source_project_name, target_project_name)
+    conditions = {
+    'keep_extrinsic_reward': True,
+    'exp_name': 'ppo',
+    'status': 'finished'
+    }
+    transfer_run(source_project_name, target_project_name, conditions)
