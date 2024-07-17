@@ -1,6 +1,7 @@
 import wandb
 import numpy as np
 import pandas as pd
+import re
 
 
 def send_video(wandb: wandb, video: np.ndarray, name: str, step: int):
@@ -66,14 +67,84 @@ def get_failed_runs(project_name: str, status: list = ["failed", "crashed"], alg
     
     return failed_runs
     
+def sanitize_name(name):
+    """
+    Sanitize the artifact name to contain only allowed characters.
+    """
+    return re.sub(r'[^a-zA-Z0-9_\-.]', '_', name)
 
+def run_exists_in_target_project(api, target_project, run_id):
+    """
+    Check if a run with the given ID exists in the target project.
+    
+    Args:
+        api (wandb.Api): The wandb API client.
+        target_project (str): The name of the target project.
+        run_id (str): The ID of the run to check.
+        
+    Returns:
+        bool: True if the run exists in the target project, False otherwise.
+    """
+    target_runs = api.runs(target_project)
+    for run in target_runs:
+        if run.id == run_id:
+            return True
+    return False
 
+def transfer_finished_runs(source_project, target_project):
+    """
+    Transfers finished runs from one Weights & Biases (wandb) project to another.
+    
+    Args:
+        source_project (str): The name of the source project from which to fetch runs.
+        target_project (str): The name of the target project to which finished runs will be uploaded.
+    """
+    # Initialize a new wandb API client
+    api = wandb.Api()
+    
+    # Fetch all runs from the source project
+    source_runs = api.runs(source_project)
+    nb_transfered_runs = 0
+    for run in source_runs:
+        # Check if the run status is 'finished'
+        if run.state == 'finished':
+            # Check if the run already exists in the target project
+            if run_exists_in_target_project(api, target_project, run.id):
+                print(f"Run {run.id} already exists in {target_project}, skipping transfer.")
+                continue
+            
+            print(f"Transferring run {run.id} from {source_project} to {target_project}")
+            
+            # Initialize a new run in the target project
+            with wandb.init(project=target_project, reinit=True):
+                # Transfer run metadata
+                wandb.config.update(run.config)
+                
+                # Transfer metrics and other information
+                history = run.history(pandas=False)
+                for entry in history:
+                    wandb.log(entry)
+                
+                # Transfer artifacts if any
+                # for artifact in run.logged_artifacts():
+                #     artifact.download(root="artifacts")
+                #     sanitized_name = sanitize_name(artifact.name)
+                #     new_artifact = wandb.Artifact(sanitized_name, type=artifact.type)
+                #     new_artifact.add_dir("artifacts")
+                #     wandb.log_artifact(new_artifact)
+                
+                # Finish the run
+                wandb.finish()
+            
+            print(f"Run {run.id} transferred successfully.")
+
+    print(f"Transferred {nb_transfered_runs} runs from {source_project} to {target_project}.")
    
 if __name__ == "__main__":
-    project_name = "contrastive_exploration"
-    failed_runs = get_failed_runs(project_name, algo_name='ngu', remove=True)
-    print(failed_runs)
-    print('nb failed runs:', len(failed_runs))
+    # project_name = "contrastive_exploration"
+    # failed_runs = get_failed_runs(project_name, algo_name='ngu', remove=True)
+    # print(failed_runs)
+    # print('nb failed runs:', len(failed_runs))
     # # dataset
     # print('project_name:', project_name)
     # print('run_id:', run_id)
@@ -87,4 +158,7 @@ if __name__ == "__main__":
     # print('times:', times.shape)
 
     # check get failed runs
-    
+    source_project_name = "contrastive_test"
+    target_project_name = "contrastive_exploration_reward_max"
+
+    transfer_finished_runs(source_project_name, target_project_name)
