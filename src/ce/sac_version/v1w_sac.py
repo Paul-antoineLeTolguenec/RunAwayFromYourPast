@@ -23,11 +23,11 @@ from scipy.stats import bernoulli
 class Args:
     exp_name: str = os.path.basename(__file__)[: -len(".py")]
     """the name of this experiment"""
-    seed: int = 0
+    seed: int = 1
     """seed of the experiment"""
     torch_deterministic: bool = True
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
-    cuda: bool = True
+    cuda: bool = False
     """if toggled, cuda will be enabled by default"""
     track: bool = True
     """if toggled, this experiment will be tracked with Weights and Biases"""
@@ -61,7 +61,7 @@ class Args:
     """target smoothing coefficient (default: 0.005)"""
     batch_size: int = 256
     """the batch size of sample from the reply memory"""
-    learning_starts: int = 1e3
+    learning_starts: int = 5e3
     """timestep to start learning"""
     policy_lr: float = 5e-4
     """the learning rate of the policy network optimizer"""
@@ -77,9 +77,9 @@ class Args:
     """automatic tuning of the entropy coefficient"""
     num_envs: int = 1
     """the number of parallel environments"""
-    sac_training_steps: int = 500
+    sac_training_steps: int = 100
     """the number of training steps in each SAC training loop"""
-    nb_rollouts_freq: int = 4
+    nb_rollouts_freq: int = 2
     """the frequency of logging the number of rollouts"""
 
     #  CLASSIFIER SPECIFIC
@@ -108,7 +108,7 @@ class Args:
     use_sigmoid: bool = False
     """if toggled, the sigmoid will be used"""
     # ALGO specific 
-    beta_ratio: float = 1/256
+    beta_ratio: float = 1/16
     """the ratio of the beta"""
     # rewards
     keep_extrinsic_reward: bool = False
@@ -118,14 +118,15 @@ class Args:
     coef_intrinsic: float = 1.0
     """the coefficient of the intrinsic reward"""
     # rho update frequency
-    rho_update_freq: int = 0
+    rho_update_freq: int = 2
     """the frequency of updating rho"""
 
 
-def make_env(env_id, idx, capture_video, run_name):
+def make_env(env_id, idx, capture_video, run_name, seed):
     def thunk():
         env = Wenv(env_id=env_id, xp_id=run_name, **config[env_id])
         env = gym.wrappers.FlattenObservation(env)  # deal with dm_control's Dict observation space
+        env.seed(seed + idx)
         # env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
             if idx == 0:
@@ -246,13 +247,16 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = args.torch_deterministic
-
+    torch.backends.cudnn.benchmark = False
+    os.environ['PYTHONHASHSEED'] = str(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # env setup
     envs = gym.vector.SyncVectorEnv(
-        [make_env(args.env_id, i, args.capture_video, run_name) for i in range(args.num_envs)]
+        [make_env(args.env_id, i, args.capture_video, run_name, args.seed) for i in range(args.num_envs)]
     )
+    for env in envs.envs: env.seed(args.seed)
+
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
 
     max_action = float(envs.single_action_space.high[0])
@@ -309,6 +313,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     nb_epoch_rho = 0
     obs_rho_list = []
     next_obs_rho_list = []
+    actions_rho_list = []
+    rewards_rho_list = []
     dones_rho_list = []
     count_episode = 0
     # TRY NOT TO MODIFY: start the game
@@ -316,7 +322,11 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     for global_step in range(args.total_timesteps):
         # ALGO LOGIC: put action logic here
         if global_step < args.learning_starts:
-            actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
+            # actions = np.array([envs.envs[i].action_space.sample() for i in range(envs.num_envs)])
+            actions = np.random.uniform(-max_action, max_action, size=(envs.num_envs, envs.single_action_space.shape[0]))
+
+            # print('actions', actions) 
+            # input() if 10<global_step else None
         else:
             actions, _, _ = actor.get_action(torch.Tensor(obs).to(device))
             actions = actions.detach().cpu().numpy()
@@ -349,7 +359,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 pos_rho += 1
         # rho
         obs_rho_list.append(obs)
+        actions_rho_list.append(actions)
         next_obs_rho_list.append(real_next_obs)
+        rewards_rho_list.append(rewards)
         dones_rho_list.append(terminations)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
@@ -368,7 +380,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             # CLASSIFIER TRAINING
             # rho
             batch_obs_rho = torch.tensor(np.array(obs_rho_list), dtype=torch.float32).to(device).squeeze(axis=1)
+            batch_actions_rho = torch.tensor(np.array(actions_rho_list), dtype=torch.float32).to(device).squeeze(axis=1)
             batch_next_obs_rho = torch.tensor(np.array(next_obs_rho_list), dtype=torch.float32 ).to(device).squeeze(axis=1)
+            batch_rewards_rho = torch.tensor(np.array(rewards_rho_list)).to(device)
             batch_dones_rho = torch.tensor(np.array(dones_rho_list)).to(device)
             # un
             nb_sample_un = int(args.classifier_batch_size*(1-args.beta_ratio))
@@ -379,6 +393,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             total_classification_loss = 0
             total_lipshitz_regu = 0
             for epoch in range(classifier_epochs):
+                print('classifier_epochs', epoch)
                 # mb rho
                 # mb_rho_idx = np.random.choice(np.arange(batch_obs_rho.shape[0]-1), args.classifier_batch_size, p=prob.numpy())
                 mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], args.classifier_batch_size)
@@ -396,7 +411,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 # sampling part of beta from rho + concat
                 mb_obs_un = torch.cat([mb_un_obs, batch_obs_rho[beta_mb_rho_idx].clone().detach().to(device)], axis=0).to(device)
                 mb_next_obs_un = torch.cat([mb_un_next_obs, batch_next_obs_rho[beta_mb_rho_idx].clone().detach().to(device)], axis=0).to(device)
-                mb_done_un = torch.cat([mb_un_done, batch_dones_rho[beta_mb_rho_idx].clone().detach().to(device)], axis=0).to(device)
+                mb_done_un = torch.cat([mb_un_done, batch_dones_rho[beta_mb_rho_idx].clone().detach().to(device)], axis=0).to(device) 
                 # classifier loss + lipshitz regularization
                 loss, _ = classifier.lipshitz_loss_ppo(batch_q= mb_obs_rho, batch_p = mb_obs_un, 
                                                         q_batch_s =  mb_obs_rho, q_batch_next_s = mb_next_obs_rho, q_dones = mb_done_rho,
@@ -419,23 +434,38 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
             # ALGO LOGIC: training.
             for training_step in range(args.sac_training_steps):
-                data = rb.sample(args.batch_size)
-                # nb_sample_rho = int(args.classifier_batch_size*(1-args.beta_ratio))
-                # nb_sample_un = int(args.classifier_batch_size*args.beta_ratio)
+                print('training_step', training_step)
+                # data = rb.sample(args.batch_size)
+                beta = 1/2
+                batch_inds_un = np.random.randint(0, int(rb.pos - (pos_rho+add_pos)), int(args.batch_size*(1-beta)))
+                batch_inds_rho = np.random.randint(0, batch_obs_rho.shape[0], int(args.batch_size*beta))
+                batch_inds_envs_un = np.random.randint(0, envs.num_envs, int(args.batch_size*(1-beta)))
+                observations = torch.cat([torch.tensor(rb.observations[batch_inds_un, batch_inds_envs_un]).to(device), 
+                                            batch_obs_rho[mb_rho_idx].clone().detach().to(device)], axis=0)
+                next_observations = torch.cat([torch.tensor(rb.next_observations[batch_inds_un, batch_inds_envs_un]).to(device),
+                                                  batch_next_obs_rho[mb_rho_idx].clone().detach().to(device)], axis=0)
+                actions = torch.cat([torch.tensor(rb.actions[batch_inds_un, batch_inds_envs_un]).to(device),
+                                    batch_actions_rho[mb_rho_idx].clone().detach().to(device)], axis=0)
+                rewards = torch.cat([torch.tensor(rb.rewards[batch_inds_un]).to(device),
+                                    batch_rewards_rho[mb_rho_idx].clone().detach().to(device)], axis=0)
+                dones = torch.cat([torch.tensor(rb.dones[batch_inds_un]).to(device),
+                                    batch_dones_rho[mb_rho_idx].clone().detach().to(device)], axis=0)
+                                         
+                
                 # nb_sample_rho = int(1)
                 # nb_sample_un = int(args.classifier_batch_size-1)
                 # sample from replay buffer
-                observations = data.observations
-                next_observations = data.next_observations
-                actions = data.actions
-                rewards = data.rewards
-                dones = data.dones
+                # observations = data.observations
+                # next_observations = data.next_observations
+                # actions = data.actions
+                # rewards = data.rewards
+                # dones = data.dones
                 with torch.no_grad():
                     next_state_actions, next_state_log_pi, _ = actor.get_action(next_observations)
                     qf1_next_target = qf1_target(next_observations, next_state_actions)
                     qf2_next_target = qf2_target(next_observations, next_state_actions)
                     min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
-                    intrinsic_reward = (classifier(next_observations).squeeze() - classifier(observations).squeeze())*1.0
+                    intrinsic_reward = (classifier(next_observations).squeeze() - classifier(observations).squeeze())
                     # intrinsic_reward = (intrinsic_reward - intrinsic_reward.mean()) / (intrinsic_reward.std() + 1e-6)
                     # intrinsic_reward = classifier(observations).squeeze()
                     # print('intrinsic_reward', intrinsic_reward.mean().item())

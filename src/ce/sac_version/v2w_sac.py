@@ -71,7 +71,7 @@ class Args:
     """the frequency of training policy (delayed)"""
     target_network_frequency: int = 1  # Denis Yarats' implementation delays this by 2.
     """the frequency of updates for the target nerworks"""
-    alpha: float = 0.1
+    alpha: float = 0.2
     """Entropy regularization coefficient."""
     autotune: bool = False
     """automatic tuning of the entropy coefficient"""
@@ -385,7 +385,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     for global_step in range(args.total_timesteps):
         # ALGO LOGIC: put action logic here
         if global_step < args.learning_starts:
-            actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
+            # actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
+            actions = np.random.uniform(-max_action, max_action, size=(envs.num_envs, envs.single_action_space.shape[0]))
         else:
             actions, _, _ = actor.get_action(torch.Tensor(obs).to(device),torch.Tensor(z).to(device))
             actions = actions.detach().cpu().numpy()
@@ -538,9 +539,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     # METRA TERM
                     phi_s = discriminator(observations)
                     phi_s_next = discriminator(next_observations)
-                    metra_reward = ((phi_s_next - phi_s) * zs).sum(dim = -1)
-
-                    intrinsic_reward = metra_reward + explore_reward*0.5
+                    metra_reward = ((phi_s_next - phi_s) * zs).sum(dim = -1)*10.0
+                    intrinsic_reward = metra_reward + explore_reward*0.0
                     # intrinsic_reward = (intrinsic_reward - intrinsic_reward.mean()) / (intrinsic_reward.std() + 1e-6)
                     # intrinsic_reward = classifier(observations).squeeze()
                     # print('intrinsic_reward', intrinsic_reward.mean().item())
