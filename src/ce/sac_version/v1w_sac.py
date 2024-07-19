@@ -79,11 +79,13 @@ class Args:
     """the number of parallel environments"""
     sac_training_steps: int = 100
     """the number of training steps in each SAC training loop"""
-    nb_rollouts_freq: int = 2
+    nb_rollouts_sac: int = 4
+    """the number of rollouts for sac"""
+    nb_rollouts_freq: int = 4
     """the frequency of logging the number of rollouts"""
 
     #  CLASSIFIER SPECIFIC
-    classifier_lr: float = 1e-3
+    classifier_lr: float = 5e-4
     """the learning rate of the classifier"""
     classifier_epochs: int = 1
     """the number of epochs to train the classifier"""
@@ -95,7 +97,7 @@ class Args:
     """the percentage of the time to use the classifier"""
     epsilon: float = 1e-3
     """the epsilon of the classifier"""
-    lambda_init: float = 100.0 #50 in mazes
+    lambda_init: float = 500.0 #50 in mazes
     """the lambda of the classifier"""
     bound_spectral: float = 1.0
     """the bound spectral of the classifier"""
@@ -117,9 +119,8 @@ class Args:
     """the coefficient of the extrinsic reward"""
     coef_intrinsic: float = 1.0
     """the coefficient of the intrinsic reward"""
-    # rho update frequency
-    rho_update_freq: int = 2
-    """the frequency of updating rho"""
+    rho_delta: int = 0
+    """the delta with actual rho"""
 
 
 def make_env(env_id, idx, capture_video, run_name, seed):
@@ -370,9 +371,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         # if global_step > args.learning_starts:
         #     training_step = global_step
         # ALGO LOGIC: training.
-        if nb_rollouts >= args.nb_rollouts_freq and  global_step>=args.learning_starts:
+        if nb_rollouts >= min(args.nb_rollouts_freq, args.nb_rollouts_sac) and  global_step>=args.learning_starts:
             pos_rho = max(min(pos_rho, rb.pos-16),4)
-            add_pos = args.rho_update_freq*max_step*(args.beta_ratio)*args.nb_rollouts_freq 
+            add_pos = args.rho_delta*max_step*(args.beta_ratio)*nb_rollouts
             add_pos = 0 if rb.pos-(pos_rho+add_pos)<= 0 else add_pos
             print('pos_rho', pos_rho)
             print('rb.pos', rb.pos)
@@ -392,170 +393,173 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             # classifier_epochs = (batch_obs_rho.shape[0] // args.classifier_batch_size) * args.classifier_epochs
             total_classification_loss = 0
             total_lipshitz_regu = 0
-            for epoch in range(classifier_epochs):
-                print('classifier_epochs', epoch)
-                # mb rho
-                # mb_rho_idx = np.random.choice(np.arange(batch_obs_rho.shape[0]-1), args.classifier_batch_size, p=prob.numpy())
-                mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], args.classifier_batch_size)
-                mb_obs_rho = batch_obs_rho[mb_rho_idx].clone().detach().to(device)
-                mb_next_obs_rho = batch_next_obs_rho[mb_rho_idx].clone().detach().to(device)
-                mb_done_rho = batch_dones_rho[mb_rho_idx].to(torch.float32).clone().detach().to(device)
+            if nb_rollouts >= args.nb_rollouts_freq: 
+                for epoch in range(classifier_epochs):
+                    print('classifier_epochs', epoch)
+                    # mb rho
+                    # mb_rho_idx = np.random.choice(np.arange(batch_obs_rho.shape[0]-1), args.classifier_batch_size, p=prob.numpy())
+                    mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], args.classifier_batch_size)
+                    mb_obs_rho = batch_obs_rho[mb_rho_idx].clone().detach().to(device)
+                    mb_next_obs_rho = batch_next_obs_rho[mb_rho_idx].clone().detach().to(device)
+                    mb_done_rho = batch_dones_rho[mb_rho_idx].to(torch.float32).clone().detach().to(device)
 
-                # mb un
-                beta_mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], nb_sample_rho)
-                beta_mb_un_idx = np.random.randint(0, rb.pos-(pos_rho+add_pos), nb_sample_un)
-                # sampling part of (1-beta) from un 
-                mb_un_obs = torch.tensor(rb.observations[beta_mb_un_idx]).to(device).squeeze(axis=1)
-                mb_un_next_obs = torch.tensor(rb.next_observations[beta_mb_un_idx]).to(device).squeeze(axis=1)
-                mb_un_done = torch.tensor(rb.dones[beta_mb_un_idx]).to(device)
-                # sampling part of beta from rho + concat
-                mb_obs_un = torch.cat([mb_un_obs, batch_obs_rho[beta_mb_rho_idx].clone().detach().to(device)], axis=0).to(device)
-                mb_next_obs_un = torch.cat([mb_un_next_obs, batch_next_obs_rho[beta_mb_rho_idx].clone().detach().to(device)], axis=0).to(device)
-                mb_done_un = torch.cat([mb_un_done, batch_dones_rho[beta_mb_rho_idx].clone().detach().to(device)], axis=0).to(device) 
-                # classifier loss + lipshitz regularization
-                loss, _ = classifier.lipshitz_loss_ppo(batch_q= mb_obs_rho, batch_p = mb_obs_un, 
-                                                        q_batch_s =  mb_obs_rho, q_batch_next_s = mb_next_obs_rho, q_dones = mb_done_rho,
-                                                        p_batch_s = mb_obs_un, p_batch_next_s = mb_next_obs_un, p_dones = mb_done_un, 
-                                                        N_rho = batch_obs_rho.shape[0], N_un = rb.pos)       
-                classifier_optimizer.zero_grad()
-                loss.backward()
-                classifier_optimizer.step()
-                total_classification_loss += loss.item()/classifier_epochs
-                # lambda loss
-                _, lipshitz_regu = classifier.lipshitz_loss_ppo(batch_q= mb_obs_rho, batch_p = mb_obs_un, 
-                                                        q_batch_s =  mb_obs_rho, q_batch_next_s = mb_next_obs_rho, q_dones = mb_done_rho,
-                                                        p_batch_s = mb_obs_un, p_batch_next_s = mb_next_obs_un, p_dones = mb_done_un)    
-                lambda_loss = classifier.lambda_lip*lipshitz_regu
-                classifier_optimizer.zero_grad()
-                lambda_loss.backward()
-                classifier_optimizer.step()
-                total_lipshitz_regu += lipshitz_regu.item()/classifier_epochs
+                    # mb un
+                    beta_mb_rho_idx = np.random.randint(0, batch_obs_rho.shape[0], nb_sample_rho)
+                    beta_mb_un_idx = np.random.randint(0, rb.pos-(pos_rho+add_pos), nb_sample_un)
+                    # sampling part of (1-beta) from un 
+                    mb_un_obs = torch.tensor(rb.observations[beta_mb_un_idx]).to(device).squeeze(axis=1)
+                    mb_un_next_obs = torch.tensor(rb.next_observations[beta_mb_un_idx]).to(device).squeeze(axis=1)
+                    mb_un_done = torch.tensor(rb.dones[beta_mb_un_idx]).to(device)
+                    # sampling part of beta from rho + concat
+                    mb_obs_un = torch.cat([mb_un_obs, batch_obs_rho[beta_mb_rho_idx].clone().detach().to(device)], axis=0).to(device)
+                    mb_next_obs_un = torch.cat([mb_un_next_obs, batch_next_obs_rho[beta_mb_rho_idx].clone().detach().to(device)], axis=0).to(device)
+                    mb_done_un = torch.cat([mb_un_done, batch_dones_rho[beta_mb_rho_idx].clone().detach().to(device)], axis=0).to(device) 
+                    # classifier loss + lipshitz regularization
+                    loss, _ = classifier.lipshitz_loss_ppo(batch_q= mb_obs_rho, batch_p = mb_obs_un, 
+                                                            q_batch_s =  mb_obs_rho, q_batch_next_s = mb_next_obs_rho, q_dones = mb_done_rho,
+                                                            p_batch_s = mb_obs_un, p_batch_next_s = mb_next_obs_un, p_dones = mb_done_un, 
+                                                            N_rho = batch_obs_rho.shape[0], N_un = rb.pos)       
+                    classifier_optimizer.zero_grad()
+                    loss.backward()
+                    classifier_optimizer.step()
+                    total_classification_loss += loss.item()/classifier_epochs
+                    # lambda loss
+                    _, lipshitz_regu = classifier.lipshitz_loss_ppo(batch_q= mb_obs_rho, batch_p = mb_obs_un, 
+                                                            q_batch_s =  mb_obs_rho, q_batch_next_s = mb_next_obs_rho, q_dones = mb_done_rho,
+                                                            p_batch_s = mb_obs_un, p_batch_next_s = mb_next_obs_un, p_dones = mb_done_un)    
+                    lambda_loss = classifier.lambda_lip*lipshitz_regu
+                    classifier_optimizer.zero_grad()
+                    lambda_loss.backward()
+                    classifier_optimizer.step()
+                    total_lipshitz_regu += lipshitz_regu.item()/classifier_epochs
 
-
-            # ALGO LOGIC: training.
-            for training_step in range(args.sac_training_steps):
-                print('training_step', training_step)
-                # data = rb.sample(args.batch_size)
-                beta = 1/2
-                batch_inds_un = np.random.randint(0, int(rb.pos - (pos_rho+add_pos)), int(args.batch_size*(1-beta)))
-                batch_inds_rho = np.random.randint(0, batch_obs_rho.shape[0], int(args.batch_size*beta))
-                batch_inds_envs_un = np.random.randint(0, envs.num_envs, int(args.batch_size*(1-beta)))
-                observations = torch.cat([torch.tensor(rb.observations[batch_inds_un, batch_inds_envs_un]).to(device), 
-                                            batch_obs_rho[mb_rho_idx].clone().detach().to(device)], axis=0)
-                next_observations = torch.cat([torch.tensor(rb.next_observations[batch_inds_un, batch_inds_envs_un]).to(device),
-                                                  batch_next_obs_rho[mb_rho_idx].clone().detach().to(device)], axis=0)
-                actions = torch.cat([torch.tensor(rb.actions[batch_inds_un, batch_inds_envs_un]).to(device),
-                                    batch_actions_rho[mb_rho_idx].clone().detach().to(device)], axis=0)
-                rewards = torch.cat([torch.tensor(rb.rewards[batch_inds_un]).to(device),
-                                    batch_rewards_rho[mb_rho_idx].clone().detach().to(device)], axis=0)
-                dones = torch.cat([torch.tensor(rb.dones[batch_inds_un]).to(device),
-                                    batch_dones_rho[mb_rho_idx].clone().detach().to(device)], axis=0)
-                                         
-                
-                # nb_sample_rho = int(1)
-                # nb_sample_un = int(args.classifier_batch_size-1)
-                # sample from replay buffer
-                # observations = data.observations
-                # next_observations = data.next_observations
-                # actions = data.actions
-                # rewards = data.rewards
-                # dones = data.dones
-                with torch.no_grad():
-                    next_state_actions, next_state_log_pi, _ = actor.get_action(next_observations)
-                    qf1_next_target = qf1_target(next_observations, next_state_actions)
-                    qf2_next_target = qf2_target(next_observations, next_state_actions)
-                    min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
-                    intrinsic_reward = (classifier(next_observations).squeeze() - classifier(observations).squeeze())
-                    # intrinsic_reward = (intrinsic_reward - intrinsic_reward.mean()) / (intrinsic_reward.std() + 1e-6)
-                    # intrinsic_reward = classifier(observations).squeeze()
-                    # print('intrinsic_reward', intrinsic_reward.mean().item())
-                    # intrinsic_reward += intrinsic_reward.min()
-                    batch_rewards = args.coef_extrinsic * rewards.flatten() + args.coef_intrinsic * intrinsic_reward if args.keep_extrinsic_reward else args.coef_intrinsic * intrinsic_reward
-                    next_q_value = batch_rewards + (1 - dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
-
-                qf1_a_values = qf1(observations, actions).view(-1)
-                qf2_a_values = qf2(observations, actions).view(-1)
-                qf1_loss = F.mse_loss(qf1_a_values, next_q_value)
-                qf2_loss = F.mse_loss(qf2_a_values, next_q_value)
-                qf_loss = qf1_loss + qf2_loss
-
-                # optimize the model
-                q_optimizer.zero_grad()
-                qf_loss.backward()
-                q_optimizer.step()
-
-                if training_step % args.policy_frequency == 0:  # TD 3 Delayed update support
-                    for _ in range(
-                        args.policy_frequency
-                    ):  # compensate for the delay by doing 'actor_update_interval' instead of 1
-                        pi, log_pi, _ = actor.get_action(observations)
-                        qf1_pi = qf1(observations, pi)
-                        qf2_pi = qf2(observations, pi)
-                        min_qf_pi = torch.min(qf1_pi, qf2_pi)
-                        actor_loss = ((alpha * log_pi) - min_qf_pi).mean()
-
-                        # kl_actor 
-                        # online
-                        # mean, log_std = actor(observations)
-                        # std = log_std.exp()
-                        # normal = torch.distributions.Normal(mean, std)
-                        # # target
-                        # mean_target, log_std_target = actor(next_observations)
-                        # std_target = log_std_target.exp()
-                        # normal_target = torch.distributions.Normal(mean_target, std_target)
-                        # # kl
-                        # kl = torch.distributions.kl_divergence(normal, normal_target).mean()
-                        # actor_loss += 0.5 * kl
-
-                        actor_optimizer.zero_grad()
-                        actor_loss.backward()
-                        actor_optimizer.step()
-
-                        if args.autotune:
-                            with torch.no_grad():
-                                _, log_pi, _ = actor.get_action(observations)
-                            alpha_loss = (-log_alpha.exp() * (log_pi + target_entropy)).mean()
-
-                            a_optimizer.zero_grad()
-                            alpha_loss.backward()
-                            a_optimizer.step()
-                            alpha = log_alpha.exp().item()
-
-                # update the target networks
-                if training_step % args.target_network_frequency == 0:
-                    for param, target_param in zip(qf1.parameters(), qf1_target.parameters()):
-                        target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
-                    for param, target_param in zip(qf2.parameters(), qf2_target.parameters()):
-                        target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
-
-                if training_step % 10 == 0:
-                    writer.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), global_step)
-                    writer.add_scalar("losses/qf2_values", qf2_a_values.mean().item(), global_step)
-                    writer.add_scalar("losses/qf1_loss", qf1_loss.item(), global_step)
-                    writer.add_scalar("losses/qf2_loss", qf2_loss.item(), global_step)
-                    writer.add_scalar("losses/qf_loss", qf_loss.item() / 2.0, global_step)
-                    writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
-                    writer.add_scalar("losses/policy_entropy", -(torch.exp(log_pi) * log_pi).mean().item(), global_step)
-                    # writer.add_scalar("losses/kl", kl.item(), global_step)
-                    writer.add_scalar("losses/alpha", alpha, global_step)
-                    writer.add_scalar("losses/total_classification_loss", total_classification_loss, global_step)
-                    writer.add_scalar("losses/total_lipshitz_regu", total_lipshitz_regu, global_step)
-                    writer.add_scalar("stats/nb_rollouts", nb_rollouts, global_step)
-                    writer.add_scalar("stats/intrinsic_reward", intrinsic_reward.mean().item(), global_step)
-                    writer.add_scalar("stats/intrinsic_reward_max", intrinsic_reward.max().item(), global_step)
-                    writer.add_scalar("stats/intrinsic_reward_min", intrinsic_reward.min().item(), global_step)
+            if nb_rollouts >= args.nb_rollouts_sac:
+                # ALGO LOGIC: training.
+                for training_step in range(args.sac_training_steps):
+                    # data = rb.sample(args.batch_size)
+                    # beta = args.beta_ratio
+                    beta = 1/2
+                    batch_inds_un = np.random.randint(0, int(rb.pos - (pos_rho+add_pos)), int(args.batch_size*(1-beta)))
+                    batch_inds_rho = np.random.randint(0, batch_obs_rho.shape[0], int(args.batch_size*beta))
+                    batch_inds_envs_un = np.random.randint(0, envs.num_envs, int(args.batch_size*(1-beta)))
+                    observations = torch.cat([torch.tensor(rb.observations[batch_inds_un, batch_inds_envs_un]).to(device), 
+                                                batch_obs_rho[batch_inds_rho].clone().detach().to(device)], axis=0)
+                    next_observations = torch.cat([torch.tensor(rb.next_observations[batch_inds_un, batch_inds_envs_un]).to(device),
+                                                    batch_next_obs_rho[batch_inds_rho].clone().detach().to(device)], axis=0)
+                    actions = torch.cat([torch.tensor(rb.actions[batch_inds_un, batch_inds_envs_un]).to(device),
+                                        batch_actions_rho[batch_inds_rho].clone().detach().to(device)], axis=0)
+                    rewards = torch.cat([torch.tensor(rb.rewards[batch_inds_un]).to(device),
+                                        batch_rewards_rho[batch_inds_rho].clone().detach().to(device)], axis=0)
+                    dones = torch.cat([torch.tensor(rb.dones[batch_inds_un]).to(device),
+                                        batch_dones_rho[batch_inds_rho].clone().detach().to(device)], axis=0)
+                                            
                     
-                    # writer.add_scalar("stats/pos_rho", pos_rho, global_step)
-                    # print("SPS:", int(training_step / (time.time() - start_time)))
-                    writer.add_scalar("charts/SPS", int(training_step / (time.time() - start_time)), global_step)
-                    if args.autotune:
-                        writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
-            # reinit
-            nb_rollouts = 0
-            pos_rho = 0
-            obs_rho_list = []
-            next_obs_rho_list = []
-            dones_rho_list = []
+                    # nb_sample_rho = int(1)
+                    # nb_sample_un = int(args.classifier_batch_size-1)
+                    # sample from replay buffer
+                    # observations = data.observations
+                    # next_observations = data.next_observations
+                    # actions = data.actions
+                    # rewards = data.rewards
+                    # dones = data.dones
+                    with torch.no_grad():
+                        next_state_actions, next_state_log_pi, _ = actor.get_action(next_observations)
+                        qf1_next_target = qf1_target(next_observations, next_state_actions)
+                        qf2_next_target = qf2_target(next_observations, next_state_actions)
+                        min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
+                        intrinsic_reward = (classifier(next_observations).squeeze() - classifier(observations).squeeze())
+                        # intrinsic_reward = (intrinsic_reward - intrinsic_reward.mean()) / (intrinsic_reward.std() + 1e-6)
+                        # intrinsic_reward = classifier(observations).squeeze()
+                        # print('intrinsic_reward', intrinsic_reward.mean().item())
+                        # intrinsic_reward += intrinsic_reward.min()
+                        batch_rewards = args.coef_extrinsic * rewards.flatten() + args.coef_intrinsic * intrinsic_reward if args.keep_extrinsic_reward else args.coef_intrinsic * intrinsic_reward
+                        next_q_value = batch_rewards + (1 - dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
+
+                    qf1_a_values = qf1(observations, actions).view(-1)
+                    qf2_a_values = qf2(observations, actions).view(-1)
+                    qf1_loss = F.mse_loss(qf1_a_values, next_q_value)
+                    qf2_loss = F.mse_loss(qf2_a_values, next_q_value)
+                    qf_loss = qf1_loss + qf2_loss
+
+                    # optimize the model
+                    q_optimizer.zero_grad()
+                    qf_loss.backward()
+                    q_optimizer.step()
+
+                    if training_step % args.policy_frequency == 0:  # TD 3 Delayed update support
+                        for _ in range(
+                            args.policy_frequency
+                        ):  # compensate for the delay by doing 'actor_update_interval' instead of 1
+                            pi, log_pi, _ = actor.get_action(observations)
+                            qf1_pi = qf1(observations, pi)
+                            qf2_pi = qf2(observations, pi)
+                            min_qf_pi = torch.min(qf1_pi, qf2_pi)
+                            actor_loss = ((alpha * log_pi) - min_qf_pi).mean()
+
+                            # kl_actor 
+                            # online
+                            # mean, log_std = actor(observations)
+                            # std = log_std.exp()
+                            # normal = torch.distributions.Normal(mean, std)
+                            # # target
+                            # mean_target, log_std_target = actor(next_observations)
+                            # std_target = log_std_target.exp()
+                            # normal_target = torch.distributions.Normal(mean_target, std_target)
+                            # # kl
+                            # kl = torch.distributions.kl_divergence(normal, normal_target).mean()
+                            # actor_loss += 0.5 * kl
+
+                            actor_optimizer.zero_grad()
+                            actor_loss.backward()
+                            actor_optimizer.step()
+
+                            if args.autotune:
+                                with torch.no_grad():
+                                    _, log_pi, _ = actor.get_action(observations)
+                                alpha_loss = (-log_alpha.exp() * (log_pi + target_entropy)).mean()
+
+                                a_optimizer.zero_grad()
+                                alpha_loss.backward()
+                                a_optimizer.step()
+                                alpha = log_alpha.exp().item()
+
+                    # update the target networks
+                    if training_step % args.target_network_frequency == 0:
+                        for param, target_param in zip(qf1.parameters(), qf1_target.parameters()):
+                            target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
+                        for param, target_param in zip(qf2.parameters(), qf2_target.parameters()):
+                            target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
+
+                    if training_step % 10 == 0:
+                        writer.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), global_step)
+                        writer.add_scalar("losses/qf2_values", qf2_a_values.mean().item(), global_step)
+                        writer.add_scalar("losses/qf1_loss", qf1_loss.item(), global_step)
+                        writer.add_scalar("losses/qf2_loss", qf2_loss.item(), global_step)
+                        writer.add_scalar("losses/qf_loss", qf_loss.item() / 2.0, global_step)
+                        writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
+                        writer.add_scalar("losses/policy_entropy", -(torch.exp(log_pi) * log_pi).mean().item(), global_step)
+                        # writer.add_scalar("losses/kl", kl.item(), global_step)
+                        writer.add_scalar("losses/alpha", alpha, global_step)
+                        writer.add_scalar("losses/total_classification_loss", total_classification_loss, global_step)
+                        writer.add_scalar("losses/total_lipshitz_regu", total_lipshitz_regu, global_step)
+                        writer.add_scalar("stats/nb_rollouts", nb_rollouts, global_step)
+                        writer.add_scalar("stats/intrinsic_reward", intrinsic_reward.mean().item(), global_step)
+                        writer.add_scalar("stats/intrinsic_reward_max", intrinsic_reward.max().item(), global_step)
+                        writer.add_scalar("stats/intrinsic_reward_min", intrinsic_reward.min().item(), global_step)
+                        
+                        # writer.add_scalar("stats/pos_rho", pos_rho, global_step)
+                        # print("SPS:", int(training_step / (time.time() - start_time)))
+                        writer.add_scalar("charts/SPS", int(training_step / (time.time() - start_time)), global_step)
+                        if args.autotune:
+                            writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
+
+            if nb_rollouts >= max(args.nb_rollouts_freq, args.nb_rollouts_sac):
+                # reinit
+                nb_rollouts = 0
+                pos_rho = 0
+                obs_rho_list = []
+                next_obs_rho_list = []
+                dones_rho_list = []
             
 
         if global_step % args.fig_frequency == 0  and global_step > 0:

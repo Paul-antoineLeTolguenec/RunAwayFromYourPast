@@ -74,12 +74,12 @@ class Maze(gym.Env):
             self.episode_length += 1
             reward = self.reward()
             self.episode_reward += reward
-            if self.episode_length >= self.max_episode_steps : 
-                return np.array([self.x,self.y], dtype=np.float32).copy(), reward, True, False, {'pos' : copy.deepcopy(np.array([self.x,self.y], dtype=np.float32)), 'l' : self.episode_length, 'episode' : {'r' : self.episode_reward, 
-                                                                                                                                                                           'l' : self.episode_length, 
-                                                                                                                                                                           'target' : self.target}}
-            else:
-                return np.array([self.x,self.y], dtype=np.float32).copy(), reward, False, False, {'pos' : copy.deepcopy(np.array([self.x,self.y], dtype=np.float32)), 'l' : self.episode_length, 'r' : self.episode_reward, 'target' : self.target}
+            # if self.episode_length >= self.max_episode_steps : 
+            #     return np.array([self.x,self.y], dtype=np.float32).copy(), reward, True, False, {'pos' : copy.deepcopy(np.array([self.x,self.y], dtype=np.float32)), 'l' : self.episode_length, 'episode' : {'r' : self.episode_reward, 
+            #                                                                                                                                                                'l' : self.episode_length, 
+            #                                                                                                                                                                'target' : self.target}}
+            # else:
+            return np.array([self.x,self.y], dtype=np.float32).copy(), reward, False, False, {'pos' : copy.deepcopy(np.array([self.x,self.y], dtype=np.float32)), 'l' : self.episode_length, 'r' : self.episode_reward, 'target' : self.target}
         
     
         
