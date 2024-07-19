@@ -184,9 +184,9 @@ def transfer_run(source_project, target_project, conditions):
     print(f'Transferred {nb_transfered_runs} runs from {source_project} to {target_project}.')
    
 if __name__ == "__main__":
-    # project_name = "contrastive_exploration"
-    # failed_runs = get_failed_runs(project_name, algo_name='ngu', remove=True)
-    # print(failed_runs)
+    project_name = "contrastive_exploration_reward_max"
+    failed_runs = get_failed_runs(project_name, remove=True)
+    # print(len(failed_runs))
     # print('nb failed runs:', len(failed_runs))
     # # dataset
     # print('project_name:', project_name)
@@ -200,14 +200,14 @@ if __name__ == "__main__":
     # print('done:', done.shape)
     # print('times:', times.shape)
 
-    # check get failed runs
-    source_project_name = "contrastive_test"
-    target_project_name = "contrastive_exploration_reward_max"
+    # # check get failed runs
+    # source_project_name = "contrastive_test"
+    # target_project_name = "contrastive_exploration_reward_max"
 
-    # transfer_finished_runs(source_project_name, target_project_name)
-    conditions = {
-    'keep_extrinsic_reward': True,
-    'exp_name': 'ppo',
-    'status': 'finished'
-    }
-    transfer_run(source_project_name, target_project_name, conditions)
+    # # transfer_finished_runs(source_project_name, target_project_name)
+    # conditions = {
+    # 'keep_extrinsic_reward': True,
+    # 'exp_name': 'ppo',
+    # 'status': 'finished'
+    # }
+    # transfer_run(source_project_name, target_project_name, conditions)
