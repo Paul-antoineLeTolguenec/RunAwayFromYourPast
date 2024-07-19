@@ -51,6 +51,7 @@ class Maze(gym.Env):
             return r
 
         def reset(self, seed =0):
+            self.seed = seed
             self.x=self.x_init
             self.y=self.y_init
             self.dx=self.dx_init

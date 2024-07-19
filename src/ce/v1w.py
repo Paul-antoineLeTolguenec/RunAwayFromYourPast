@@ -37,7 +37,7 @@ class Args:
     """if toggled, cuda will be enabled by default"""
     track: bool = True
     """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "contrastive_test"
+    wandb_project_name: str = "contrastive_test_2"
     """the wandb's project name"""
     wandb_entity: str = None
     """the entity (team) of wandb's project"""
@@ -57,7 +57,7 @@ class Args:
     """the frequency of computing shannon entropy"""
 
     # RPO SPECIFIC
-    env_id: str = "FetchSlide-v2"
+    env_id: str = "Maze-Ur-v0"
     """the id of the environment"""
     total_timesteps: int = 5_000_000
     """total timesteps of the experiments"""
@@ -85,9 +85,9 @@ class Args:
     """the mask clipping coefficient"""
     clip_vloss: bool = False #True
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
-    ent_coef: float = 0.0
+    ent_coef: float = 0.2
     """coefficient of the entropy"""
-    ent_mask_coef: float = 0.1
+    ent_mask_coef: float = 0.2
     """coefficient of the entropy mask"""
     vf_coef: float = 0.5
     """coefficient of the value function"""
