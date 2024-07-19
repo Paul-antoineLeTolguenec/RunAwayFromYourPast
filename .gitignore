@@ -8,6 +8,7 @@
 **/gif/
 **/videos/
 **/artifacts/
+**.ipynb_checkpoints/
 .venv/
 
 # file 
