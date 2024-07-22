@@ -100,7 +100,7 @@ class Wenv(gym.Env):
         if self.type_id == 'robotics':
            obs = self.parser_robotics(obs)
         elif self.type_id == 'atari' : 
-            obs, i = self.env.reset()
+            obs, i = self.env.reset(seed=seed)
             i['position'] = self.parser_ram_atari()
         # update episode length and reward
         i['l'] = self.episode_length
@@ -140,7 +140,7 @@ class Wenv(gym.Env):
             self.ax.clear()
             # data  to plot
             if obs is not None:
-                data_to_plot =torch.cat([torch.Tensor(obs_un.reshape(-1, *self.observation_space.shape)).to(device), torch.Tensor(obs.reshape(-1, *self.observation_space.shape))], dim=0)
+                data_to_plot =torch.cat([torch.Tensor(obs_un.reshape(-1, *self.observation_space.shape)).to(device), torch.Tensor(obs.reshape(-1, *self.observation_space.shape)).to(device)], dim=0)
             else : 
                 data_to_plot =torch.Tensor(obs_un.reshape(-1, *self.observation_space.shape)).to(device)
             # Plotting measure 

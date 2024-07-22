@@ -111,7 +111,7 @@ config = {
                'reset_noise_scale': 0.0, 
                'exclude_current_positions_from_observation': False, 
                'max_episode_steps': 1000,
-               'terminate_when_unhealthy': False},
+               'terminate_when_unhealthy': True},
     'coverage_idx': np.array([0,1,2]),
     'render_settings': {'x_lim': [-10, 10], 'y_lim': [-10, 10], 'z_lim': [0, 2]}
 },

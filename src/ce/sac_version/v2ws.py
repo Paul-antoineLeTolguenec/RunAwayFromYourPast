@@ -28,7 +28,7 @@ class Args:
     """seed of the experiment"""
     torch_deterministic: bool = True
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
-    cuda: bool = False
+    cuda: bool = True
     """if toggled, cuda will be enabled by default"""
     track: bool = True
     """if toggled, this experiment will be tracked with Weights and Biases"""
@@ -50,7 +50,7 @@ class Args:
     """the frequency of computing shannon entropy"""
 
     # Algorithm specific arguments
-    env_id: str = "HalfCheetah-v3"
+    env_id: str = "Maze-Ur-v0"
     """the environment id of the task"""
     total_timesteps: int = 1_000_000
     """total timesteps of the experiments"""
@@ -108,6 +108,21 @@ class Args:
     """the coefficient of the extrinsic reward"""
     coef_intrinsic: float = 1.0
     """the coefficient of the intrinsic reward"""
+
+    # METRA SPECIFIC
+    lambda_metra: float = 50.0
+    """the lambda of the metra"""
+    nb_skills: int = 4
+    """the number of skills"""
+    metra_frequency: int = 1
+    """the frequency of the metra"""
+    lr_metra_discriminator: float = 1e-4
+    """the learning rate of the metra discriminator"""
+    lr_lambda_metra: float = 1e-2
+    """the learning rate of the lambda metra"""
+    lip_cte_metra: float = 1.0
+    """the constant of the lipschitz of the metra"""
+
     
 
 
@@ -127,14 +142,14 @@ def make_env(env_id, idx, capture_video, run_name):
 
 # ALGO LOGIC: initialize agent here:
 class SoftQNetwork(nn.Module):
-    def __init__(self, env):
+    def __init__(self, env, nb_skills):
         super().__init__()
-        self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod() + np.prod(env.single_action_space.shape), 256)
+        self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod() + np.prod(env.single_action_space.shape) + nb_skills, 256)
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, 1)
 
-    def forward(self, x, a):
-        x = torch.cat([x, a], 1)
+    def forward(self, x, z, a):
+        x = torch.cat([x, z, a], dim=1)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
@@ -146,21 +161,22 @@ LOG_STD_MIN = -5
 
 
 class Actor(nn.Module):
-    def __init__(self, env):
+    def __init__(self, env, nb_skills):
         super().__init__()
-        self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod(), 256)
+        self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod() + nb_skills, 256)
         self.fc2 = nn.Linear(256, 256)
         self.fc_mean = nn.Linear(256, np.prod(env.single_action_space.shape))
         self.fc_logstd = nn.Linear(256, np.prod(env.single_action_space.shape))
         # action rescaling
         self.register_buffer(
-            "action_scale", torch.tensor((env.action_space.high - env.action_space.low) / 2.0, dtype=torch.float32)
+            "action_scale", torch.tensor((env.single_action_space.high - env.single_action_space.low) / 2.0, dtype=torch.float32)
         )
         self.register_buffer(
-            "action_bias", torch.tensor((env.action_space.high + env.action_space.low) / 2.0, dtype=torch.float32)
+            "action_bias", torch.tensor((env.single_action_space.high + env.single_action_space.low) / 2.0, dtype=torch.float32)
         )
 
-    def forward(self, x):
+    def forward(self, x, z):
+        x = torch.cat([x, z], dim=1)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         mean = self.fc_mean(x)
@@ -170,8 +186,8 @@ class Actor(nn.Module):
 
         return mean, log_std
 
-    def get_action(self, x):
-        mean, log_std = self(x)
+    def get_action(self, x, z):
+        mean, log_std = self(x, z)
         std = log_std.exp()
         normal = torch.distributions.Normal(mean, std)
         x_t = normal.rsample()  # for reparameterization trick (mean + std * N(0,1))
@@ -208,7 +224,44 @@ class Discriminator(nn.Module):
         return self(mb_obs_un).mean() - self(mb_obs_rho).mean()
         # return self.sigmoid(self(mb_obs_un)).mean() - self.sigmoid(self(mb_obs_rho)).mean()
     
-        
+class METRA_Discriminator(torch.nn.Module):
+    def __init__(self,  
+                state_dim, 
+                z_dim,
+                env_name, 
+                device, 
+                lip_cte = 1.0,
+                eps = 1e-6,
+                lambda_init = 30.0):
+        super(METRA_Discriminator, self).__init__()
+        self.env_name = env_name
+        self.l1=torch.nn.Linear(state_dim, 256).to(device)
+        self.l2=torch.nn.Linear(256, 64).to(device)
+        self.l3=torch.nn.Linear(64, z_dim).to(device)
+        # learnable lagrange multiplier
+        self.lambda_metra = nn.Parameter(torch.tensor(lambda_init, dtype=torch.float32)) #lambda_metra in the paper
+        self.eps = torch.tensor(eps).to(device)
+        self.lip_cte = lip_cte
+    
+    def forward(self, s):
+        x=torch.nn.functional.relu(self.l1(s))
+        x=torch.nn.functional.relu(self.l2(x))
+        x=self.l3(x)
+        return x
+
+    def lipshitz_loss(self, s, s_next, z, d):
+        phi_s = self(s)
+        phi_s_next = self(s_next)
+        loss = -(( (phi_s_next - phi_s) * z).sum(dim = -1) + self.lambda_metra.detach() * torch.min(self.eps, self.lip_cte-torch.norm(phi_s-phi_s_next, dim=-1) ))*(1-d)
+        return loss.mean()
+    
+    def lambda_loss(self, s, s_next, z, d):
+        phi_s = self(s)
+        phi_s_next = self(s_next)
+        # metrized loss
+        loss = torch.min(self.eps, self.lip_cte-torch.norm(phi_s-phi_s_next, dim=-1))*(1-d)
+        return loss.mean().detach()*self.lambda_metra
+
     
     
 if __name__ == "__main__":
@@ -262,7 +315,11 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = args.torch_deterministic
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
-
+    # METRA SETUP 
+    args.num_envs = args.nb_skills
+    z = -1/(args.nb_skills-1)*torch.ones((args.nb_skills, args.nb_skills)).to(device) + (1+1/(args.nb_skills-1))*torch.eye(args.nb_skills).to(device)
+    z = z/z.norm(dim=0)
+    z_one_hot = torch.eye(args.nb_skills).to(device)
     # env setup
     envs = gym.vector.SyncVectorEnv(
         [make_env(args.env_id, i, args.capture_video, run_name) for i in range(args.num_envs)]
@@ -271,11 +328,11 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
     max_action = float(envs.single_action_space.high[0])
 
-    actor = Actor(envs).to(device)
-    qf1 = SoftQNetwork(envs).to(device)
-    qf2 = SoftQNetwork(envs).to(device)
-    qf1_target = SoftQNetwork(envs).to(device)
-    qf2_target = SoftQNetwork(envs).to(device)
+    actor = Actor(envs, args.nb_skills).to(device)
+    qf1 = SoftQNetwork(envs, args.nb_skills).to(device)
+    qf2 = SoftQNetwork(envs, args.nb_skills).to(device)
+    qf1_target = SoftQNetwork(envs, args.nb_skills).to(device)
+    qf2_target = SoftQNetwork(envs, args.nb_skills).to(device)
     discriminator = Discriminator(envs, args.lambda_init, args.epsilon, args.lip_cte).to(device)
     qf1_target.load_state_dict(qf1.state_dict())
     qf2_target.load_state_dict(qf2.state_dict())
@@ -283,6 +340,16 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.policy_lr)
     discriminator_optimizer = optim.Adam(list(discriminator.parameters()), lr=args.lr_discriminator)
     lambda_optimizer = optim.Adam([discriminator.lambda_param], lr=args.lr_lambda)
+    metra_discriminator = METRA_Discriminator(state_dim = np.array(envs.single_observation_space.shape).prod(),
+                                            z_dim = args.nb_skills,
+                                            env_name = args.env_id,
+                                            device = device,
+                                            lip_cte = args.lip_cte_metra,
+                                            eps = args.epsilon,
+                                            lambda_init = args.lambda_metra).to(device)
+    metra_optimizer = optim.Adam(list(metra_discriminator.parameters()), lr=args.lr_metra_discriminator)
+    lambda_metra_optimizer = optim.Adam([metra_discriminator.lambda_metra], lr=args.lr_lambda_metra)
+
 
     # Automatic entropy tuning
     if args.autotune:
@@ -300,30 +367,31 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         envs.single_action_space,
         device,
         handle_timeout_termination=False,
+        n_envs=args.num_envs,
     )
     # specific un 
     max_step = config[args.env_id]['kwargs']['max_episode_steps']
-    size_un = max_step *  args.nb_episodes_rho
+    size_un = max_step *  args.nb_episodes_rho * args.nb_skills
     fixed_idx_un = np.array([], dtype=int)
     # specific rho
     size_rho = max_step * args.nb_episodes_rho
 
-
+    # add z to replay buffer
+    rb.zs = np.zeros((rb.buffer_size, rb.n_envs, args.nb_skills), dtype=np.float32)
+    # TRY NOT TO MODIFY: start the game
     nb_episodes = 0
     start_time = time.time()
-    # TRY NOT TO MODIFY: start the game
     obs, _ = envs.reset(seed=args.seed)
     for global_step in range(args.total_timesteps):
         # ALGO LOGIC: put action logic here
         if global_step < args.learning_starts:
             actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
         else:
-            actions, _, _ = actor.get_action(torch.Tensor(obs).to(device))
+            actions, _, _ = actor.get_action(torch.Tensor(obs).to(device),torch.Tensor(z).to(device))
             actions = actions.detach().cpu().numpy()
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, terminations, truncations, infos = envs.step(actions)
-        
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if "final_info" in infos:
@@ -341,6 +409,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 nb_episodes += 1
 
         rb.add(obs, real_next_obs, actions, rewards, terminations, infos)
+        rb.zs[rb.pos-1] = z.cpu()
         # decide whether to add transition to the un
         if len(fixed_idx_un)<= size_un:
             if bernoulli.rvs(args.beta_ratio):
@@ -364,12 +433,13 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         # discriminator training
         if global_step > args.learning_starts and nb_episodes >= (args.nb_episodes_rho + args.pad_rho) :
             # batch un
-            batch_inds_un = fixed_idx_un[np.random.randint(0, max(16,len(fixed_idx_un)-args.pad_rho * max_step * args.beta_ratio), args.batch_size)]
+            batch_inds_un = fixed_idx_un[np.random.randint(0, max(16,len(fixed_idx_un)-args.pad_rho * max_step * args.nb_skills * args.beta_ratio), args.batch_size)]
             batch_inds_envs_un = np.random.randint(0, args.num_envs, args.batch_size)
             observations_un = torch.Tensor(rb.observations[batch_inds_un, batch_inds_envs_un]).to(device)
             next_observations_un = torch.Tensor(rb.next_observations[batch_inds_un, batch_inds_envs_un]).to(device)
             rewards_un = torch.Tensor(rb.rewards[batch_inds_un, batch_inds_envs_un]).to(device)
             dones_un = torch.Tensor(rb.dones[batch_inds_un, batch_inds_envs_un]).to(device)
+            z_un = torch.Tensor(rb.zs[batch_inds_un, batch_inds_envs_un]).to(device)
             # batch rho 
             batch_inds_rho = np.random.randint(rb.pos-size_rho, rb.pos, args.batch_size)
             batch_inds_envs_rho = np.random.randint(0, args.num_envs, args.batch_size)
@@ -377,7 +447,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             next_observations_rho = torch.Tensor(rb.next_observations[batch_inds_rho, batch_inds_envs_rho]).to(device)
             rewards_rho = torch.Tensor(rb.rewards[batch_inds_rho, batch_inds_envs_rho]).to(device)
             dones_rho = torch.Tensor(rb.dones[batch_inds_rho, batch_inds_envs_rho]).to(device)
-            # train the discriminator
+            z_rho = torch.Tensor(rb.zs[batch_inds_rho, batch_inds_envs_rho]).to(device)
+            # train discriminator
             constraints_rho = discriminator.constraint(observations_rho, next_observations_rho, dones_rho)
             constraints_un = discriminator.constraint(observations_un, next_observations_un, dones_un)
             discriminator_loss = discriminator.loss(observations_rho, observations_un) + \
@@ -399,15 +470,52 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 writer.add_scalar("metrics/constraints_un", constraints_un.item(), global_step)
                 writer.add_scalar("metrics/lambda", discriminator.lambda_param.item(), global_step)
 
+
+
+        # METRA TRAINING     
+        if global_step % args.metra_frequency == 0 and global_step > args.learning_starts:
+            # train metra discriminator
+            beta = args.beta_ratio
+            # beta = 0.0
+            loss =beta*metra_discriminator.lipshitz_loss(observations_rho,
+                                                next_observations_rho,
+                                                z_rho,
+                                                dones_rho) + \
+                                                (1-beta)*metra_discriminator.lipshitz_loss(observations_un,
+                                                                                next_observations_un,
+                                                                                z_un,
+                                                                                dones_un)
+            metra_optimizer.zero_grad()
+            loss.backward()
+            metra_optimizer.step()
+            # lambda loss
+            lambda_loss =beta*metra_discriminator.lambda_loss(observations_rho,
+                                                next_observations_rho,
+                                                z_rho,
+                                                dones_rho) + \
+                                                (1-beta)*metra_discriminator.lambda_loss(observations_un,
+                                                                                next_observations_un,
+                                                                                z_un,
+                                                                                dones_un)
+            lambda_metra_optimizer.zero_grad()
+            lambda_loss.backward()
+            lambda_metra_optimizer.step()
+
+            if global_step % 100 == 0:
+                writer.add_scalar("losses/metra_loss", loss.item(), global_step)
+                writer.add_scalar("losses/lambda_metra_loss", lambda_loss.item(), global_step)
+                writer.add_scalar("metrics/lambda_metra", metra_discriminator.lambda_metra.item(), global_step)
+
+                
+
         # ALGO LOGIC: training.
-        if global_step > args.learning_starts and global_step % args.learning_frequency == 0:
+        if global_step > args.learning_starts:
             # standard sampling
             # data = rb.sample(args.batch_size)
-            # b_observations, b_next_observations, b_actions, b_rewards, b_dones = data.observations, data.next_observations, data.actions, data.rewards, data.dones
             # custom sampling
             # batch un
-            batch_inds_un = fixed_idx_un[np.random.randint(0, max(16,len(fixed_idx_un)), int(args.batch_size*(1-args.beta_ratio)))]
-            # batch_inds_un = np.random.randint(0, rb.pos - size_rho, int(args.batch_size*(1-args.beta_ratio)))
+            # batch_inds_un = fixed_idx_un[np.random.randint(0, max(16,len(fixed_idx_un)), int(args.batch_size*(1-args.beta_ratio)))]
+            batch_inds_un = np.random.randint(0, rb.pos - size_rho, int(args.batch_size*(1-args.beta_ratio)))
             batch_inds_envs_un = np.random.randint(0, args.num_envs, int(args.batch_size*(1-args.beta_ratio)))
             # batch rho 
             batch_inds_rho = np.random.randint(rb.pos-size_rho, rb.pos, int(args.batch_size*args.beta_ratio))
@@ -423,23 +531,29 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                                 torch.Tensor(rb.rewards[batch_inds_rho, batch_inds_envs_rho]).to(device)], axis=0)
             b_dones = torch.cat([torch.Tensor(rb.dones[batch_inds_un, batch_inds_envs_un]).to(device),
                                 torch.Tensor(rb.dones[batch_inds_rho, batch_inds_envs_rho]).to(device)], axis=0)
-        
+            b_z = torch.cat([torch.Tensor(rb.zs[batch_inds_un, batch_inds_envs_un]).to(device),
+                                torch.Tensor(rb.zs[batch_inds_rho, batch_inds_envs_rho]).to(device)], axis=0)
             with torch.no_grad():
-                next_state_actions, next_state_log_pi, _ = actor.get_action(b_next_observations)
-                qf1_next_target = qf1_target(b_next_observations, next_state_actions)
-                qf2_next_target = qf2_target(b_next_observations, next_state_actions)
+                next_state_actions, next_state_log_pi, _ = actor.get_action(b_next_observations, b_z)
+                qf1_next_target = qf1_target(b_next_observations, next_state_actions, b_z)
+                qf2_next_target = qf2_target(b_next_observations, next_state_actions, b_z)
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
                 # rewards
+                # metra rewards
+                phi_s = metra_discriminator(b_observations)
+                phi_s_next = metra_discriminator(b_next_observations)
+                metra_reward = ((phi_s_next - phi_s) * b_z).sum(dim = -1)
+                # exploration rewards
                 intrinsic_reward = discriminator(b_next_observations).detach() - discriminator(b_observations).detach()
                 # intrinsic_reward = discriminator(b_observations).detach()
                 if args.keep_extrinsic_reward:
-                    rewards = b_rewards.flatten() 
+                    rewards = b_rewards.flatten() * args.coef_extrinsic + intrinsic_reward.flatten() * args.coef_intrinsic
                 else:
-                    rewards = intrinsic_reward.flatten() * args.coef_intrinsic  
+                    rewards = metra_reward.flatten() + intrinsic_reward.flatten()
                 next_q_value = rewards + (1 - b_dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
 
-            qf1_a_values = qf1(b_observations, b_actions).view(-1)
-            qf2_a_values = qf2(b_observations, b_actions).view(-1)
+            qf1_a_values = qf1(b_observations, b_actions, b_z).view(-1)
+            qf2_a_values = qf2(b_observations, b_actions, b_z).view(-1)
             qf1_loss = F.mse_loss(qf1_a_values, next_q_value)
             qf2_loss = F.mse_loss(qf2_a_values, next_q_value)
             qf_loss = qf1_loss + qf2_loss
@@ -453,9 +567,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 for _ in range(
                     args.policy_frequency
                 ):  # compensate for the delay by doing 'actor_update_interval' instead of 1
-                    pi, log_pi, _ = actor.get_action(b_observations)
-                    qf1_pi = qf1(b_observations, pi)
-                    qf2_pi = qf2(b_observations, pi)
+                    pi, log_pi, _ = actor.get_action(b_observations, b_z)
+                    qf1_pi = qf1(b_observations, pi, b_z)
+                    qf2_pi = qf2(b_observations, pi, b_z)
                     min_qf_pi = torch.min(qf1_pi, qf2_pi)
                     actor_loss = ((alpha * log_pi) - min_qf_pi).mean()
 
@@ -465,7 +579,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
                     if args.autotune:
                         with torch.no_grad():
-                            _, log_pi, _ = actor.get_action(b_observations)
+                            _, log_pi, _ = actor.get_action(b_observations, b_z)
                         alpha_loss = (-log_alpha.exp() * (log_pi + target_entropy)).mean()
 
                         a_optimizer.zero_grad()
@@ -492,6 +606,11 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 writer.add_scalar("metrics/intrinsic_reward_mean", intrinsic_reward.mean().item(), global_step)
                 writer.add_scalar("metrics/intrinsic_reward_max", intrinsic_reward.max().item(), global_step)
                 writer.add_scalar("metrics/intrinsic_reward_min", intrinsic_reward.min().item(), global_step)
+                writer.add_scalar("metrics/metra_reward_mean", metra_reward.mean().item(), global_step)
+                writer.add_scalar("metrics/metra_reward_max", metra_reward.max().item(), global_step)
+                writer.add_scalar("metrics/metra_reward_min", metra_reward.min().item(), global_step)
+
+                print('Elements in un:', len(fixed_idx_un))
                 print("SPS:", int(global_step / (time.time() - start_time)))
                 writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
                 if args.autotune:
@@ -499,9 +618,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
         if global_step % args.fig_frequency == 0  and global_step > 0:
             if args.make_gif : 
-                print('size rho', size_rho)
-                print('max x rho', rb.observations[max(rb.pos-size_rho, 0):rb.pos][0][:,0].max())
                 image = env_plot.gif(obs_un = rb.observations[fixed_idx_un],
+                                     obs = rb.observations[rb.pos-size_rho:rb.pos],
                                     classifier = discriminator,
                                     device= device)
                 send_matrix(wandb, image, "gif", global_step)
