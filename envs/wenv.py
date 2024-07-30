@@ -32,6 +32,8 @@ class Wenv(gym.Env):
         self.observation_space = self.env.observation_space if not type_id == 'robotics' else self.env.observation_space['observation']
         # action space
         self.action_space = self.env.action_space
+        # last observation
+        self.last_observation = self.env.reset()[0]
         # spec 
         self.spec = self.env.spec
         # metrics
@@ -105,11 +107,25 @@ class Wenv(gym.Env):
         # update episode length and reward
         i['l'] = self.episode_length
         i['r'] = self.episode_reward
+        # reset last observation
+        self.last_observation = obs
         return obs, i #if not self.type_id == 'atari' else obs
     
 
     def step(self, action):
+        # if nan in action env.action_space.sample()
+        if np.isnan(action).any():
+            action = self.env.action_space.sample()
+
         obs, reward, done, trunc, info = self.env.step(action)
+
+        # if nan in obs trunc the episode and replaced by the last observation
+        if np.isnan(obs).any():
+            obs = self.last_observation
+            done = True
+        else:
+            self.last_observation = obs
+
         self.episode_length += 1
         self.episode_reward += reward
         if self.type_id == 'robotics':
@@ -120,6 +136,7 @@ class Wenv(gym.Env):
         info['l'] = self.episode_length
         info['r'] = self.episode_reward
         return obs, reward, done, trunc, info #if not self.type_id == 'atari' else obs, reward, done, info
+    
     
     def render(self):
         return self.env.render()

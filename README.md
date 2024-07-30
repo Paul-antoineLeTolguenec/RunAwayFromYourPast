@@ -6,13 +6,22 @@ TODO :
 3/ relaunch all xps 
 
 # XP 
-3 XP : 
+3 XP :
+mazes : Easy / Ur / Hard 
+mujoco : HalfCheetah / Walker2D / Ant
+gym-robotics : FetchReach / FetchSlide / Finger
+
+TODO : 
+*CrossQ
+*PinkNoise
+
+
+
 * -1 : (datasets, covergage, imgs, complexity)
 * -2 : offpolicy initialisation
 * -3 : local optimum escape 
 
-# FIRST THING TO DO
-* kl estimator 
+
 
 
 

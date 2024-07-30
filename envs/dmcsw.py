@@ -32,7 +32,7 @@ class DMCSWrapper(gym.Env):
         if 'finger' in self.domain_name:
             return np.concatenate([self.env.physics.tip_position().tolist() + np.concatenate(list(time_step.observation.values())).tolist()]), {}
         elif 'fish' in self.domain_name:
-            return np.concatenate([self.env.physics.position().tolist() +np.concatenate([v if not 'upright' in k else np.array([v]) for k,v in time_step.observation.items()]).tolist()]), {}
+            return np.concatenate([self.env.physics.position().tolist() + np.concatenate([v if not 'upright' in k else np.array([v]) for k,v in time_step.observation.items()]).tolist()]), {}
         else :
             return np.concatenate(list(time_step.observation.values())), {}
     
@@ -42,7 +42,7 @@ class DMCSWrapper(gym.Env):
         if 'finger' in self.domain_name:
             obs = np.concatenate([self.env.physics.tip_position().tolist() + np.concatenate(list(time_step.observation.values())).tolist()])
         elif 'fish' in self.domain_name:
-            obs = np.concatenate([self.env.physics.position().tolist() +np.concatenate([v if not 'upright' in k else np.array([v]) for k,v in time_step.observation.items()]).tolist()])
+            obs = np.concatenate([self.env.physics.position().tolist() + np.concatenate([v if not 'upright' in k else np.array([v]) for k,v in time_step.observation.items()]).tolist()])
         else:
             obs = np.concatenate(list(time_step.observation.values()))
         reward = time_step.reward

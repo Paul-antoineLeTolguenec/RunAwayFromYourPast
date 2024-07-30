@@ -627,6 +627,20 @@ files = [
 ]
 
 [[package]]
+name = "colorednoise"
+version = "2.2.0"
+description = "Generate Gaussian (1/f)**beta noise (e.g. pink noise)"
+optional = false
+python-versions = ">=3"
+files = [
+    {file = "colorednoise-2.2.0-py3-none-any.whl", hash = "sha256:7a39faab851889bd742668d3ba1502eec6a72008d6e004bd8fa6313355c7b487"},
+    {file = "colorednoise-2.2.0.tar.gz", hash = "sha256:6ffe0ab1baf3355df28cde497d0affb0fb0ef1cd0a0c41302e0d7e7814c187b6"},
+]
+
+[package.dependencies]
+numpy = ">=1.17.0"
+
+[[package]]
 name = "comm"
 version = "0.1.4"
 description = "Jupyter Python Comm implementation, for usage in ipykernel, xeus-python etc."
@@ -5772,4 +5786,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.13"
-content-hash = "4ad6246ece16a9547ca7b7498e170deabf09381f3995d3852db4a1450275155c"
+content-hash = "afcd0923c2481acd15e1745c792e1bd46c00f247d94a60a38447ad7d6a674901"

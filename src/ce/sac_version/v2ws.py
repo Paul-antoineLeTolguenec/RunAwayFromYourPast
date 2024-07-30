@@ -118,7 +118,7 @@ class Args:
     """the frequency of the metra"""
     lr_metra_discriminator: float = 1e-4
     """the learning rate of the metra discriminator"""
-    lr_lambda_metra: float = 1e-2
+    lr_lambda_metra: float = 1e-3
     """the learning rate of the lambda metra"""
     lip_cte_metra: float = 1.0
     """the constant of the lipschitz of the metra"""
@@ -462,6 +462,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             lambda_optimizer.zero_grad()
             lambda_loss.backward()
             lambda_optimizer.step()
+            # clamp lambda  
+            discriminator.lambda_param = torch.clamp(discriminator.lambda_param, 0.0, 1000.0)
+            metra_discriminator.lambda_metra = torch.clamp(metra_discriminator.lambda_metra, 0.0, 1000.0)
             
             if global_step % 100 == 0:
                 writer.add_scalar("losses/discriminator_loss", discriminator_loss.item(), global_step)
