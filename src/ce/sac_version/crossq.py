@@ -51,7 +51,7 @@ class Args:
     """the frequency of computing shannon entropy"""
 
     # Algorithm specific arguments
-    env_id: str = "Ant-v3"
+    env_id: str = "Maze-Ur-v0"
     """the environment id of the task"""
     total_timesteps: int = 1_000_000
     """total timesteps of the experiments"""
@@ -69,15 +69,15 @@ class Args:
     """the learning rate of the policy network optimizer"""
     q_lr: float = 1e-3
     """the learning rate of the Q network network optimizer"""
-    policy_frequency: int = 3
+    policy_frequency: int = 2
     """the frequency of training policy (delayed)"""
     target_network_frequency: int = 1  # Denis Yarats' implementation delays this by 2.
     """the frequency of updates for the target nerworks"""
-    alpha: float = 0.05
+    alpha: float = 0.1
     """Entropy regularization coefficient."""
     autotune: bool = False
     """automatic tuning of the entropy coefficient"""
-    num_envs: int = 8
+    num_envs: int = 4
     """the number of parallel environments"""
     learning_frequency: int = 1
     """the frequency of training the SAC"""
@@ -95,17 +95,17 @@ class Args:
     """the epsilon parameter of the wasserstein distance"""
     lambda_init: float = 200.0
     """the initial value of the lambda"""
-    lip_cte: float = 1.0 # 0.1 if maze 
+    lip_cte: float = 0.1 # 0.1 if maze 
     """the constant of the lipschitz"""
     beta_ratio: float = 1/64 #1/16 if maze
     """the ratio of the beta"""
-    nb_episodes_rho: int = 8
+    nb_episodes_rho: int = 4
     """the number of episodes for the rho"""
     pad_rho: int = 8
     """the padding of the rho"""
     p_custom_noise: float = 0.5
     """the probability of the custom noise"""
-    beta_noise: float = 0.5
+    beta_noise: float = 0.0
     """the beta of the noise"""
     # rewards specific arguments
     keep_extrinsic_reward: bool = False
@@ -135,18 +135,18 @@ def make_env(env_id, idx, capture_video, run_name):
 class SoftQNetwork(nn.Module):
     def __init__(self, env):
         super().__init__()
-        self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod() + np.prod(env.single_action_space.shape), 512)
-        self.ln1 = nn.LayerNorm(512)
-        self.fc2 = nn.Linear(512, 512)
-        self.ln2 = nn.LayerNorm(512)
-        self.fc3 = nn.Linear(512, 1)
+        self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod() + np.prod(env.single_action_space.shape), 256)
+        self.bn1 = nn.BatchNorm1d(256, momentum=0.99)
+        self.fc2 = nn.Linear(256, 256)
+        self.bn2 = nn.BatchNorm1d(256, momentum=0.99)
+        self.fc3 = nn.Linear(256, 1)
 
     def forward(self, x, a):
         x = torch.cat([x, a], 1)
         x = F.relu(self.fc1(x))
-        x = self.ln1(x)
+        x = self.bn1(x)
         x = F.relu(self.fc2(x))
-        x = self.ln2(x)
+        x = self.bn2(x)
         x = self.fc3(x)
         return x
 
@@ -158,12 +158,12 @@ LOG_STD_MIN = -5
 class Actor(nn.Module):
     def __init__(self, env):
         super().__init__()
-        self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod(), 512)
-        self.ln1 = nn.LayerNorm(512)
-        self.fc2 = nn.Linear(512, 512)
-        self.ln2 = nn.LayerNorm(512)
-        self.fc_mean = nn.Linear(512, np.prod(env.single_action_space.shape))
-        self.fc_logstd = nn.Linear(512, np.prod(env.single_action_space.shape))
+        self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod(), 256)
+        self.bn1 = nn.BatchNorm1d(256, momentum=0.99)
+        self.fc2 = nn.Linear(256, 256)
+        self.bn2 = nn.BatchNorm1d(256, momentum=0.99)
+        self.fc_mean = nn.Linear(256, np.prod(env.single_action_space.shape))
+        self.fc_logstd = nn.Linear(256, np.prod(env.single_action_space.shape))
         # action rescaling
         self.register_buffer(
             "action_scale", torch.tensor((env.single_action_space.high - env.single_action_space.low) / 2.0, dtype=torch.float32)
@@ -174,9 +174,9 @@ class Actor(nn.Module):
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
-        x = self.ln1(x)
+        x = self.bn1(x)
         x = F.relu(self.fc2(x))
-        x = self.ln2(x)
+        x = self.bn2(x)
         mean = self.fc_mean(x)
         log_std = self.fc_logstd(x)
         log_std = torch.tanh(log_std)
@@ -290,7 +290,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     qf1 = SoftQNetwork(envs).to(device)
     qf2 = SoftQNetwork(envs).to(device)
     discriminator = Discriminator(envs, args.lambda_init, args.epsilon, args.lip_cte).to(device)
-    q_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()), lr=args.q_lr)
+    q_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()), lr=args.q_lr, betas=(0.9, 0.999))
     actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.policy_lr)
     discriminator_optimizer = optim.Adam(list(discriminator.parameters()), lr=args.lr_discriminator)
     lambda_optimizer = optim.Adam([discriminator.lambda_param], lr=args.lr_lambda)
@@ -333,7 +333,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         nb_step_per_env += 1
         # ALGO LOGIC: put action logic here
         if global_step < args.learning_starts:
-            actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
+            actions = np.array([np.random.uniform(-max_action, max_action, envs.single_action_space.shape) for _ in range(args.num_envs)])
         else:
             # actor evaluation
             actor.eval() #eval mode
@@ -466,7 +466,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             else:
                 b_rewards = intrinsic_reward.flatten() * args.coef_intrinsic  
             # rewards = b_rewards.flatten() 
-            next_q_value = b_rewards + (1 - b_dones.flatten()) * args.gamma * (min_qf_next).view(-1)
+            next_q_value = b_rewards + (1 - b_dones.flatten()) * args.gamma * (min_qf_next).view(-1).detach()
 
             # qf1_a_values = qf1(b_observations, b_actions).view(-1)
             # print('qf1_a_values', qf1_a_values.shape)
@@ -521,7 +521,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 if args.autotune:
                     writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
 
-        if global_step % args.fig_frequency == 0  and global_step > 0:
+        if global_step % args.fig_frequency == 0  and global_step > args.learning_starts:
             if args.make_gif : 
                 # print('size rho', size_rho)
                 # print('max x rho', rb.observations[max(rb.pos-size_rho, 0):rb.pos][0][:,0].max())
