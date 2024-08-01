@@ -73,11 +73,11 @@ class Args:
     """the frequency of training policy (delayed)"""
     target_network_frequency: int = 1  # Denis Yarats' implementation delays this by 2.
     """the frequency of updates for the target nerworks"""
-    alpha: float = 0.1
+    alpha: float = 0.05
     """Entropy regularization coefficient."""
     autotune: bool = False
     """automatic tuning of the entropy coefficient"""
-    num_envs: int = 4
+    num_envs: int = 8
     """the number of parallel environments"""
     learning_frequency: int = 1
     """the frequency of training the SAC"""
@@ -97,9 +97,9 @@ class Args:
     """the initial value of the lambda"""
     lip_cte: float = 1.0 # 0.1 if maze 
     """the constant of the lipschitz"""
-    beta_ratio: float = 1/32 #1/64 if maze
+    beta_ratio: float = 1/64 #1/64 if maze
     """the ratio of the beta"""
-    nb_episodes_rho: int = 4
+    nb_episodes_rho: int = 8
     """the number of episodes for the rho"""
     pad_rho: int = 8
     """the padding of the rho"""
