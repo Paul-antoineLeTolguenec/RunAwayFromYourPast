@@ -97,7 +97,7 @@ class Args:
     """the initial value of the lambda"""
     lip_cte: float = 1.0 # 0.1 if maze 
     """the constant of the lipschitz"""
-    beta_ratio: float = 1/64 #1/64 if maze
+    beta_ratio: float = 1/128 #1/64 if maze
     """the ratio of the beta"""
     nb_episodes_rho: int = 4
     """the number of episodes for the rho"""
@@ -350,10 +350,13 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if "final_info" in infos:
             for info in infos["final_info"]:
-                print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-                writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
-                break
+                try : 
+                    print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
+                    writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
+                    writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+                    break
+                except:
+                    pass
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
         real_next_obs = next_obs.copy()

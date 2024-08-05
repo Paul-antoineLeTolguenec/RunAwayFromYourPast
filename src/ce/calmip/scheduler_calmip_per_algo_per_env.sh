@@ -48,7 +48,7 @@ type_id=$(awk -v env_id="$env_id" '
 if [ "$type_id" != "'atari'" ]; then
     cmd="bash temp_micro_calmip.sh $algo $env_id offline"
     echo "Running: $cmd"
-    # eval $cmd
+    eval $cmd
 else
     echo "Skipping $env_id as it is of type 'atari'"
 fi
