@@ -77,7 +77,7 @@ class Args:
     """Entropy regularization coefficient."""
     autotune: bool = False
     """automatic tuning of the entropy coefficient"""
-    num_envs: int = 8
+    num_envs: int = 4
     """the number of parallel environments"""
     learning_frequency: int = 1
     """the frequency of training the SAC"""
@@ -99,7 +99,7 @@ class Args:
     """the constant of the lipschitz"""
     beta_ratio: float = 1/64 #1/64 if maze
     """the ratio of the beta"""
-    nb_episodes_rho: int = 8
+    nb_episodes_rho: int = 4
     """the number of episodes for the rho"""
     pad_rho: int = 8
     """the padding of the rho"""
@@ -372,7 +372,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         rb.times[rb.pos-1] = infos['l']
         # decide whether to add transition to the un
         if len(fixed_idx_un)<= size_un:
-            if bernoulli.rvs(args.beta_ratio):
+            if bernoulli.rvs(args.beta_ratio/args.num_envs):
                 fixed_idx_un = np.append(fixed_idx_un, rb.pos-1)
         else : 
             if True in terminations:
@@ -381,7 +381,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 # add the last element
                 fixed_idx_un = np.append(fixed_idx_un, rb.pos-1)
             else:
-                if bernoulli.rvs(args.beta_ratio):
+                if bernoulli.rvs(args.beta_ratio/args.num_envs):
                     # remove random element
                     fixed_idx_un = np.delete(fixed_idx_un, random.randint(0, len(fixed_idx_un)-1))
                     # add the last element
@@ -405,7 +405,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             prob = prob/prob.sum()
             for discriminator_step in range(int(size_rho/args.discriminator_batch_size * args.discriminator_epochs)):
                 # batch un
-                batch_inds_un = fixed_idx_un[np.random.randint(0, max(16,len(fixed_idx_un)-args.pad_rho * max_step * args.beta_ratio), args.discriminator_batch_size)]
+                batch_inds_un = fixed_idx_un[np.random.randint(0, max(2,len(fixed_idx_un)-args.pad_rho * max_step * args.beta_ratio), args.discriminator_batch_size)]
                 batch_inds_envs_un = np.random.randint(0, args.num_envs, args.discriminator_batch_size)
                 observations_un = torch.Tensor(rb.observations[batch_inds_un, batch_inds_envs_un]).to(device)
                 next_observations_un = torch.Tensor(rb.next_observations[batch_inds_un, batch_inds_envs_un]).to(device)
