@@ -683,7 +683,7 @@
                                             "w_mi": 10.0
                                             }, 
             "v1wsac" : {
-                                            "cuda": false,
+                                            "cuda": true,
                                             "track": true,
                                             "wandb_project_name": "contrastive_test_2",
                                             "make_gif": true,

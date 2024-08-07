@@ -46,9 +46,11 @@ type_id=$(awk -v env_id="$env_id" '
 ' "$CONFIG_FILE")
 
 if [ "$type_id" != "'atari'" ]; then
-    cmd="bash temp_micro_calmip.sh $algo $env_id online"
-    echo "Running: $cmd"
-    eval $cmd
+    for seed in {1..5}; do
+        cmd="bash temp_micro_calmip_per_seed.sh $algo $env_id online $seed"
+        echo "Running: $cmd"
+        eval $cmd
+    done
 else
     echo "Skipping $env_id as it is of type 'atari'"
 fi

@@ -11,8 +11,13 @@ def extract_hyperparameters(hyperparameters_file, type_id, algorithm_id):
                 hyperparams = []
                 for key, value in params.items():
                     if isinstance(value, bool):
-                        value = str(value).lower().capitalize()
-                    hyperparams.append(f"--{key} {value}")
+                        if value :
+                            hyperparams.append(f"--{key}")
+                        else : 
+                            hyperparams.append(f"--no-{key}")
+                    else : 
+                        hyperparams.append(f"--{key} {value}")
+
                 print(" ".join(hyperparams))
             else:
                 print("")
