@@ -260,7 +260,7 @@ class Wenv(gym.Env):
         #         self.rooms.append(info['room']) if info['room'] not in self.rooms else None
         #     coords = np.array(coords)
         # if infos is None:
-        coords = obs[: , self.coverage_idx].cpu().numpy()
+        coords = obs[: , self.coverage_idx]
         coords_mat =np.floor((coords - self.transposed_limits[0])/(self.transposed_limits[1]-self.transposed_limits[0])*self.coverage_accuracy).astype(np.int32)
         # check in bounds
         coords_mat = np.clip(coords_mat, 0, self.coverage_accuracy-1)
@@ -272,7 +272,7 @@ class Wenv(gym.Env):
     def get_coverage(self):
         return np.sum(self.matrix_coverage/(self.matrix_coverage+1e-6))/reduce(mul, self.matrix_coverage.shape)*100.0
 
-    def shanon_entropy(self) : 
+    def shannon_entropy(self) : 
         probabilities = self.matrix_coverage/self.matrix_coverage.sum()
         entropy = (-probabilities*np.log(probabilities+1e-6)).sum()
         return entropy

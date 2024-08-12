@@ -12,7 +12,6 @@ import torch.nn.functional as F
 import torch.optim as optim
 import tyro
 from stable_baselines3.common.buffers import ReplayBuffer
-from torch.utils.tensorboard import SummaryWriter
 from envs.wenv import Wenv
 from envs.config_env import config
 from src.utils.wandb_utils import send_matrix
@@ -47,15 +46,15 @@ class Args:
     """if toggled, will use plotly instead of matplotlib"""
     fig_frequency: int = 1000
     """the frequency of logging the figures"""
-    shannon_compute_freq: int = 5
-    """the frequency of computing shannon entropy"""
+    metric_freq: int = 1000
+    """the frequency of ploting metric"""
 
     # Algorithm specific arguments
     env_id: str = "Hopper-v3"
     """the environment id of the task"""
     total_timesteps: int = 1_000_000
     """total timesteps of the experiments"""
-    buffer_size: int = int(1e6)
+    buffer_size: int = int(1e7)
     """the replay memory buffer size"""
     gamma: float = 0.99
     """the discount factor gamma"""
@@ -244,17 +243,12 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         wandb.init(
             project=args.wandb_project_name,
             entity=args.wandb_entity,
-            sync_tensorboard=True,
+            sync_tensorboard=False,
             config=vars(args),
             name=run_name,
             monitor_gym=True,
             save_code=True,
         )
-    writer = SummaryWriter(f"runs/{run_name}")
-    writer.add_text(
-        "hyperparameters",
-        "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
-    )
     # PLOTTING
     if args.make_gif:
         env_plot = Wenv(env_id=args.env_id, 
@@ -334,6 +328,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     # TRY NOT TO MODIFY: start the game
     obs, _ = envs.reset(seed=args.seed)
     for global_step in range(args.total_timesteps):
+        # coverage assessment 
+        env_check.update_coverage(obs)
+        # increment step
         nb_step_per_env += 1
         # ALGO LOGIC: put action logic here
         if global_step < args.learning_starts:
@@ -352,9 +349,10 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             for info in infos["final_info"]:
                 try : 
                     print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-                    writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                    writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
-                    break
+                    wandb.log({
+                    "charts/episodic_return" : info["episode"]["r"],
+                    "charts/episodic_length" : info["episode"]["l"],
+                    }, step =global_step)
                 except:
                     pass
 
@@ -436,11 +434,13 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 discriminator.lambda_param.data.clamp_(min=0)
             
             # if global_step % 100 == 0:
-                writer.add_scalar("losses/discriminator_loss", discriminator_loss.item(), global_step)
-                writer.add_scalar("losses/lambda_loss", lambda_loss.item(), global_step)
-                writer.add_scalar("metrics/constraints_rho", constraints_rho.item(), global_step)
-                writer.add_scalar("metrics/constraints_un", constraints_un.item(), global_step)
-                writer.add_scalar("metrics/lambda", discriminator.lambda_param.item(), global_step)
+                wandb.log({
+                    "losses/discriminator_loss": discriminator_loss.item(), 
+                    "losses/lambda_loss": lambda_loss.item(), 
+                    "metrics/constraints_rho": constraints_rho.item(), 
+                    "metrics/constraints_un": constraints_un.item(), 
+                    "metrics/lambda": discriminator.lambda_param.item(), 
+                    }, step =global_step)
 
         # ALGO LOGIC: training.
         if global_step*args.num_envs > args.learning_starts and global_step % args.learning_frequency == 0:
@@ -457,9 +457,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 intrinsic_reward = torch.clamp(intrinsic_reward, -5, 5)
                 # intrinsic_reward = discriminator(b_observations).detach()
                 if args.keep_extrinsic_reward:
-                    b_rewards = b_rewards.flatten() 
+                    b_rewards = intrinsic_reward.flatten() * args.coef_intrinsic + b_rewards * args.coef_extrinsic
                 else:
-                    b_rewards = intrinsic_reward.flatten() * args.coef_intrinsic  
+                    b_rewards = intrinsic_reward.flatten() * args.coef_intrinsic 
                 # rewards = b_rewards.flatten() 
                 next_q_value = b_rewards + (1 - b_dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
 
@@ -509,21 +509,31 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
 
             if global_step % 100 == 0:
-                writer.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), global_step)
-                writer.add_scalar("losses/qf2_values", qf2_a_values.mean().item(), global_step)
-                writer.add_scalar("losses/qf1_loss", qf1_loss.item(), global_step)
-                writer.add_scalar("losses/qf2_loss", qf2_loss.item(), global_step)
-                writer.add_scalar("losses/qf_loss", qf_loss.item() / 2.0, global_step)
-                writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
-                writer.add_scalar("losses/alpha", alpha, global_step)
-                writer.add_scalar("metrics/rewards_mean", b_rewards.mean().item(), global_step)
-                writer.add_scalar("metrics/intrinsic_reward_mean", intrinsic_reward.mean().item(), global_step)
-                writer.add_scalar("metrics/intrinsic_reward_max", intrinsic_reward.max().item(), global_step)
-                writer.add_scalar("metrics/intrinsic_reward_min", intrinsic_reward.min().item(), global_step)
+                wandb.log({
+                "losses/qf1_values": qf1_a_values.mean().item(),
+                "losses/qf2_values": qf2_a_values.mean().item(),
+                "losses/qf1_loss": qf1_loss.item(),
+                "losses/qf2_loss": qf2_loss.item(),
+                "losses/qf_loss": qf_loss.item() / 2.0,
+                "losses/actor_loss": actor_loss.item(),
+                "losses/alpha": alpha,
+                "metrics/rewards_mean": b_rewards.mean().item(),
+                "metrics/intrinsic_reward_mean": intrinsic_reward.mean().item(),
+                "metrics/intrinsic_reward_max": intrinsic_reward.max().item(),
+                "metrics/intrinsic_reward_min": intrinsic_reward.min().item(),
                 # print("SPS:", int(global_step / (time.time() - start_time)))
-                writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
-                if args.autotune:
-                    writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
+                "charts/SPS": int(global_step / (time.time() - start_time)),
+                "losses/alpha_loss": alpha_loss.item() if args.autotune else 0.0,
+                })
+        
+        if global_step % args.metric_freq == 0 : 
+            shannon_entropy_mu, coverage_mu = env_check.get_shanon_entropy_and_coverage_mu(rb.observations[fixed_idx_un].reshape(-1, *envs.single_observation_space.shape))
+            wandb.log({
+                "charts/coverage" : env_check.get_coverage(),
+                "charts/shannon_entropy": env_check.shannon_entropy(),
+                "charts/coverage_mu" : coverage_mu,
+                "charts/shannon_entropy_mu": shannon_entropy_mu,
+                }, step = global_step)
 
         if global_step % args.fig_frequency == 0  and global_step > args.learning_starts:
             if args.make_gif : 
@@ -537,4 +547,3 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             
 
     envs.close()
-    writer.close()
