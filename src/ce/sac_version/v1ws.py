@@ -97,7 +97,7 @@ class Args:
     """the initial value of the lambda"""
     lip_cte: float = 1.0 # 0.1 if maze 
     """the constant of the lipschitz"""
-    beta_ratio: float = 1/128 #1/64 if maze
+    beta_ratio: float = 1/64 #1/64 if maze
     """the ratio of the beta"""
     nb_episodes_rho: int = 4
     """the number of episodes for the rho"""
@@ -408,7 +408,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             prob = prob/prob.sum()
             for discriminator_step in range(int(size_rho/args.discriminator_batch_size * args.discriminator_epochs)):
                 # batch un
-                batch_inds_un = fixed_idx_un[np.random.randint(0, max(2,len(fixed_idx_un)-args.pad_rho * max_step * args.beta_ratio), args.discriminator_batch_size)]
+                batch_inds_un = fixed_idx_un[np.random.randint(0, max(1,len(fixed_idx_un)-args.pad_rho * max_step * args.beta_ratio), args.discriminator_batch_size)]
                 batch_inds_envs_un = np.random.randint(0, args.num_envs, args.discriminator_batch_size)
                 observations_un = torch.Tensor(rb.observations[batch_inds_un, batch_inds_envs_un]).to(device)
                 next_observations_un = torch.Tensor(rb.next_observations[batch_inds_un, batch_inds_envs_un]).to(device)

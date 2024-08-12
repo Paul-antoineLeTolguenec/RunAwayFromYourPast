@@ -1,9 +1,10 @@
 # contrastive_exploration
 
 TODO : 
-1/ maze 200k steps 
-2/ Adapt beta to max steps 
-3/ relaunch all xps 
+1/ kl 
+2/ regularized algorithms
+3/ coverage metrics
+4/ reward max 
 
 # XP 
 3 XP :
