@@ -34,7 +34,7 @@ cat <<EOT > $temp_slurm_script
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=7
-#SBATCH --time=05:00:00
+#SBATCH --time=10:00:00
 #SBATCH --job-name=run-$algo_id-$env_id-$seed
 #SBATCH --output=$path_file_err_out$algo_id-$env_id-$seed-%j.out
 #SBATCH --error=$path_file_err_out$algo_id-$env_id-$seed-%j.err
@@ -120,7 +120,7 @@ if [ "\$type_id" != "'atari'" ]; then
     cmd="poetry run python $algo --env_id $env_id \$hyperparams --seed $seed"
     echo \$cmd 
     # \$cmd
-    proxychains4 \$cmd
+    srun proxychains4 \$cmd
 else
     echo "Skipping $env_id as it is of type 'atari'"
 fi
