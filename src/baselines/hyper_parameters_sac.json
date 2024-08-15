@@ -3,49 +3,49 @@
 
                     "maze": {
 
-                            "apt_ppo": {
+                            "apt_sac": {
                                         "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max",
-                                        "fig_frequency": 50, "shannon_compute_freq": 5,
+                                        
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.25, "nb_max_steps": 20000
                                         },
-                            "aux_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "aux_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.25, "nb_max_steps": 20000
                                         },
-                            "icm_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "icm_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.25, "nb_max_steps": 20000
                                         },
-                            "rnd_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "rnd_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.25, "nb_max_steps": 20000
                                         },
-                            "ngu_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "ngu_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.25, "nb_max_steps": 20000
                                         },
-                            "diayn_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "diayn_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
@@ -53,8 +53,8 @@
                                         "beta_ratio":0.25, "nb_max_steps": 20000,
                                         "nb_skill": 4
                                         },
-                            "smm_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "smm_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
@@ -62,8 +62,8 @@
                                         "beta_ratio":0.25, "nb_max_steps": 20000,
                                         "nb_skill": 4
                                         },
-                            "lsd_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "lsd_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
@@ -71,8 +71,8 @@
                                         "beta_ratio":0.25, "nb_max_steps": 20000,
                                         "nb_skill": 4
                                         },
-                            "csd_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "csd_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
@@ -80,8 +80,8 @@
                                         "beta_ratio":0.25, "nb_max_steps": 20000,
                                         "nb_skill": 4
                                         },
-                            "metra_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "metra_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
@@ -93,48 +93,48 @@
                 
                     "robotics": {
 
-                            "apt_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "apt_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.25, "nb_max_steps": 20000
                                         },
-                            "aux_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "aux_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.25, "nb_max_steps": 20000
                                         },
-                            "icm_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "icm_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.25, "nb_max_steps": 20000
                                         },
-                            "rnd_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "rnd_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.25, "nb_max_steps": 20000
                                         },
-                            "ngu_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "ngu_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
                                         "total_timesteps": 500000, 
                                         "beta_ratio":0.25, "nb_max_steps": 20000
                                         },
-                            "diayn_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "diayn_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
@@ -142,8 +142,8 @@
                                         "beta_ratio":0.25, "nb_max_steps": 20000,
                                         "nb_skill": 4
                                         },
-                            "smm_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "smm_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
@@ -151,8 +151,8 @@
                                         "beta_ratio":0.25, "nb_max_steps": 20000,
                                         "nb_skill": 4
                                         },
-                            "lsd_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "lsd_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
@@ -160,8 +160,8 @@
                                         "beta_ratio":0.25, "nb_max_steps": 20000,
                                         "nb_skill": 4
                                         },
-                            "csd_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "csd_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
@@ -169,8 +169,8 @@
                                         "beta_ratio":0.25, "nb_max_steps": 20000,
                                         "nb_skill": 4
                                         },
-                            "metra_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "metra_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
@@ -182,48 +182,48 @@
 
                     "mujoco": {
 
-                            "apt_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "apt_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
                                         "total_timesteps": 5000000, 
                                         "beta_ratio":0.25, "nb_max_steps": 100000
                                         },
-                            "aux_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "aux_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
                                         "total_timesteps": 5000000, 
                                         "beta_ratio":0.25, "nb_max_steps": 100000
                                         },
-                            "icm_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "icm_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
                                         "total_timesteps": 5000000, 
                                         "beta_ratio":0.25, "nb_max_steps": 100000
                                         },
-                            "rnd_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "rnd_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
                                         "total_timesteps": 5000000, 
                                         "beta_ratio":0.25, "nb_max_steps": 100000
                                         },
-                            "ngu_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "ngu_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
                                         "total_timesteps": 5000000, 
                                         "beta_ratio":0.25, "nb_max_steps": 100000
                                         },
-                            "diayn_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "diayn_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
@@ -231,8 +231,8 @@
                                         "beta_ratio":0.25, "nb_max_steps": 100000,
                                         "nb_skill": 4
                                         },
-                            "smm_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "smm_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
@@ -240,8 +240,8 @@
                                         "beta_ratio":0.25, "nb_max_steps": 100000,
                                         "nb_skill": 4
                                         },
-                            "lsd_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "lsd_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
@@ -249,8 +249,8 @@
                                         "beta_ratio":0.25, "nb_max_steps": 100000,
                                         "nb_skill": 4
                                         },
-                            "csd_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "csd_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,
@@ -258,8 +258,8 @@
                                         "beta_ratio":0.25, "nb_max_steps": 100000,
                                         "nb_skill": 4
                                         },
-                            "metra_ppo": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", "fig_frequency": 50, "shannon_compute_freq": 5,
+                            "metra_sac": {
+                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
                                         "save_data": false,
                                         "make_gif": false,
                                         "feature_extractor":false, "keep_extrinsic_reward":true,

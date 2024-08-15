@@ -43,46 +43,46 @@ config = {
 },
 ##########################       DMCS       ############################################
 #  Acrobot,
-"DMCS-Acrobot-v0": {
-    'type_id': 'dmcs',
-    'kwargs': {
-        'render_mode': 'rgb_array', 
-        'max_episode_steps': 1000},
-    'coverage_idx': np.array([0,1,2,3]),
-    'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1], 'z_lim': [-1, 1], 'w_lim': [-1, 1]}
-},
-#  Ball-in-cup, 
-"DMCS-Ball-in-cup-v0": {
-    'type_id': 'dmcs',
-    'kwargs': {'render_mode': 'rgb_array', 
-               'max_episode_steps': 1000},
-    'coverage_idx': np.array([0,1,2,3]),
-    'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1], 'z_lim': [-1, 1], 'w_lim': [-1, 1]}
-},
-#  Cart-pole, 
-"DMCS-Cart-k-Pole-v0": {
-    'type_id': 'dmcs',
-    'kwargs': {'render_mode': 'rgb_array', 
-               'max_episode_steps': 1000},
-    'coverage_idx': np.array([4,5,6,7]),
-    'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1], 'z_lim': [-1, 1], 'w_lim': [-1, 1]}
-},
-#  Finger, 
-"DMCS-Finger-v0": {
-    'type_id': 'dmcs',
-    'kwargs': {'render_mode': 'rgb_array', 
-               'max_episode_steps': 1000},
-    'coverage_idx': np.array([2,3,4,5]),
-    'render_settings': {'x_lim': [-2.5, 2.5], 'y_lim': [-2.5, 2.5], 'z_lim': [-2.5, 2.5], 'w_lim': [-2.5, 2.5]}
-},
-#  Fish
-"DMCS-Fish-v0": {
-    'type_id': 'dmcs',
-    'kwargs': {'render_mode': 'rgb_array', 
-               'max_episode_steps': 1000},
-    'coverage_idx': np.array([0,1]),
-    'render_settings': {'x_lim': [-0.5, 0.5], 'y_lim': [-0.5, 0.5]}
-},
+# "DMCS-Acrobot-v0": {
+#     'type_id': 'dmcs',
+#     'kwargs': {
+#         'render_mode': 'rgb_array', 
+#         'max_episode_steps': 1000},
+#     'coverage_idx': np.array([0,1,2,3]),
+#     'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1], 'z_lim': [-1, 1], 'w_lim': [-1, 1]}
+# },
+# #  Ball-in-cup, 
+# "DMCS-Ball-in-cup-v0": {
+#     'type_id': 'dmcs',
+#     'kwargs': {'render_mode': 'rgb_array', 
+#                'max_episode_steps': 1000},
+#     'coverage_idx': np.array([0,1,2,3]),
+#     'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1], 'z_lim': [-1, 1], 'w_lim': [-1, 1]}
+# },
+# #  Cart-pole, 
+# "DMCS-Cart-k-Pole-v0": {
+#     'type_id': 'dmcs',
+#     'kwargs': {'render_mode': 'rgb_array', 
+#                'max_episode_steps': 1000},
+#     'coverage_idx': np.array([4,5,6,7]),
+#     'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1], 'z_lim': [-1, 1], 'w_lim': [-1, 1]}
+# },
+# #  Finger, 
+# "DMCS-Finger-v0": {
+#     'type_id': 'dmcs',
+#     'kwargs': {'render_mode': 'rgb_array', 
+#                'max_episode_steps': 1000},
+#     'coverage_idx': np.array([2,3,4,5]),
+#     'render_settings': {'x_lim': [-2.5, 2.5], 'y_lim': [-2.5, 2.5], 'z_lim': [-2.5, 2.5], 'w_lim': [-2.5, 2.5]}
+# },
+# #  Fish
+# "DMCS-Fish-v0": {
+#     'type_id': 'dmcs',
+#     'kwargs': {'render_mode': 'rgb_array', 
+#                'max_episode_steps': 1000},
+#     'coverage_idx': np.array([0,1]),
+#     'render_settings': {'x_lim': [-0.5, 0.5], 'y_lim': [-0.5, 0.5]}
+# },
 
 ##########################       MUJOCO       ############################################
 
@@ -155,7 +155,7 @@ config = {
     'kwargs': {'render_mode': 'rgb_array', 
                'reset_noise_scale': 0.0, 
                'exclude_current_positions_from_observation': False, 
-               'max_episode_steps': 500},
+               'max_episode_steps': 1000},
     'coverage_idx': np.array([0,1]),
     'render_settings': {'x_lim': [-5, 5], 'y_lim': [-5, 5]}
 },
@@ -163,22 +163,22 @@ config = {
 
 ##########################       ATARI       ############################################
 # MontezumaRevengeNoFrameskip-v4
-"MontezumaRevengeNoFrameskip-v4": {
-    'type_id': 'atari',
-    'kwargs': {'frameskip': 4, 
-               'max_episode_steps': 10000, 
-               'render_mode': 'rgb_array'},
-    'coverage_idx': np.array([0,1]),
-    'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1]}
-},
-# PitfallNoFrameskip-v4
-"PitfallNoFrameskip-v4": {
-    'type_id': 'atari',
-    'kwargs': {'frameskip': 4,
-               'max_episode_steps': 10000, 
-               'render_mode': 'rgb_array'},
-    'coverage_idx': np.array([0,1]),
-    'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1]}
-},
+# "MontezumaRevengeNoFrameskip-v4": {
+#     'type_id': 'atari',
+#     'kwargs': {'frameskip': 4, 
+#                'max_episode_steps': 10000, 
+#                'render_mode': 'rgb_array'},
+#     'coverage_idx': np.array([0,1]),
+#     'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1]}
+# },
+# # PitfallNoFrameskip-v4
+# "PitfallNoFrameskip-v4": {
+#     'type_id': 'atari',
+#     'kwargs': {'frameskip': 4,
+#                'max_episode_steps': 10000, 
+#                'render_mode': 'rgb_array'},
+#     'coverage_idx': np.array([0,1]),
+#     'render_settings': {'x_lim': [-1, 1], 'y_lim': [-1, 1]}
+# },
 
 }

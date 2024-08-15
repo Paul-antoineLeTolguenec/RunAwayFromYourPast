@@ -287,10 +287,10 @@ class Wenv(gym.Env):
         coords_mat = np.clip(coords_mat, 0, self.coverage_accuracy-1)
         indices = tuple(coords_mat.T)
         np.add.at(matrix, indices, 1)
-        # coverage
+        # coveragel
         coverage = np.sum(matrix/(matrix+1e-6))/reduce(mul, matrix.shape)*100.0
         # entropy
-        probabilities = matrix/matrix.sum()
+        probabilities = matrix/(matrix.sum()+1e-1)
         entropy = (-probabilities*np.log(probabilities+1e-6)).sum()
         return entropy, coverage
     
