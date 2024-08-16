@@ -22,7 +22,7 @@ for env_id in $env_ids; do
     ' "$CONFIG_FILE")
 
     if [ "$type_id" != "'atari'" ]; then
-        cmd="bash scheduler_calmip_per_algo_per_env.sh --algo $algo --env_id $env_id online"
+        cmd="bash scheduler_calmip_per_algo_per_env.sh --algo $algo --env_id $env_id"
         echo "Running: $cmd"
         eval $cmd
     else

@@ -116,4 +116,4 @@ EOT
 sbatch $temp_slurm_script
 
 # Supprimer le fichier temporaire après soumission
-# rm $temp_slurm_script
+rm $temp_slurm_script
