@@ -8,6 +8,7 @@ show_help() {
     echo "  --help               Affiche ce message d'aide"
     echo "  --algo ALGO          Chemin vers le fichier de l'algorithme (par défaut: ../v1wsac.py)"
     echo "  --env_id ENV_ID      Identifiant de l'environnement (par défaut: 'HalfCheetah-v3')"
+    echo "  --seed SEED          Numéro de la graine (par défaut: 1)"
     echo ""
     echo "Description:"
     echo "Ce script exécute une tâche pour un environnement spécifique en utilisant un algorithme spécifié."
@@ -16,6 +17,7 @@ show_help() {
 # Variables par défaut
 algo="../v1wsac.py"
 env_id="HalfCheetah-v3"
+seed=1
 
 # Traitement des arguments
 while [[ "$#" -gt 0 ]]; do
@@ -23,6 +25,7 @@ while [[ "$#" -gt 0 ]]; do
         --help) show_help; exit 0 ;;
         --algo) algo="$2"; shift ;;
         --env_id) env_id="$2"; shift ;;
+        --seed) seed="$2"; shift ;;
         *) echo "Argument inconnu: $1"; show_help; exit 1 ;;
     esac
     shift
@@ -31,6 +34,7 @@ done
 # Affichage des valeurs pour débogage
 echo "algo: $algo"
 echo "env_id: $env_id"
+echo "seed: $seed"
 
 # FIND + RUN
 algo_id=$(basename "$algo" | sed 's/\.py//')
@@ -46,11 +50,9 @@ type_id=$(awk -v env_id="$env_id" '
 ' "$CONFIG_FILE")
 
 if [ "$type_id" != "'atari'" ]; then
-    for seed in {1..5}; do
-        cmd="bash temp_micro_calmip_per_seed.sh $algo $env_id online $seed"
-        echo "Running: $cmd"
-        eval $cmd
-    done
+    cmd="bash temp_micro_calmip_per_seed.sh $algo $env_id online $seed"
+    echo "Running: $cmd"
+    eval $cmd
 else
     echo "Skipping $env_id as it is of type 'atari'"
 fi

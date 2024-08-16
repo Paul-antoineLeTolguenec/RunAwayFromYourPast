@@ -146,14 +146,14 @@
         "v1klsac": {
                                         "cuda": true,
                                         "track": true,
-                                        "wandb_project_name": "contrastive_test_kl",
+                                        "wandb_project_name": "run_away_sac",
                                         "make_gif": true,
                                         "fig_frequency": 1000,
                                         "metric_freq": 1000,
                                         "total_timesteps": 500000,
                                         "buffer_size": 5000000,
                                         "learning_starts": 10000,
-                                        "alpha": 0.05,
+                                        "alpha": 0.01,
                                         "num_envs": 4,
                                         "lr_classifier": 0.0005,
                                         "classifier_batch_size": 256,
@@ -170,7 +170,7 @@
         "v2klsac": {
                                         "cuda": true,
                                         "track": true,
-                                        "wandb_project_name": "contrastive_test_kl",
+                                        "wandb_project_name": "run_away_sac",
                                         "make_gif": true,
                                         "fig_frequency": 1000,
                                         "metric_freq": 1000,
@@ -199,7 +199,7 @@
         "v1wsac": {
                                         "cuda": true,
                                         "track": true,
-                                        "wandb_project_name": "contrastive_test_kl",
+                                        "wandb_project_name": "run_away_sac",
                                         "make_gif": true,
                                         "fig_frequency": 1000,
                                         "metric_freq": 1000,
@@ -227,7 +227,7 @@
         "v2wsac": {
                                         "cuda": false,
                                         "track": false,
-                                        "wandb_project_name": "contrastive_test_kl",
+                                        "wandb_project_name": "run_away_sac",
                                         "make_gif": true,
                                         "fig_frequency": 1000,
                                         "metric_freq": 1000,
@@ -409,7 +409,7 @@
         "v1klsac": {
                                         "cuda": true,
                                         "track": true,
-                                        "wandb_project_name": "contrastive_test_kl",
+                                        "wandb_project_name": "run_away_sac",
                                         "make_gif": true,
                                         "fig_frequency": 1000,
                                         "metric_freq": 1000,
@@ -433,7 +433,7 @@
         "v2klsac": {
                                         "cuda": true,
                                         "track": true,
-                                        "wandb_project_name": "contrastive_test_kl",
+                                        "wandb_project_name": "run_away_sac",
                                         "make_gif": true,
                                         "fig_frequency": 1000,
                                         "metric_freq": 1000,
@@ -462,7 +462,7 @@
         "v1wsac": {
                                         "cuda": true,
                                         "track": true,
-                                        "wandb_project_name": "contrastive_test_kl",
+                                        "wandb_project_name": "run_away_sac",
                                         "make_gif": true,
                                         "fig_frequency": 1000,
                                         "metric_freq": 1000,
@@ -489,7 +489,7 @@
         "v2wsac": {
                                         "cuda": false,
                                         "track": false,
-                                        "wandb_project_name": "contrastive_test_kl",
+                                        "wandb_project_name": "run_away_sac",
                                         "make_gif": true,
                                         "fig_frequency": 1000,
                                         "metric_freq": 1000,
@@ -669,7 +669,7 @@
             "v1klsac": {
                                         "cuda": true,
                                         "track": true,
-                                        "wandb_project_name": "contrastive_test_kl",
+                                        "wandb_project_name": "run_away_sac",
                                         "make_gif": true,
                                         "fig_frequency": 1000,
                                         "metric_freq": 1000,
@@ -693,7 +693,7 @@
         "v2klsac": {
                                         "cuda": true,
                                         "track": true,
-                                        "wandb_project_name": "contrastive_test_kl",
+                                        "wandb_project_name": "run_away_sac",
                                         "make_gif": true,
                                         "fig_frequency": 1000,
                                         "metric_freq": 1000,
@@ -722,7 +722,7 @@
         "v1wsac": {
                                         "cuda": true,
                                         "track": true,
-                                        "wandb_project_name": "contrastive_test_kl",
+                                        "wandb_project_name": "run_away_sac",
                                         "make_gif": true,
                                         "fig_frequency": 1000,
                                         "metric_freq": 1000,
@@ -749,7 +749,7 @@
         "v2wsac": {
                                         "cuda": false,
                                         "track": false,
-                                        "wandb_project_name": "contrastive_test_kl",
+                                        "wandb_project_name": "run_away_sac",
                                         "make_gif": true,
                                         "fig_frequency": 1000,
                                         "metric_freq": 1000,

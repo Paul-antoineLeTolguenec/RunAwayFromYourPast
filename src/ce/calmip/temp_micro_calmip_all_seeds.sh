@@ -33,7 +33,7 @@ cat <<EOT > $temp_slurm_script
 #SBATCH --nodes=1
 #SBATCH --ntasks=5
 #SBATCH --cpus-per-task=7
-#SBATCH --time=05:00:00
+#SBATCH --time=10:00:00
 #SBATCH --job-name=$algo_id-$env_id
 #SBATCH --output=$path_file_err_out$algo_id-$env_id-%j.out
 #SBATCH --error=$path_file_err_out$algo_id-$env_id-%j.err
@@ -100,20 +100,14 @@ type_id=\$(awk -v env_id="$env_id" '
 # Extract hyperparameters
 cmd_hyperparams="poetry run python \"\$EXTRACT_SCRIPT\" \"\$HYPERPARAMETERS_FILE\" \$type_id \"$algo_id\""
 hyperparams=\$(eval \$cmd_hyperparams)
-# hyperparams=\$(poetry run python "\$EXTRACT_SCRIPT" "\$HYPERPARAMETERS_FILE" "\$type_id" "$algo" "$algo_id")
 
-if [ "\$type_id" != "'atari'" ]; then
-    for seed in {1..5}; do
-        # build with proxychains
-        cmd="poetry run python $algo --env_id $env_id \$hyperparams --seed \$seed"
-        echo \$cmd 
-        # \$cmd
-        proxychains4 \$cmd &
-        ((execution_count++))
-    done
-else
-    echo "Skipping $env_id as it is of type 'atari'"
-fi
+for seed in {0..4}; do
+    cmd="poetry run python $algo --env_id $env_id \$hyperparams --seed \$seed"
+    echo \$cmd 
+    # \$cmd
+    srun -n1 -c7 proxychains4 \$cmd &
+done
+
 wait 
 echo "Number of Python files executed: \$execution_count"
 EOT
@@ -122,4 +116,4 @@ EOT
 sbatch $temp_slurm_script
 
 # Supprimer le fichier temporaire après soumission
-rm $temp_slurm_script
+# rm $temp_slurm_script
