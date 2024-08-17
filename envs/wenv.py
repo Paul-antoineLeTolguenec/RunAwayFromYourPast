@@ -119,19 +119,18 @@ class Wenv(gym.Env):
 
         obs, reward, done, trunc, info = self.env.step(action)
 
-        # if nan in obs trunc the episode and replaced by the last observation
-        if np.isnan(obs).any():
-            obs = self.last_observation
-            done = True
-        else:
-            self.last_observation = obs
-
         self.episode_length += 1
         self.episode_reward += reward
         if self.type_id == 'robotics':
             obs = self.parser_robotics(obs)
         elif self.type_id == 'atari':
             info['position'] = self.parser_ram_atari()
+        # if nan in obs trunc the episode and replaced by the last observation
+        if np.isnan(obs).any():
+            obs = self.last_observation
+            done = True
+        else:
+            self.last_observation = obs
         # update episode length and reward
         info['l'] = self.episode_length
         info['r'] = self.episode_reward
