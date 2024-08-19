@@ -39,6 +39,8 @@ cat <<EOT > $temp_slurm_script
 #SBATCH --error=$path_file_err_out$algo_id-$env_id-%j.err
 #SBATCH --mail-user=paul-antoine.le-tolguenec@isae.fr
 #SBATCH --mail-type=FAIL
+#SBATCH --mem=170G          # Set a memory limit
+#SBATCH --acctg-freq=task=1 # Set a memory check frequency in second (60s by default)
 #SBATCH --begin=now
 #SBATCH --export=ALL
 
