@@ -11,6 +11,8 @@ import numpy as np
 
 @dataclass
 class Args:
+    slurm_mode : bool = True
+    """ calling srun instead of python  """
     wandb_project_name: str = "run_away_sweep"
     """the wandb project to log to for the sweeps"""
     algo : str = "v1klsac"
@@ -41,7 +43,10 @@ ENV_TYPE = {
     }
 
 
-def run_script(file_algo, hp_cmd, seed, env_id):
+def run_script(file_algo, hp_cmd, seed, env_id, slurm):
+    # if slurm : 
+    #     cmd = f"srun -n1 -c7 poetry run python {file_algo} {hp_cmd} --seed {seed} --env_id {env_id}"
+    # else : 
     cmd = f"poetry run python {file_algo} {hp_cmd} --seed {seed} --env_id {env_id}"
     print(cmd)
     result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
@@ -54,6 +59,7 @@ def train(args : dict[str],
           type_id : str, 
           env_id : str,
           metric_to_maximize : str,
+          slurm : bool,
           wandb_config : dict[str]) -> float:
     # set seeds
     seeds = list(range(nb_seeds))
@@ -66,7 +72,7 @@ def train(args : dict[str],
     file_algo = f"../{algo}.py"
     # run the training script with the given hyperparameters
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = [executor.submit(run_script, file_algo, hp_cmd, seed, env_id) for seed in seeds]
+        futures = [executor.submit(run_script, file_algo, hp_cmd, seed, env_id, slurm) for seed in seeds]
         concurrent.futures.wait(futures)
         results = np.array([[float(f.split('=')[-1]) for f in future.result().split(',')] for future in futures]).mean(axis=0)
         coverage = results[0]
@@ -96,7 +102,10 @@ if __name__ == "__main__":
                    nb_seeds=args.nb_seeds, 
                    type_id=args.type_id, 
                    env_id=ENV_TYPE[args.type_id],
-                   metric_to_maximize=args.metric_to_maximize)
+                   metric_to_maximize=args.metric_to_maximize,
+                   slurm = args.slurm_mode)
+
+                   
 
     # main function
     def main():
