@@ -410,12 +410,6 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             print('nb_rho_steps', nb_rho_steps)
             print('fixed_idx_un', len(fixed_idx_un))
             print('nb discrinimator step', int(size_rho/args.discriminator_batch_size * args.discriminator_epochs))
-            batch_times_rho = rb.times[max(int(rb.pos-size_rho/args.num_envs), 0):rb.pos].transpose(1,0).reshape(-1)
-            batch_obs_rho = rb.observations[max(int(rb.pos-size_rho/args.num_envs), 0):rb.pos].transpose(1,0,2).reshape(-1, rb.observations.shape[-1])
-            batch_next_obs_rho = rb.next_observations[max(int(rb.pos-size_rho/args.num_envs), 0):rb.pos].transpose(1,0,2).reshape(-1, rb.next_observations.shape[-1])
-            batch_dones_rho = rb.dones[max(int(rb.pos-size_rho/args.num_envs), 0):rb.pos].transpose(1,0).reshape(-1)           
-            prob = np.clip(1/(args.gamma+0.009)**(batch_times_rho),0.0, 1_00.0)
-            prob = prob/prob.sum()
             for discriminator_step in range(int(size_rho/args.discriminator_batch_size * args.discriminator_epochs)):
                 # batch un
                 batch_inds_un = fixed_idx_un[np.random.randint(0, max(1,len(fixed_idx_un)-args.pad_rho * max_step * args.beta_ratio), args.discriminator_batch_size)]
@@ -424,10 +418,11 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 next_observations_un = torch.Tensor(rb.next_observations[batch_inds_un, batch_inds_envs_un]).to(device)
                 dones_un = torch.Tensor(rb.dones[batch_inds_un, batch_inds_envs_un]).to(device)
                 # batch rho 
-                batch_inds_rho = np.random.randint(0, batch_obs_rho.shape[0], args.discriminator_batch_size)
-                observations_rho = torch.Tensor(batch_obs_rho[batch_inds_rho]).to(device)
-                next_observations_rho = torch.Tensor(batch_next_obs_rho[batch_inds_rho]).to(device)
-                dones_rho = torch.Tensor(batch_dones_rho[batch_inds_rho]).to(device)
+                batch_inds_rho = np.random.randint(max(int(rb.pos-size_rho/args.num_envs), 0), rb.pos, args.discriminator_batch_size)
+                batch_inds_envs_rho = np.random.randint(0, args.num_envs, args.discriminator_batch_size)    
+                observations_rho = torch.Tensor(rb.observations[batch_inds_rho, batch_inds_envs_rho]).to(device)
+                next_observations_rho = torch.Tensor(rb.next_observations[batch_inds_rho, batch_inds_envs_rho]).to(device)
+                dones_rho = torch.Tensor(rb.dones[batch_inds_rho, batch_inds_envs_rho]).to(device)
                 # train the discriminator
                 constraints_rho = discriminator.constraint(observations_rho, next_observations_rho, dones_rho)
                 constraints_un = discriminator.constraint(observations_un, next_observations_un, dones_un)
@@ -537,6 +532,14 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                         "charts/SPS" :  int(global_step / (time.time() - start_time)),
                         "losses/alpha_loss" :  alpha_loss.item() if args.autotune else 0.0,
                 }, step = global_step )
+        if global_step % args.metric_freq == 0 : 
+            # shannon_entropy_mu, coverage_mu = env_check.get_shanon_entropy_and_coverage_mu(rb.observations[fixed_idx_un].reshape(-1, *envs.single_observation_space.shape))
+            wandb.log({
+                "charts/coverage" : env_check.get_coverage(),
+                "charts/shannon_entropy": env_check.shannon_entropy(),
+                # "charts/coverage_mu" : coverage_mu,
+                # "charts/shannon_entropy_mu": shannon_entropy_mu,
+                }, step = global_step)
 
         if global_step % args.fig_frequency == 0  and global_step > args.learning_starts:
             if args.make_gif : 

@@ -397,12 +397,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             print('nb_rho_steps', nb_rho_steps)
             print('fixed_idx_un', len(fixed_idx_un))
             print('nb discrinimator step', int(size_rho/args.classifier_batch_size * args.classifier_epochs))
-            batch_times_rho = rb.times[max(int(rb.pos-size_rho/args.num_envs), 0):rb.pos].transpose(1,0).reshape(-1)
-            batch_obs_rho = rb.observations[max(int(rb.pos-size_rho/args.num_envs), 0):rb.pos].transpose(1,0,2).reshape(-1, rb.observations.shape[-1])
-            batch_next_obs_rho = rb.next_observations[max(int(rb.pos-size_rho/args.num_envs), 0):rb.pos].transpose(1,0,2).reshape(-1, rb.next_observations.shape[-1])
-            batch_dones_rho = rb.dones[max(int(rb.pos-size_rho/args.num_envs), 0):rb.pos].transpose(1,0).reshape(-1)           
-            prob = np.clip(1/(1)**(batch_times_rho),0.0, 1_00.0)
-            prob = prob/prob.sum()
+            
             for classifier_step in range(int(size_rho/args.classifier_batch_size * args.classifier_epochs)):
                 # batch un
                 batch_inds_un = fixed_idx_un[np.random.randint(0, max(2,len(fixed_idx_un)-args.pad_rho * max_step * args.beta_ratio), args.classifier_batch_size)]
@@ -411,10 +406,11 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 next_observations_un = torch.Tensor(rb.next_observations[batch_inds_un, batch_inds_envs_un]).to(device)
                 dones_un = torch.Tensor(rb.dones[batch_inds_un, batch_inds_envs_un]).to(device)
                 # batch rho 
-                batch_inds_rho = np.random.randint(0, batch_obs_rho.shape[0], args.classifier_batch_size)
-                observations_rho = torch.Tensor(batch_obs_rho[batch_inds_rho]).to(device)
-                next_observations_rho = torch.Tensor(batch_next_obs_rho[batch_inds_rho]).to(device)
-                dones_rho = torch.Tensor(batch_dones_rho[batch_inds_rho]).to(device)
+                batch_inds_rho = np.random.randint(int(rb.pos - size_rho / args.num_envs), rb.pos, args.classifier_batch_size)
+                batch_inds_envs_rho = np.random.randint(0, args.num_envs, args.classifier_batch_size)
+                observations_rho = torch.Tensor(rb.observations[batch_inds_rho, batch_inds_envs_rho]).to(device)
+                next_observations_rho = torch.Tensor(rb.next_observations[batch_inds_rho, batch_inds_envs_rho]).to(device)
+                dones_rho = torch.Tensor(rb.dones[batch_inds_rho, batch_inds_envs_rho]).to(device)
                 # train the classifier
                 classifier_loss = classifier.loss(observations_rho, observations_un)
                 classifier_optimizer.zero_grad()

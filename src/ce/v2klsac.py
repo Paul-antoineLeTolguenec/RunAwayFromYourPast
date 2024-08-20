@@ -114,11 +114,9 @@ class Args:
     """the learning rate of the classifier"""
     lambda_diayn: float = 0.75
     """weight for the reward maximizing Mutual Information"""
-    # classifier_batch_size_diayn: int = 256
-    # """the batch size of the classifier"""
-    # classifier_epochs_diayn: int = 1
-    # """the number of epochs of the classifier"""
-
+    diayn_alone_epochs: int = 8
+    """the number of epochs of the classifier"""
+    
 
 
     # rewards specific arguments
@@ -486,7 +484,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
                 # rewards
                 diayn_reward = torch.log(torch.sum(classifier_diayn(b_observations)*b_z, dim = -1) + 1e-3) - torch.log(torch.tensor(1/args.nb_skill))
-                kl_reward = classifier(b_observations).flatten()
+                kl_reward = classifier(b_observations).flatten() if global_step > args.diayn_alone_epochs * size_rho else torch.zeros(args.batch_size).flatten().to(device)
                 intrinsic_reward = args.lambda_diayn*diayn_reward + args.lambda_kl*kl_reward
                 intrinsic_reward = torch.clamp(intrinsic_reward, -args.bound_classifier, args.bound_classifier)
                 # intrinsic_reward = classifier(b_observations).detach()

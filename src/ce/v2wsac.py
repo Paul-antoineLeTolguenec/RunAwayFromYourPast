@@ -136,6 +136,9 @@ class Args:
     episode_per_epoch: int = 8
     """ number of episode per epoch """
     lip_cte_metra: float = 1.0
+    """ the constant of the lipschitz for metra """
+    metra_alone_epochs: int = 8
+    """ number of epochs for metra alone """
    
 
 
@@ -576,8 +579,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 qf2_next_target = qf2_target(b_next_observations, b_z, next_state_actions)
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
                 # rewards
-                wasserstein_reward = (discriminator(b_next_observations) - discriminator(b_observations)).flatten()
-                metra_reward = ((discriminator_metra(b_next_observations) - discriminator_metra(b_observations)) * b_z).sum(dim = -1)
+                wasserstein_reward = (discriminator(b_next_observations) - discriminator(b_observations)).flatten() if global_step > args.metra_alone_epochs*size_rho else torch.zeros_like(b_rewards).flatten().to(device)
+                metra_reward = ((discriminator_metra(b_next_observations) - discriminator_metra(b_observations)) * b_z).sum(dim = -1) 
                 # print('metra reward shape : ', metra_reward.shape)
                 intrinsic_reward = args.lambda_wasserstein * wasserstein_reward + args.lambda_reward_metra * metra_reward 
                 intrinsic_reward = torch.clamp(intrinsic_reward, -5, 5)
@@ -657,12 +660,12 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 }, step = global_step)
 
         if global_step % args.metric_freq == 0 : 
-            shannon_entropy_mu, coverage_mu = env_check.get_shanon_entropy_and_coverage_mu(rb.observations[fixed_idx_un].reshape(-1, *envs.single_observation_space.shape))
+            # shannon_entropy_mu, coverage_mu = env_check.get_shanon_entropy_and_coverage_mu(rb.observations[fixed_idx_un].reshape(-1, *envs.single_observation_space.shape))
             wandb.log({
                 "charts/coverage" : env_check.get_coverage(),
                 "charts/shannon_entropy": env_check.shannon_entropy(),
-                "charts/coverage_mu" : coverage_mu,
-                "charts/shannon_entropy_mu": shannon_entropy_mu,
+                # "charts/coverage_mu" : coverage_mu,
+                # "charts/shannon_entropy_mu": shannon_entropy_mu,
                 }, step = global_step)
 
         if global_step % args.fig_frequency == 0  and global_step > args.learning_starts:
