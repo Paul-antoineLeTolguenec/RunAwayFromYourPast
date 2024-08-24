@@ -57,6 +57,7 @@ temp_slurm_script="temp_slurm_script.slurm"
 cat <<EOT > $temp_slurm_script
 #!/bin/bash
 #SBATCH --nodes=1
+#SBATCH --exclusive
 #SBATCH --ntasks=5
 #SBATCH --cpus-per-task=7
 #SBATCH --time=10:00:00
@@ -93,10 +94,10 @@ elif [[ "\$HOSTNAME" == *"olympe"* ]]; then
 fi
 
 
-cmd="poetry run python ../sweep_wandb/sweep.py --algo $algo --type_id $type_id"
+cmd="proxychains4 poetry run python ../sweep_wandb/sweep.py --algo $algo --type_id $type_id"
 echo \$cmd 
-
-srun proxychains4 \$cmd 
+eval \$cmd
+# srun proxychains4 \$cmd 
 
 EOT
 
