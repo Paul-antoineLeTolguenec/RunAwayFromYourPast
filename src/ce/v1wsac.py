@@ -43,6 +43,8 @@ class Args:
     """if toggled, will load the hyperparameters from file"""
     hp_file: str = "hyper_parameters.json"
     """the path to the hyperparameters json file"""
+    sweep_mode: bool = False
+    """if toggled, will log the sweep id to wandb"""
 
     # GIF
     make_gif: bool = True
@@ -111,6 +113,9 @@ class Args:
     """the probability of the custom noise"""
     beta_noise: float = 1.0
     """the beta of the noise"""
+    min_un: int = 16
+    """the minimum number of un"""
+
     # rewards specific arguments
     keep_extrinsic_reward: bool = False
     """if toggled, the extrinsic reward will be kept"""
@@ -251,16 +256,20 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     if args.track:
         import wandb
-
-        wandb.init(
-            project=args.wandb_project_name,
-            entity=args.wandb_entity,
-            sync_tensorboard=False,
-            config=vars(args),
-            name=run_name,
-            monitor_gym=True,
-            save_code=True,
-        )
+        if args.sweep_mode:
+            wandb.init()
+            # set config from sweep
+            wandb.config.update(args)
+        else :
+            wandb.init(
+                project=args.wandb_project_name,
+                entity=args.wandb_entity,
+                sync_tensorboard=False,
+                config=vars(args),
+                name=run_name,
+                monitor_gym=True,
+                save_code=True,
+            )
     # PLOTTING
     if args.make_gif:
         env_plot = Wenv(env_id=args.env_id, 
@@ -388,10 +397,10 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         rb.times[rb.pos-1] = infos['l']
         # decide whether to add transition to the un
         if len(fixed_idx_un)<= size_un:
-            if bernoulli.rvs(args.beta_ratio/args.num_envs):
+            if bernoulli.rvs(args.beta_ratio/args.num_envs) or args.min_un >= len(fixed_idx_un) :
                 fixed_idx_un = np.append(fixed_idx_un, rb.pos-1)
         else : 
-            if True in terminations:
+            if True in terminations :
                 # remove random element
                 fixed_idx_un = np.delete(fixed_idx_un, random.randint(0, len(fixed_idx_un)-1))
                 # add the last element
@@ -415,7 +424,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             print('nb discrinimator step', int(size_rho/args.discriminator_batch_size * args.discriminator_epochs))
             for discriminator_step in range(int(size_rho/args.discriminator_batch_size * args.discriminator_epochs)):
                 # batch un
-                batch_inds_un = fixed_idx_un[np.random.randint(0, max(1,len(fixed_idx_un)-args.pad_rho * max_step * args.beta_ratio), args.discriminator_batch_size)]
+                batch_inds_un = fixed_idx_un[np.random.randint(0, max(args.min_un,len(fixed_idx_un)-args.pad_rho * max_step * args.beta_ratio), args.discriminator_batch_size)]
                 batch_inds_envs_un = np.random.randint(0, args.num_envs, args.discriminator_batch_size)
                 observations_un = torch.Tensor(rb.observations[batch_inds_un, batch_inds_envs_un]).to(device)
                 next_observations_un = torch.Tensor(rb.next_observations[batch_inds_un, batch_inds_envs_un]).to(device)

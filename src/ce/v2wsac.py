@@ -32,7 +32,7 @@ class Args:
     """if toggled, cuda will be enabled by default"""
     track: bool = True
     """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "contrastive_test_2"
+    wandb_project_name: str = "run_away_test"
     """the wandb's project name"""
     wandb_entity: str = None
     """the entity (team) of wandb's project"""
@@ -42,6 +42,8 @@ class Args:
     """if toggled, will load the hyperparameters from file"""
     hp_file: str = "hyper_parameters.json"
     """the path to the hyperparameters json file"""
+    sweep_mode: bool = False
+    """if toggled, will log the sweep id to wandb"""
 
     # GIF
     make_gif: bool = True
@@ -54,7 +56,7 @@ class Args:
     """the frequency of ploting metric"""
 
     # Algorithm specific arguments
-    env_id: str = "Maze-Ur-v0"
+    env_id: str = "HalfCheetah-v3"
     """the environment id of the task"""
     total_timesteps: int = 10_000_000
     """total timesteps of the experiments"""
@@ -112,7 +114,8 @@ class Args:
     """the beta of the noise"""
     lambda_wasserstein: float = 1.0
     """the weight for the wasserstein reward """
-
+    min_un: int = 16
+    """the minimum number of un"""
 
     # METRA specific
     nb_skill: int = 4
@@ -311,6 +314,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             hp = json.load(f)['hyperparameters'][type_id][args.exp_name]
             for k, v in hp.items():
                 setattr(args, k, v)
+
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # METRA Specific
@@ -327,16 +331,20 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     if args.track:
         import wandb
-
-        wandb.init(
-            project=args.wandb_project_name,
-            entity=args.wandb_entity,
-            sync_tensorboard=False,
-            config=vars(args),
-            name=run_name,
-            monitor_gym=True,
-            save_code=True,
-        )
+        if args.sweep_mode:
+            wandb.init()
+            # set config from sweep
+            wandb.config.update(args)
+        else :
+            wandb.init(
+                project=args.wandb_project_name,
+                entity=args.wandb_entity,
+                sync_tensorboard=False,
+                config=vars(args),
+                name=run_name,
+                monitor_gym=True,
+                save_code=True,
+            )
     # PLOTTING
     if args.make_gif:
         env_plot = Wenv(env_id=args.env_id, 
@@ -424,6 +432,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     nb_step_per_env = np.zeros(args.num_envs, dtype=int)   
     # running episodic return
     running_episodic_return = 0 
+    metra_max = 200
     # TRY NOT TO MODIFY: start the game
     obs, _ = envs.reset(seed=args.seed)
     for global_step in range(args.total_timesteps):
@@ -442,6 +451,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, terminations, truncations, infos = envs.step(actions)
+
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if "final_info" in infos:
@@ -468,16 +478,32 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 # print('eps_tm', eps_tm[idx].shape)
                 # input()
                 nb_step_per_env[idx] = 0
+        
+        metra_max += 200 if (global_step+1)%50_000==0 else 0
+        if global_step%metra_max==0:
+            (real_next_obs, _ )= envs.reset(seed=args.seed) 
+            # set truncation to True
+            truncations = np.array([True for _ in range(args.num_envs)])
+            eps_tm = np.concatenate([ np.concatenate([cn.powerlaw_psd_gaussian(args.beta_noise, max_step +1 )[:, None] for _ in range(envs.single_action_space.shape[0])], axis=1)[None, :] for _ in range(args.num_envs)], axis=0)
+            for idx in range(args.num_envs):
+                nb_step_per_env[idx] = 0 
+                # log infos
+                print(f"global_step={global_step}, episodic_return={infos['r'][idx]}, episodic_length={infos['l'][idx]}")
+                wandb.log({
+                    "charts/episodic_return": infos["r"][idx],
+                    "charts/episodic_length": infos["l"][idx],
+                    }, step = global_step) if args.track else None
+
 
         rb.add(obs, real_next_obs, actions, rewards, terminations, infos)
         rb.times[rb.pos-1] = infos['l']
         rb.zs[rb.pos - 1] = z.detach().cpu().numpy()
         # decide whether to add transition to the un
         if len(fixed_idx_un)<= size_un:
-            if bernoulli.rvs(args.beta_ratio/args.num_envs):
+            if bernoulli.rvs(args.beta_ratio/args.num_envs) or args.min_un >= len(fixed_idx_un):
                 fixed_idx_un = np.append(fixed_idx_un, rb.pos-1)
         else : 
-            if True in terminations:
+            if True in terminations :
                 # remove random element
                 fixed_idx_un = np.delete(fixed_idx_un, random.randint(0, len(fixed_idx_un)-1))
                 # add the last element
@@ -496,7 +522,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         if global_step*args.num_envs > args.learning_starts and  global_step % size_rho == 0:
             for discriminator_step in range(int(size_rho/args.discriminator_batch_size * args.discriminator_epochs)):
                 # batch un
-                batch_inds_un = fixed_idx_un[np.random.randint(0, max(1,len(fixed_idx_un)-args.pad_rho * max_step * args.beta_ratio), args.discriminator_batch_size)]
+                batch_inds_un = fixed_idx_un[np.random.randint(0, max(args.min_un,len(fixed_idx_un)-args.pad_rho * max_step * args.beta_ratio), args.discriminator_batch_size)]
                 batch_inds_envs_un = np.random.randint(0, args.num_envs, args.discriminator_batch_size)
                 observations_un = torch.Tensor(rb.observations[batch_inds_un, batch_inds_envs_un]).to(device)
                 next_observations_un = torch.Tensor(rb.next_observations[batch_inds_un, batch_inds_envs_un]).to(device)
