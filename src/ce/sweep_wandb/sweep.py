@@ -21,15 +21,15 @@ class Args:
     """whether to make a gif of the final policy"""
     type_id : str = "maze"
     """type of the environment to run"""
-    nb_seeds : int = 2
+    nb_seeds : int = 3
     """number of seeds to run"""
     metric_to_maximize : str = "charts/coverage"
     """the metric to maximize"""
-    nb_count : int = 4
+    nb_count : int = 32
 
 
     """number of runs to launch"""
-    total_timesteps: int = 20_000
+    total_timesteps: int = 100_000
     """total timesteps of the experiments"""
     buffer_size: int = int(1e6)
     """the replay memory buffer size"""
@@ -44,14 +44,14 @@ ENV_TYPE = {
 
 
 def run_script(file_algo, hp_cmd, seed, env_id, slurm):
-    if slurm : 
-        cmd = f"srun -n1 -c7 --output=- --error=- poetry run python {file_algo} {hp_cmd} --seed {seed} --env_id {env_id}"
-    else : 
-        cmd = f"poetry run python {file_algo} {hp_cmd} --seed {seed} --env_id {env_id}"
+    # if slurm : 
+    #     cmd = f"srun -n1 -c7 --output=- --error=- poetry run python {file_algo} {hp_cmd} --seed {seed} --env_id {env_id}"
+    # else : 
+    cmd = f"poetry run python {file_algo} {hp_cmd} --seed {seed} --env_id {env_id}"
     print(cmd)
     result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
     last_line = result.stdout.strip().split('\n')[-1]
-    print('last_line : ', last_line)
+    print('last_lines : ', last_line)
     return last_line
 
 def train(args : dict[str], 
