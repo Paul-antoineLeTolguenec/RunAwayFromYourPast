@@ -158,16 +158,45 @@ else
     exit 1
 fi
 
+# Générer le fichier YAML temporaire pour le sweep
+sweep_yaml="temp_config.yaml"
+cat <<EOF > $sweep_yaml
+project: "run_away_sweep"
+name: "$algo_id-sweep-$type_id"
+
+method: bayes  
+metric:
+  name: charts/coverage
+  goal: maximize
+
+parameters:$hyperparameters
+
+command:
+  - proxychains4
+  - poetry
+  - run
+  - python
+  - $algo
+  - --use_hp_file
+  - --sweep_mode
+  - --hp_file
+  - ../hyper_parameters.json
+  - --env_id
+  - $env_id
+EOF
+
+
+# show sweep.yaml 
+# cat $sweep_yaml
+
 cat <<EOT > $temp_slurm_script
 #!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --exclusive
-#SBATCH --ntasks=5
-#SBATCH --cpus-per-task=7
 #SBATCH --time=10:00:00
 #SBATCH --job-name=sweep-$algo-$type_id
-#SBATCH --output=$path_file_err_out$algo-$type_id-%j.out
-#SBATCH --error=$path_file_err_out$algo-$type_id-%j.err
+#SBATCH --output=$path_file_err_out$algo_id-$type_id-%j.out
+#SBATCH --error=$path_file_err_out$algo_id-$type_id-%j.err
 #SBATCH --mail-user=paul-antoine.le-tolguenec@isae.fr
 #SBATCH --mail-type=FAIL
 #SBATCH --mem=170G          # Set a memory limit
@@ -197,55 +226,42 @@ elif [[ "\$HOSTNAME" == *"olympe"* ]]; then
     export WANDB_DATA_DIR="/tmpdir/\$USER/"
 fi
 
-# Générer le fichier YAML temporaire pour le sweep
-sweep_yaml=\$(mktemp --suffix=.yaml)
-cat <<EOF > \$sweep_yaml
-project: "run_away_sweep"
-name: "$algo_id-sweep-$type_id"
 
-method: bayes  
-metric:
-  name: charts/coverage
-  goal: maximize
 
-parameters:$hyperparameters
 
-command:
-  - srun
-  - -n1
-  - -c7
-  - poetry
-  - run
-  - python
-  - $algo
-  - --use_hp_file
-  - --sweep_mode
-  - --hp_file
-  - ../hyper_parameters.json
-  - --env_id
-  - $env_id
-EOF
-
-# cat \$sweep_yaml
-
-sweep_command="proxychains4 poetry run wandb sweep \$sweep_yaml"
+sweep_command="proxychains4 poetry run wandb sweep $sweep_yaml"
 sweep_output=\$(\$sweep_command 2>&1)
 sweep_id_cmd=\$(echo "\$sweep_output" | grep "wandb: Run sweep agent with:" | sed "s/.*wandb: Run sweep agent with: //")
 echo "Sweep ID: \$sweep_id_cmd"
 
-for seed in {0..3}; do
-    cmd="srun -n1 -c7 poetry run \$sweep_id_cmd"
+
+
+for seed in {0..1}; do
+    cmd="poetry run \$sweep_id_cmd"
     echo \$cmd
-    eval \$cmd &
+    proxychains4 \$cmd &
+    sleep 1
 done
 
-rm \$sweep_yaml
+
+wait
+
+
 
 EOT
+
+
+
+cat $temp_slurm_script
 
 # Soumettre le script temporaire
 sbatch $temp_slurm_script
 # bash $temp_slurm_script
 
+
 # Supprimer le fichier temporaire après soumission
 rm $temp_slurm_script
+
+
+# delete config 
+# rm $sweep_yaml
