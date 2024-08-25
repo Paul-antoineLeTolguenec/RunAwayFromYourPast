@@ -457,7 +457,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         if "final_info" in infos:
             for info in infos["final_info"]:
                 try : 
-                    print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
+                    print(f"global_step={global_step}, episodic_return={info['episode']['r']}, episodic_length={info['episode']['l']}")
                     wandb.log({
                         "charts/episodic_return": info["episode"]["r"], 
                         "charts/episodic_length": info["episode"]["l"], 
@@ -478,22 +478,10 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 # print('eps_tm', eps_tm[idx].shape)
                 # input()
                 nb_step_per_env[idx] = 0
-        
-        metra_max += 200 if (global_step+1)%50_000==0 else 0
-        if global_step%metra_max==0:
-            (real_next_obs, _ )= envs.reset(seed=args.seed) 
-            # set truncation to True
-            truncations = np.array([True for _ in range(args.num_envs)])
-            eps_tm = np.concatenate([ np.concatenate([cn.powerlaw_psd_gaussian(args.beta_noise, max_step +1 )[:, None] for _ in range(envs.single_action_space.shape[0])], axis=1)[None, :] for _ in range(args.num_envs)], axis=0)
-            for idx in range(args.num_envs):
-                nb_step_per_env[idx] = 0 
-                # log infos
-                print(f"global_step={global_step}, episodic_return={infos['r'][idx]}, episodic_length={infos['l'][idx]}")
-                wandb.log({
-                    "charts/episodic_return": infos["r"][idx],
-                    "charts/episodic_length": infos["l"][idx],
-                    }, step = global_step) if args.track else None
 
+        if (global_step)%100_000==0 :
+            envs.call("set_max_steps", metra_max)
+            metra_max  = min(metra_max + 200, config[args.env_id]['kwargs']['max_episode_steps'])
 
         rb.add(obs, real_next_obs, actions, rewards, terminations, infos)
         rb.times[rb.pos-1] = infos['l']
@@ -563,7 +551,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             for _ in range(args.metra_discriminator_epochs):
                 # Metra training
                 beta_metra = args.beta_ratio
-                batch_inds = np.random.randint(rb.pos - size_rho ,rb.pos, int(args.metra_batch_size)),           
+                batch_inds = np.random.randint(rb.pos - size_rho ,rb.pos, int(args.metra_batch_size))
+                # batch_inds = np.random.randint(0 ,rb.pos, int(args.metra_batch_size))                    
                 batch_inds_env = np.random.randint(0, args.num_envs, args.metra_batch_size)
                 batch_obs = torch.tensor(rb.observations[batch_inds, batch_inds_env], device=device)
                 batch_next_obs = torch.tensor(rb.next_observations[batch_inds, batch_inds_env], device=device)

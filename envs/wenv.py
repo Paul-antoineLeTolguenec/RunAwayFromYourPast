@@ -4,10 +4,18 @@ import torch, os , imageio, socket, subprocess
 from src.utils.dash_utils_2d import initialize_figure_2d, add_frame_to_figure_2d, create_html_2d
 from src.utils.dash_utils_3d import initialize_figure_3d, add_frame_to_figure_3d, create_html_3d
 from envs.compatible_random_generator import CompatibleRandomGenerator
+from gymnasium.wrappers import TimeLimit
 import gymnasium as gym
 import sys, signal
 from functools import reduce
 from operator import mul
+
+class DynamicTimeLimit(TimeLimit):
+    def set_max_steps(self, new_max_steps):
+        self._max_episode_steps = new_max_steps
+
+    def get_max_steps(self):
+        return self._max_episode_steps
 
 class Wenv(gym.Env):
     def __init__(self, env_id , 
@@ -28,6 +36,7 @@ class Wenv(gym.Env):
         self.config = kwargs
         # load the environment
         self.env = gym.make(env_id, **kwargs)
+        self.env = DynamicTimeLimit(self.env, max_episode_steps=kwargs['max_episode_steps'])
         # observation space
         self.observation_space = self.env.observation_space if not type_id == 'robotics' else self.env.observation_space['observation']
         # action space
@@ -83,6 +92,9 @@ class Wenv(gym.Env):
             self.action_space = gym.spaces.Discrete(self.action_space.n)
             self.render_mode = kwargs['render_mode']
 
+
+    def set_max_steps(self, new_max_steps):
+        self._max_episode_steps = new_max_steps
 
     def set_all_seeds(self, seed):
         self.seed(seed)
@@ -296,17 +308,41 @@ class Wenv(gym.Env):
     def get_rooms(self):
         return len(set(self.rooms))
     
+    def get_max_steps(self):
+        return self.env.get_max_steps()
+    def set_max_steps(self, new_max_steps):
+        self.env.set_max_steps(new_max_steps)
+    
     @property
     def unwrapped(self):
         return self.env.unwrapped
     
 if __name__ == '__main__':
     import envs
+    from envs.config_env import config
     # Maze
     # env = Wenv('Maze', kwargs={'name': 'Easy'})
     # mujoco 
-    env = Wenv('HalfCheetah-v3')
+    env = Wenv('HalfCheetah-v3', **config['HalfCheetah-v3'])
     obs, i = env.reset(seed=0)
-    print(obs, i)
-    print('obs shape', obs.shape)
+    print(env.env._max_episode_steps)
+    t= 0
+    d= False
+    while not d:
+        obs, r, d,tr, i = env.step(env.action_space.sample())
+        d = (d or tr)
+        t+= 1
+    print('time : ', t)
+    # set max steps
+    env.env.set_max_steps(100)
+    print(env.env.get_max_steps())
+    obs, i = env.reset(seed=0)
+    t=0
+    d= False
+    while not d:
+        obs, r, d,tr, i = env.step(env.action_space.sample())
+        d = (d or tr)
+        t+= 1
+    print('time : ', t)
+
 
