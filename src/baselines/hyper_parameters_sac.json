@@ -1,274 +1,625 @@
 {
 "hyperparameters": {
-
-                    "maze": {
-
-                            "apt_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max",
-                                        
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 20000
-                                        },
-                            "aux_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 20000
-                                        },
-                            "icm_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 20000
-                                        },
-                            "rnd_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 20000
-                                        },
-                            "ngu_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 20000
-                                        },
-                            "diayn_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 20000,
-                                        "nb_skill": 4
-                                        },
-                            "smm_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 20000,
-                                        "nb_skill": 4
-                                        },
-                            "lsd_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 20000,
-                                        "nb_skill": 4
-                                        },
-                            "csd_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 20000,
-                                        "nb_skill": 4
-                                        },
-                            "metra_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 20000,
-                                        "nb_skill": 4
-                                        }
-                            },
-                
-                    "robotics": {
-
-                            "apt_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 20000
-                                        },
-                            "aux_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 20000
-                                        },
-                            "icm_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 20000
-                                        },
-                            "rnd_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 20000
-                                        },
-                            "ngu_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 20000
-                                        },
-                            "diayn_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 20000,
-                                        "nb_skill": 4
-                                        },
-                            "smm_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 20000,
-                                        "nb_skill": 4
-                                        },
-                            "lsd_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 20000,
-                                        "nb_skill": 4
-                                        },
-                            "csd_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 20000,
-                                        "nb_skill": 4
-                                        },
-                            "metra_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 500000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 20000,
-                                        "nb_skill": 4
-                                        }
-                            },
-
-                    "mujoco": {
-
-                            "apt_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 5000000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 100000
-                                        },
-                            "aux_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 5000000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 100000
-                                        },
-                            "icm_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 5000000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 100000
-                                        },
-                            "rnd_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 5000000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 100000
-                                        },
-                            "ngu_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 5000000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 100000
-                                        },
-                            "diayn_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 5000000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 100000,
-                                        "nb_skill": 4
-                                        },
-                            "smm_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 5000000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 100000,
-                                        "nb_skill": 4
-                                        },
-                            "lsd_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 5000000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 100000,
-                                        "nb_skill": 4
-                                        },
-                            "csd_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 5000000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 100000,
-                                        "nb_skill": 4
-                                        },
-                            "metra_sac": {
-                                        "cuda":true, "wandb_project_name": "contrastive_exploration_reward_max", 
-                                        "save_data": false,
-                                        "make_gif": false,
-                                        "feature_extractor":false, "keep_extrinsic_reward":true,
-                                        "total_timesteps": 5000000, 
-                                        "beta_ratio":0.25, "nb_max_steps": 100000,
-                                        "nb_skill": 4
-                                        }
-                            }
-
-
+        "maze": {
+                "apt_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 500000
+                    
+                    
+                },
+                "aux_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 500000
+                    
+                    
+                },
+                "icm_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 500000
+                    
+                    
+                },
+                "rnd_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 500000
+                    
+                    
+                },
+                "ngu_sac": {
+                    "cuda": true,
+                    "track": true,
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 500000
+                    
+                    
+                },
+                "diayn_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 500000
+                    
+                    ,
+                    "nb_skill": 4
+                },
+                "smm_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 500000
+                    
+                    ,
+                    "nb_skill": 4
+                },
+                "lsd_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 500000
+                    
+                    ,
+                    "nb_skill": 4
+                },
+                "csd_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 500000
+                    
+                    ,
+                    "nb_skill": 4
+                },
+                "metra_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 500000
+                    
+                    ,
+                    "nb_skill": 4
                 }
-}
+            },
+        "robotics": {
+                "apt_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 500000
+                    
+                    
+                },
+                "aux_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 500000
+                    
+                    
+                },
+                "icm_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 500000
+                    
+                    
+                },
+                "rnd_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 500000
+                    
+                    
+                },
+                "ngu_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 500000
+                    
+                    
+                },
+                "diayn_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 500000
+                    
+                    ,
+                    "nb_skill": 4
+                },
+                "smm_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 500000
+                    
+                    ,
+                    "nb_skill": 4
+                },
+                "lsd_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 500000
+                    
+                    ,
+                    "nb_skill": 4
+                },
+                "csd_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 500000
+                    
+                    ,
+                    "nb_skill": 4
+                },
+                "metra_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 500000
+                    
+                    ,
+                    "nb_skill": 4
+                }
+            },
+        "mujoco": {
+                "apt_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 1000000
+                    
+                    
+                },
+                "aux_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 1000000
+                    
+                    
+                },
+                "icm_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 1000000
+                    
+                    
+                },
+                "rnd_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 1000000
+                    
+                    
+                },
+                "ngu_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 1000000
+                    
+                    
+                },
+                "diayn_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 1000000
+                    
+                    ,
+                    "nb_skill": 4
+                },
+                "smm_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 1000000
+                    
+                    ,
+                    "nb_skill": 4
+                },
+                "lsd_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 1000000
+                    
+                    ,
+                    "nb_skill": 4
+                },
+                "csd_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 1000000
+                    
+                    ,
+                    "nb_skill": 4
+                },
+                "metra_sac": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": true,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_test",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 5000000
+                    
+                    ,
+                    "nb_skill": 4
+                }
+            }
+        }
+    }
+    

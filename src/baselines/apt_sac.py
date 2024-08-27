@@ -35,6 +35,12 @@ class Args:
     """the entity (team) of wandb's project"""
     capture_video: bool = False
     """whether to capture videos of the agent performances (check out `videos` folder)"""
+    use_hp_file : bool = False
+    """if toggled, will load the hyperparameters from file"""
+    hp_file: str = "hyper_parameters.json"
+    """the path to the hyperparameters json file"""
+    sweep_mode: bool = False
+    """if toggled, will log the sweep id to wandb"""
     
     # GIF
     make_gif: bool = True
@@ -260,19 +266,32 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         )
 
     args = tyro.cli(Args)
+    if args.use_hp_file:
+        import json
+        with open(args.hp_file, "r") as f:
+            type_id = config[args.env_id]['type_id']
+            hp = json.load(f)['hyperparameters'][type_id][args.exp_name]
+            for k, v in hp.items():
+                setattr(args, k, v)
+
+
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     if args.track:
         import wandb
-
-        wandb.init(
-            project=args.wandb_project_name,
-            entity=args.wandb_entity,
-            sync_tensorboard=False,
-            config=vars(args),
-            name=run_name,
-            monitor_gym=True,
-            save_code=True,
-        )
+        if args.sweep_mode:
+            wandb.init()
+            # set config from sweep
+            wandb.config.update(args)
+        else :
+            wandb.init(
+                project=args.wandb_project_name,
+                entity=args.wandb_entity,
+                sync_tensorboard=False,
+                config=vars(args),
+                name=run_name,
+                monitor_gym=True,
+                save_code=True,
+            )
 
     # PLOTTING
     if args.make_gif:
@@ -366,7 +385,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 wandb.log({
                 "charts/episodic_return" : info["episode"]["r"],
                 "charts/episodic_length" : info["episode"]["l"],
-                }, step = global_step)
+                }, step = global_step) if args.track else None
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
         real_next_obs = next_obs.copy()
@@ -397,7 +416,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     mean_encoder_loss += encoder_loss.item()
             wandb.log({
                 "losses/encoder_loss" : encoder_loss.item(),
-                }, step = global_step)
+                }, step = global_step) if args.track else None
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
             data = rb.sample(args.batch_size)
@@ -472,13 +491,13 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 "specific/intrinsic_reward_mean" : intrinsic_reward.mean(),
                 "specific/intrinsic_reward_max" : intrinsic_reward.max(),
                 "specific/intrinsic_reward_min" : intrinsic_reward.min(),
-                }, step = global_step)
+                }, step = global_step) if args.track else None
 
         if global_step % args.metric_freq == 0 : 
             wandb.log({
                 "charts/coverage" : env_check.get_coverage(),
                 "charts/shannon_entropy": env_check.shannon_entropy(),
-                }, step = global_step)
+                }, step = global_step) if args.track else None
             
         if global_step % args.fig_frequency == 0  and global_step*args.num_envs > args.learning_starts:
             if args.make_gif : 

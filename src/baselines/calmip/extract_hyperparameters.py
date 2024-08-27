@@ -11,11 +11,33 @@ def extract_hyperparameters(hyperparameters_file, type_id, algorithm_id):
                 hyperparams = []
                 for key, value in params.items():
                     if isinstance(value, bool):
-                        value = str(value).lower().capitalize()
-                    hyperparams.append(f"--{key} {value}")
+                        if value :
+                            hyperparams.append(f"--{key}")
+                        else : 
+                            hyperparams.append(f"--no-{key}")
+                    else : 
+                        hyperparams.append(f"--{key} {value}")
+
                 print(" ".join(hyperparams))
             else:
                 print("")
+
+
+def recursive_build_hyperparameters(params : dict[str], hp_cmd : str = "", increment : int = 0) -> str :
+    list_params = list(params.items())
+    if increment == len(list_params):
+        return hp_cmd
+    else:
+        key, value = list_params[increment]
+        if isinstance(value, bool):
+            if value :
+                hp_cmd += f"--{key} "
+            else : 
+                hp_cmd += f"--no-{key} "
+        else : 
+            hp_cmd += f"--{key} {value} "
+        return recursive_build_hyperparameters(params, hp_cmd, increment + 1)
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 4:

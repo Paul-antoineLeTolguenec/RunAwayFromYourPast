@@ -1,6 +1,6 @@
 
 # FIND + RUN 
-algo=${1:-../apt_ppo.py}
+algo=${1:-../v1_ppo_kl_adaptive_sampling.py}
 algo_id=$(basename "$algo" | sed 's/\.py//')
 
 
@@ -22,7 +22,7 @@ for env_id in $env_ids; do
     ' "$CONFIG_FILE")
 
     if [ "$type_id" != "'atari'" ]; then
-        cmd="bash temp_micro_calmip.sh $algo $env_id offline"
+        cmd="bash scheduler_calmip_per_algo_per_env.sh --algo $algo --env_id $env_id"
         echo "Running: $cmd"
         eval $cmd
     else

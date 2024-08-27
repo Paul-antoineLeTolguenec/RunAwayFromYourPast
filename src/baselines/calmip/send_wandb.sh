@@ -69,7 +69,7 @@ for DIR in "$path_offline"offline*; do
         SYNC_MARKER="$DIR/*.synced"
         
         # Vérifier si le fichier existe et n'a pas déjà été synchronisé
-        if [ -f "$METADATA_FILE" ] && [ ! -f $SYNC_MARKER ]; then
+        if [ -f "$METADATA_FILE" ]; then
             # Vérifier si le fichier contient au moins un des algorithmes
             if contains_algo "$METADATA_FILE"; then
                 # Extraire l'env_id

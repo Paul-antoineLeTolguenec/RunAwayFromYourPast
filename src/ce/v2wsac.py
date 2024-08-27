@@ -432,7 +432,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     nb_step_per_env = np.zeros(args.num_envs, dtype=int)   
     # running episodic return
     running_episodic_return = 0 
-    metra_max = 200
+    metra_max = args.metra_max_step
     # TRY NOT TO MODIFY: start the game
     obs, _ = envs.reset(seed=args.seed)
     for global_step in range(args.total_timesteps):
@@ -547,7 +547,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     "metrics_discriminator/lambda": discriminator.lambda_param.item(), 
                     }, step = global_step) if args.track else None
 
-        if global_step*args.num_envs > args.learning_starts and  global_step*args.num_envs % args.metra_max_step * args.episode_per_epoch == 0:
+        if global_step*args.num_envs > args.learning_starts and  global_step % int((args.metra_max_step * args.episode_per_epoch)/args.num_envs) == 0:
             for _ in range(args.metra_discriminator_epochs):
                 # Metra training
                 beta_metra = args.beta_ratio
