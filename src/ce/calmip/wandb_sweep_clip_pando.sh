@@ -191,8 +191,8 @@ EOF
 cat <<EOT > $temp_slurm_script
 #!/bin/bash
 #SBATCH --nodes=1
-#SBATCH --exclusive
-#SBATCH --time=10:00:00
+#SBATCH --time=48:00:00
+#SBATCH --partition=long
 #SBATCH --job-name=sweep-$algo-$type_id
 #SBATCH --output=$path_file_err_out$algo_id-$type_id-%j.out
 #SBATCH --error=$path_file_err_out$algo_id-$type_id-%j.err
@@ -235,8 +235,8 @@ echo "Sweep ID: \$sweep_id_cmd"
 
 
 
-for seed in {0..1}; do
-    cmd="poetry run \$sweep_id_cmd"
+for seed in {0..0}; do
+    cmd="srun poetry run \$sweep_id_cmd"
     echo \$cmd
     \$cmd &
     sleep 1
