@@ -28,7 +28,8 @@ class Wenv(gym.Env):
                  render_settings = {'x_lim': [-1, 1], 'y_lim': [-1, 1]},
                  xp_id = None, 
                  type_id = 'Maze', 
-                 set_gif = False):
+                 set_gif = False, 
+                 tau = 0.001):
         super(Wenv, self).__init__()
         self.env_id = env_id
         self.xp_id = xp_id
@@ -55,6 +56,10 @@ class Wenv(gym.Env):
         self.episode_reward = 0
         self.limits = list(render_settings.values())
         self.transposed_limits = np.array(self.limits).transpose()
+        # env spec 
+        self._mean = np.zeros(self.observation_space.shape, dtype=np.float32)
+        self._std = np.ones(self.observation_space.shape, dtype=np.float32)
+        self.tau = tau
         # figure 
         if render_bool_matplot:
             # check HOSTNAME
@@ -121,6 +126,9 @@ class Wenv(gym.Env):
         i['r'] = self.episode_reward
         # reset last observation
         self.last_observation = obs
+        # update mean + std
+        self._mean = self.tau*obs + (1-self.tau)*self._mean
+        self._std = self.tau*np.square(obs-self._mean) + (1-self.tau)*self._std
         return obs, i #if not self.type_id == 'atari' else obs
     
 
@@ -146,7 +154,14 @@ class Wenv(gym.Env):
         # update episode length and reward
         info['l'] = self.episode_length
         info['r'] = self.episode_reward
+        # update mean + std
+        self._mean = self.tau*obs + (1-self.tau)*self._mean
+        self._std = self.tau*np.square(obs-self._mean) + (1-self.tau)*self._std
         return obs, reward, done, trunc, info #if not self.type_id == 'atari' else obs, reward, done, info
+    
+    def normalize(self, obs):
+        return (obs - self.mean)/(self.std+1e-6)
+
     
     
     def render(self):
@@ -316,6 +331,20 @@ class Wenv(gym.Env):
     @property
     def unwrapped(self):
         return self.env.unwrapped
+    
+    @property
+    def mean(self):
+        return self._mean[np.newaxis, :]
+    @property
+    def std(self):
+        return self._std[np.newaxis, :]
+    
+    @mean.setter
+    def mean(self, value):
+        self._mean = value
+    @std.setter
+    def std(self, value):
+        self._std = value
     
 if __name__ == '__main__':
     import envs

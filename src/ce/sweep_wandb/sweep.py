@@ -47,7 +47,7 @@ def run_script(file_algo, hp_cmd, seed, env_id, slurm):
     # if slurm : 
     #     cmd = f"srun -n1 -c7 --output=- --error=- poetry run python {file_algo} {hp_cmd} --seed {seed} --env_id {env_id}"
     # else : 
-    cmd = f"poetry run python {file_algo} {hp_cmd} --seed {seed} --env_id {env_id}"
+    cmd = f"srun -n1 -c7 poetry run python {file_algo} {hp_cmd} --seed {seed} --env_id {env_id}"
     print(cmd)
     result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
     last_line = result.stdout.strip().split('\n')[-1]
