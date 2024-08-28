@@ -556,8 +556,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             for _ in range(args.metra_discriminator_epochs):
                 # Metra training
                 beta_metra = args.beta_ratio
-                batch_inds = np.random.randint(rb.pos - size_rho ,rb.pos, int(args.metra_batch_size))
-                # batch_inds = np.random.randint(0 ,rb.pos, int(args.metra_batch_size))                    
+                # batch_inds = np.random.randint(rb.pos - size_rho ,rb.pos, int(args.metra_batch_size))
+                batch_inds = np.random.randint(0 ,rb.pos, int(args.metra_batch_size))                    
                 batch_inds_env = np.random.randint(0, args.num_envs, args.metra_batch_size)
                 batch_obs = torch.tensor((rb.observations[batch_inds, batch_inds_env] - obs_mean) / obs_std , device=device)
                 batch_next_obs = torch.tensor((rb.next_observations[batch_inds, batch_inds_env] -obs_mean) / obs_std , device=device)
