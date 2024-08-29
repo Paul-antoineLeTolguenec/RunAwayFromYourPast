@@ -159,7 +159,7 @@ else
 fi
 
 # Générer le fichier YAML temporaire pour le sweep
-sweep_yaml="temp_config.yaml"
+sweep_yaml="${algo_id}_temp_config.yaml"
 cat <<EOF > $sweep_yaml
 project: "run_away_sweep"
 name: "$algo_id-sweep-$type_id"
@@ -194,9 +194,9 @@ cat <<EOT > $temp_slurm_script
 #SBATCH --nodes=1
 #SBATCH --exclusive
 #SBATCH --time=10:00:00
-#SBATCH --job-name=sweep-$algo-$type_id
-#SBATCH --output=$path_file_err_out$algo_id-$type_id-%j.out
-#SBATCH --error=$path_file_err_out$algo_id-$type_id-%j.err
+#SBATCH --job-name=sweep-${algo_id}-${type_id}
+#SBATCH --output=${path_file_err_out}${algo_id}-${type_id}-%j.out
+#SBATCH --error=${path_file_err_out}${algo_id}-${type_id}-%j.err
 #SBATCH --mail-user=paul-antoine.le-tolguenec@isae.fr
 #SBATCH --mail-type=FAIL
 #SBATCH --mem=170G          # Set a memory limit
@@ -264,4 +264,4 @@ rm $temp_slurm_script
 
 
 # delete config 
-# rm $sweep_yaml
+rm $sweep_yaml
