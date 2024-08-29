@@ -6,7 +6,7 @@
         "v1klsac": {
                                         "cuda": true,
                                         "track": true,
-                                        "wandb_project_name": "run_away_sac",
+                                        "wandb_project_name": "run_away_test",
                                         "make_gif": true,
                                         "fig_frequency": 50000,
                                         "metric_freq": 1000,
@@ -30,7 +30,7 @@
         "v2klsac": {
                                         "cuda": true,
                                         "track": true,
-                                        "wandb_project_name": "run_away_sac",
+                                        "wandb_project_name": "run_away_test",
                                         "make_gif": true,
                                         "fig_frequency": 50000,
                                         "metric_freq": 1000,
@@ -59,7 +59,7 @@
         "v1wsac": {
                                         "cuda": true,
                                         "track": true,
-                                        "wandb_project_name": "run_away_sac",
+                                        "wandb_project_name": "run_away_test",
                                         "make_gif": true,
                                         "fig_frequency": 50000,
                                         "metric_freq": 1000,
@@ -80,6 +80,7 @@
                                         "nb_episodes_rho": 4,
                                         "pad_rho": 8,
                                         "beta_noise": 1.0,
+                                        "tau_update": 0.001,
                                         "keep_extrinsic_reward": false,
                                         "coef_extrinsic": 1.0,
                                         "coef_intrinsic": 1.0
@@ -87,7 +88,7 @@
         "v2wsac": {
                                         "cuda": true,
                                         "track": true,
-                                        "wandb_project_name": "run_away_sac",
+                                        "wandb_project_name": "run_away_test",
                                         "make_gif": true,
                                         "fig_frequency": 1000,
                                         "metric_freq": 1000,
@@ -118,6 +119,7 @@
                                         "metra_batch_size": 256,
                                         "metra_discriminator_epochs": 10,
                                         "lip_cte_metra" : 1.0,
+                                        "tau_update" : 0.001,
                                         "keep_extrinsic_reward": false,
                                         "coef_extrinsic": 1.0,
                                         "coef_intrinsic": 1.0
@@ -130,7 +132,7 @@
         "v1klsac": {
                                         "cuda": true,
                                         "track": true,
-                                        "wandb_project_name": "run_away_sac",
+                                        "wandb_project_name": "run_away_test",
                                         "make_gif": true,
                                         "fig_frequency": 50000,
                                         "metric_freq": 1000,
@@ -154,7 +156,7 @@
         "v2klsac": {
                                         "cuda": true,
                                         "track": true,
-                                        "wandb_project_name": "run_away_sac",
+                                        "wandb_project_name": "run_away_test",
                                         "make_gif": true,
                                         "fig_frequency": 50000,
                                         "metric_freq": 1000,
@@ -183,7 +185,7 @@
         "v1wsac": {
                                         "cuda": true,
                                         "track": true,
-                                        "wandb_project_name": "run_away_sac",
+                                        "wandb_project_name": "run_away_test",
                                         "make_gif": true,
                                         "fig_frequency": 50000,
                                         "metric_freq": 1000,
@@ -203,6 +205,7 @@
                                         "nb_episodes_rho": 4,
                                         "pad_rho": 8,
                                         "beta_noise": 1.0,
+                                        "tau_update": 0.001,
                                         "keep_extrinsic_reward": false,
                                         "coef_extrinsic": 1.0,
                                         "coef_intrinsic": 1.0
@@ -210,7 +213,7 @@
         "v2wsac": {
                                         "cuda": true,
                                         "track": true,
-                                        "wandb_project_name": "run_away_sac",
+                                        "wandb_project_name": "run_away_test",
                                         "make_gif": true,
                                         "fig_frequency": 50000,
                                         "metric_freq": 1000,
@@ -241,6 +244,7 @@
                                         "metra_batch_size": 256,
                                         "metra_discriminator_epochs": 200,
                                         "lip_cte_metra" : 1.0,
+                                        "tau_update" : 0.001,
                                         "keep_extrinsic_reward": false,
                                         "coef_extrinsic": 1.0,
                                         "coef_intrinsic": 1.0
@@ -253,7 +257,7 @@
             "v1klsac": {
                                         "cuda": true,
                                         "track": true,
-                                        "wandb_project_name": "run_away_sac",
+                                        "wandb_project_name": "run_away_test",
                                         "make_gif": true,
                                         "fig_frequency": 50000,
                                         "metric_freq": 1000,
@@ -277,7 +281,7 @@
         "v2klsac": {
                                         "cuda": true,
                                         "track": true,
-                                        "wandb_project_name": "run_away_sac",
+                                        "wandb_project_name": "run_away_test",
                                         "make_gif": true,
                                         "fig_frequency": 50000,
                                         "metric_freq": 1000,
@@ -306,9 +310,9 @@
         "v1wsac": {
                                         "cuda": true,
                                         "track": true,
-                                        "wandb_project_name": "run_away_sac",
+                                        "wandb_project_name": "run_away_test",
                                         "make_gif": true,
-                                        "fig_frequency": 50000,
+                                        "fig_frequency": 1000,
                                         "metric_freq": 1000,
                                         "total_timesteps": 1000000,
                                         "learning_starts": 10000,
@@ -326,6 +330,7 @@
                                         "nb_episodes_rho": 4,
                                         "pad_rho": 8,
                                         "beta_noise": 1.0,
+                                        "tau_update": 0.001,
                                         "keep_extrinsic_reward": false,
                                         "coef_extrinsic": 1.0,
                                         "coef_intrinsic": 1.0
@@ -333,7 +338,7 @@
         "v2wsac": {
                                         "cuda": true,
                                         "track": true,
-                                        "wandb_project_name": "run_away_sac",
+                                        "wandb_project_name": "run_away_test",
                                         "make_gif": true,
                                         "fig_frequency": 5000,
                                         "metric_freq": 1000,
@@ -364,6 +369,7 @@
                                         "metra_batch_size": 256,
                                         "metra_discriminator_epochs": 100,
                                         "lip_cte_metra" : 1.0,
+                                        "tau_update" : 0.001,
                                         "keep_extrinsic_reward": false,
                                         "coef_extrinsic": 1.0,
                                         "coef_intrinsic": 1.0
