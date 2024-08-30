@@ -512,7 +512,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         obs = next_obs
 
         # discriminator training
-        if global_step*args.num_envs > args.learning_starts and  global_step % size_rho == 0:
+        if global_step*args.num_envs > args.learning_starts and  (global_step*args.num_envs) % size_rho == 0:
             print('nb discriminator step : ', int(size_rho/args.discriminator_batch_size * args.discriminator_epochs))
             for discriminator_step in range(int(size_rho/args.discriminator_batch_size * args.discriminator_epochs)):
                 # batch un
@@ -608,7 +608,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 qf2_next_target = qf2_target(b_next_observations, b_z, next_state_actions)
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
                 # rewards
-                wasserstein_reward = (discriminator(b_next_observations) - discriminator(b_observations)).flatten() if global_step > args.metra_alone_epochs*size_rho else torch.zeros_like(b_rewards).flatten().to(device)
+                wasserstein_reward = (discriminator(b_next_observations) - discriminator(b_observations)).flatten() if global_step > args.metra_alone_epochs*max_step else torch.zeros_like(b_rewards).flatten().to(device)
                 metra_reward = ((discriminator_metra(b_next_observations) - discriminator_metra(b_observations)) * b_z).sum(dim = -1) 
                 # print('metra reward shape : ', metra_reward.shape)
                 intrinsic_reward = args.lambda_wasserstein * wasserstein_reward + args.lambda_reward_metra * metra_reward 
