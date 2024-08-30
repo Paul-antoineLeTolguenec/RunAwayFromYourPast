@@ -140,13 +140,13 @@ class Args:
     """ number of episode per epoch """
     lip_cte_metra: float = 1.0
     """ the constant of the lipschitz for metra """
-    metra_alone_epochs: int = 8
+    metra_alone_epochs: int = 16
     """ number of epochs for metra alone """
     tau_update: float = 0.001
     """ tau update for mean and std """
+    normalize_obs : bool = True
+    """ normalize observation """
    
-
-
 
     # rewards specific arguments
     keep_extrinsic_reward: bool = False
@@ -451,7 +451,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         else:
             with torch.no_grad():
                 eps = eps_tm[np.arange(args.num_envs), nb_step_per_env]
-                normalized_obs = (obs - obs_mean) / obs_std
+                normalized_obs = (obs - obs_mean) / obs_std if args.normalize_obs else obs
                 actions, _, _ = actor.get_action(torch.Tensor(normalized_obs).to(device), torch.tensor(z).to(device), eps=torch.Tensor(eps).to(device))
                 actions = actions.detach().cpu().numpy()
 
@@ -513,18 +513,19 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
         # discriminator training
         if global_step*args.num_envs > args.learning_starts and  global_step % size_rho == 0:
+            print('nb discriminator step : ', int(size_rho/args.discriminator_batch_size * args.discriminator_epochs))
             for discriminator_step in range(int(size_rho/args.discriminator_batch_size * args.discriminator_epochs)):
                 # batch un
                 batch_inds_un = fixed_idx_un[np.random.randint(0, max(args.min_un,len(fixed_idx_un)-args.pad_rho * max_step * args.beta_ratio), args.discriminator_batch_size)]
                 batch_inds_envs_un = np.random.randint(0, args.num_envs, args.discriminator_batch_size)
-                observations_un = torch.Tensor((rb.observations[batch_inds_un, batch_inds_envs_un]- obs_mean) / obs_std).to(device)
-                next_observations_un = torch.Tensor((rb.next_observations[batch_inds_un, batch_inds_envs_un] - obs_mean) / obs_std).to(device)
+                observations_un = torch.Tensor((rb.observations[batch_inds_un, batch_inds_envs_un]- obs_mean) / obs_std).to(device) if args.normalize_obs else torch.Tensor(rb.observations[batch_inds_un, batch_inds_envs_un]).to(device)
+                next_observations_un = torch.Tensor((rb.next_observations[batch_inds_un, batch_inds_envs_un] - obs_mean) / obs_std).to(device) if args.normalize_obs else torch.Tensor(rb.next_observations[batch_inds_un, batch_inds_envs_un]).to(device)
                 dones_un = torch.Tensor(rb.dones[batch_inds_un, batch_inds_envs_un]).to(device)
                 # batch rho 
                 batch_inds_rho = np.random.randint(rb.pos-size_rho, rb.pos, args.discriminator_batch_size)
                 batch_inds_envs_rho = np.random.randint(0, args.num_envs, args.discriminator_batch_size)
-                observations_rho = torch.Tensor((rb.observations[batch_inds_rho, batch_inds_envs_rho] - obs_mean) / obs_std).to(device)
-                next_observations_rho = torch.Tensor((rb.next_observations[batch_inds_rho, batch_inds_envs_rho] - obs_mean) / obs_std).to(device)
+                observations_rho = torch.Tensor((rb.observations[batch_inds_rho, batch_inds_envs_rho] - obs_mean) / obs_std).to(device) if args.normalize_obs else torch.Tensor(rb.observations[batch_inds_rho, batch_inds_envs_rho]).to(device)
+                next_observations_rho = torch.Tensor((rb.next_observations[batch_inds_rho, batch_inds_envs_rho] - obs_mean) / obs_std).to(device) if args.normalize_obs else torch.Tensor(rb.next_observations[batch_inds_rho, batch_inds_envs_rho]).to(device)
                 dones_rho = torch.Tensor(rb.dones[batch_inds_rho, batch_inds_envs_rho]).to(device)
                 # train the discriminator
                 constraints_rho = discriminator.constraint(observations_rho, next_observations_rho, dones_rho)
@@ -559,8 +560,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 # batch_inds = np.random.randint(rb.pos - size_rho ,rb.pos, int(args.metra_batch_size))
                 batch_inds = np.random.randint(0 ,rb.pos, int(args.metra_batch_size))                    
                 batch_inds_env = np.random.randint(0, args.num_envs, args.metra_batch_size)
-                batch_obs = torch.tensor((rb.observations[batch_inds, batch_inds_env] - obs_mean) / obs_std , device=device)
-                batch_next_obs = torch.tensor((rb.next_observations[batch_inds, batch_inds_env] -obs_mean) / obs_std , device=device)
+                batch_obs = torch.tensor((rb.observations[batch_inds, batch_inds_env] - obs_mean) / obs_std , device=device) if args.normalize_obs else torch.Tensor(rb.observations[batch_inds, batch_inds_env]).to(device)
+                batch_next_obs = torch.tensor((rb.next_observations[batch_inds, batch_inds_env] -obs_mean) / obs_std , device=device) if args.normalize_obs else torch.Tensor(rb.next_observations[batch_inds, batch_inds_env]).to(device)
                 batch_z = torch.tensor(rb.zs[batch_inds, batch_inds_env], device=device)
                 batch_dones = torch.tensor(rb.dones[batch_inds, batch_inds_env], device=device)
                 loss_metra, inner_product_loss = discriminator_metra.lipshitz_loss(batch_obs, batch_next_obs, batch_z, batch_dones) 
@@ -595,8 +596,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             # update mean + std obs
             obs_mean = obs_mean * (1-args.tau_update) + args.tau_update * b_observations.mean(axis=0)
             obs_std = obs_std * (1-args.tau_update) + args.tau_update * b_observations.std(axis=0)
-            b_observations =   torch.tensor((b_observations - obs_mean) / obs_std, device = device)   
-            b_next_observations = torch.tensor((rb.next_observations[b_inds, b_inds_envs] - obs_mean) / obs_std, device = device)
+            b_observations =   torch.tensor((b_observations - obs_mean) / obs_std, device = device)  if args.normalize_obs else torch.tensor(b_observations, device = device)  
+            b_next_observations = torch.tensor((rb.next_observations[b_inds, b_inds_envs] - obs_mean) / obs_std, device = device) if args.normalize_obs else torch.tensor(rb.next_observations[b_inds, b_inds_envs], device = device)
             b_actions =  torch.tensor(rb.actions[b_inds, b_inds_envs], device = device) 
             b_rewards =  torch.tensor(rb.rewards[b_inds, b_inds_envs], device = device) 
             b_dones = torch.tensor(rb.dones[b_inds, b_inds_envs], device = device) 

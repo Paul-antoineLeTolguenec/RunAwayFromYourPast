@@ -98,7 +98,7 @@ class Args:
     """the bound of the classifier"""
     beta_ratio: float = 1/32 #1/64 if maze
     """the ratio of the beta"""
-    nb_episodes_rho: int = 4
+    nb_episodes_rho: int = 8
     """the number of episodes for the rho"""
     pad_rho: int = 4
     """the padding of the rho"""
@@ -108,6 +108,8 @@ class Args:
     """the beta of the noise"""
     min_un: int = 16
     """the minimum number of un"""
+    tau_update: float = 0.001
+    """the update rate for mean and std of the obersevation"""
 
     # rewards specific arguments
     keep_extrinsic_reward: bool = False
@@ -320,6 +322,10 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         n_envs=args.num_envs,
     )
     # add time 
+    obs_mean = torch.zeros(np.array(envs.single_observation_space.shape).prod(), dtype=torch.float32).to(device)
+    obs_std = torch.ones(np.array(envs.single_observation_space.shape).prod(), dtype=torch.float32).to(device)
+    rwd_mean = torch.zeros(1, dtype=torch.float32).to(device)
+    rwd_std = torch.ones(1, dtype=torch.float32).to(device)
     rb.times = np.zeros((args.buffer_size, args.num_envs), dtype=int)
     # specific un 
     max_step = config[args.env_id]['kwargs']['max_episode_steps']
@@ -348,7 +354,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         else:
             with torch.no_grad():
                 eps = eps_tm[np.arange(args.num_envs), nb_step_per_env]
-                actions, _, _ = actor.get_action(torch.Tensor(obs).to(device), eps=torch.Tensor(eps).to(device))
+                # normalized_obs = (torch.Tensor(obs).to(device) - obs_mean) / obs_std
+                normalized_obs = torch.Tensor(obs).to(device)
+                actions, _, _ = actor.get_action(normalized_obs, eps=torch.Tensor(eps).to(device))
                 actions = actions.detach().cpu().numpy()
 
         # TRY NOT TO MODIFY: execute the game and log data.
@@ -412,16 +420,17 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             
             for classifier_step in range(int(size_rho/args.classifier_batch_size * args.classifier_epochs)):
                 # batch un
-                batch_inds_un = fixed_idx_un[np.random.randint(0, max(args.min_un,len(fixed_idx_un)-args.pad_rho * max_step * args.beta_ratio), args.classifier_batch_size)]
+                batch_inds_un = np.concatenate([fixed_idx_un[np.random.randint(0, max(args.min_un,len(fixed_idx_un)-args.pad_rho * max_step * args.beta_ratio), int((1-args.beta_ratio)*args.classifier_batch_size))],
+                                                np.random.randint(max(rb.pos-size_rho, 0), rb.pos, int(args.beta_ratio*args.classifier_batch_size))])[:args.classifier_batch_size]
                 batch_inds_envs_un = np.random.randint(0, args.num_envs, args.classifier_batch_size)
-                observations_un = torch.Tensor(rb.observations[batch_inds_un, batch_inds_envs_un]).to(device)
-                next_observations_un = torch.Tensor(rb.next_observations[batch_inds_un, batch_inds_envs_un]).to(device)
+                observations_un = (torch.Tensor(rb.observations[batch_inds_un, batch_inds_envs_un]).to(device) - obs_mean) / obs_std
+                next_observations_un = (torch.Tensor(rb.next_observations[batch_inds_un, batch_inds_envs_un]).to(device) - obs_mean) / obs_std
                 dones_un = torch.Tensor(rb.dones[batch_inds_un, batch_inds_envs_un]).to(device)
                 # batch rho 
                 batch_inds_rho = np.random.randint(int(rb.pos - size_rho / args.num_envs), rb.pos, args.classifier_batch_size)
                 batch_inds_envs_rho = np.random.randint(0, args.num_envs, args.classifier_batch_size)
-                observations_rho = torch.Tensor(rb.observations[batch_inds_rho, batch_inds_envs_rho]).to(device)
-                next_observations_rho = torch.Tensor(rb.next_observations[batch_inds_rho, batch_inds_envs_rho]).to(device)
+                observations_rho = (torch.Tensor(rb.observations[batch_inds_rho, batch_inds_envs_rho]).to(device) - obs_mean) / obs_std
+                next_observations_rho = (torch.Tensor(rb.next_observations[batch_inds_rho, batch_inds_envs_rho]).to(device) - obs_mean) / obs_std
                 dones_rho = torch.Tensor(rb.dones[batch_inds_rho, batch_inds_envs_rho]).to(device)
                 # train the classifier
                 classifier_loss = classifier.loss(observations_rho, observations_un)
@@ -439,7 +448,18 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         if global_step*args.num_envs > args.learning_starts and global_step % args.learning_frequency == 0:
             # standard sampling
             data = rb.sample(args.batch_size)
-            b_observations, b_next_observations, b_actions, b_rewards, b_dones = data.observations, data.next_observations, data.actions, data.rewards, data.dones        
+            b_observations, b_next_observations, b_actions, b_rewards, b_dones = data.observations, data.next_observations, data.actions, data.rewards, data.dones   
+            # update obs_mean and obs_std
+            obs_mean = (1-args.tau_update) * obs_mean + args.tau_update * b_observations.mean(dim=0)
+            obs_std = (1-args.tau_update) * obs_std + args.tau_update * b_observations.std(dim=0)
+            # update reward mean and std
+            rwd_mean = (1-args.tau_update) * rwd_mean + args.tau_update * b_rewards.mean(dim=0)
+            rwd_std = (1-args.tau_update) * rwd_std + args.tau_update * b_rewards.std(dim=0)
+            b_rewards = (b_rewards - rwd_mean) / rwd_std
+            # normalize the observations
+            # b_observations = (b_observations - obs_mean) / obs_std
+            # b_next_observations = (b_next_observations - obs_mean) / obs_std  
+            b_rewards = (b_rewards - rwd_mean) / rwd_std
             with torch.no_grad():
                 next_state_actions, next_state_log_pi, _ = actor.get_action(b_next_observations)
                 qf1_next_target = qf1_target(b_next_observations, next_state_actions)
@@ -453,6 +473,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     b_rewards = b_rewards.flatten() * args.coef_extrinsic + intrinsic_reward.flatten() * args.coef_intrinsic
                 else:
                     b_rewards = intrinsic_reward.flatten() * args.coef_intrinsic 
+                    
+
                 # rewards = b_rewards.flatten() 
                 next_q_value = b_rewards + (1 - b_dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
 
