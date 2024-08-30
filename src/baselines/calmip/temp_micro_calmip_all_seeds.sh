@@ -108,7 +108,7 @@ for seed in {0..4}; do
     cmd="poetry run python $algo --env_id $env_id \$hyperparams --seed \$seed"
     echo \$cmd 
     # \$cmd
-    srun -n1 -c7 proxychains4 \$cmd &
+    \$cmd &
 done
 
 wait 
