@@ -107,7 +107,7 @@ class Args:
     """ Lagrange parameter initialization """
     CSD_batch_size: int = 256
     """ bath size for CSD  """
-    CSD_discriminator_epochs: int = 50
+    CSD_discriminator_epochs: int = 100
     """ number of epochs for CSD discriminator """
     CSD_max_step: int = 200
     """ max step for CSD """

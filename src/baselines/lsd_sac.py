@@ -107,7 +107,7 @@ class Args:
     """ Lagrange parameter initialization """
     LSD_batch_size: int = 256
     """ bath size for LSD  """
-    LSD_discriminator_epochs: int = 50
+    LSD_discriminator_epochs: int = 100
     """ number of epochs for LSD discriminator """
     LSD_max_step: int = 200
     """ max step for LSD """

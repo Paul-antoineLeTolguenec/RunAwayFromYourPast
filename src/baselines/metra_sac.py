@@ -106,7 +106,7 @@ class Args:
     """ Lagrange parameter initialization """
     metra_batch_size: int = 256
     """ bath size for metra  """
-    metra_discriminator_epochs: int = 50
+    metra_discriminator_epochs: int = 100
     """ number of epochs for metra discriminator """
     metra_max_step: int = 200
     """ max step for metra """
