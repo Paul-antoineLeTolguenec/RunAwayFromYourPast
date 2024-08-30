@@ -33,7 +33,8 @@ cat <<EOT > $temp_slurm_script
 #SBATCH --nodes=1
 #SBATCH --ntasks=5
 #SBATCH --cpus-per-task=7
-#SBATCH --time=10:00:00
+#SBATCH --time=24:00:00
+#SBATCH --exclusive
 #SBATCH --job-name=$algo_id-$env_id
 #SBATCH --output=$path_file_err_out$algo_id-$env_id-%j.out
 #SBATCH --error=$path_file_err_out$algo_id-$env_id-%j.err

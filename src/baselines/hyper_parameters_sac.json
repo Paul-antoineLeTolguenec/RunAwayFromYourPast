@@ -1,6 +1,24 @@
 {
 "hyperparameters": {
         "maze": {
+                "sac_vanilla": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                    "buffer_size": 5000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": false,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_sac_explore",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 500000
+                },
                 "apt_sac": {
                     "cuda": true,
                     "track": true,
@@ -11,7 +29,7 @@
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
@@ -31,7 +49,7 @@
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
@@ -51,7 +69,7 @@
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
@@ -71,7 +89,7 @@
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
@@ -90,7 +108,7 @@
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
@@ -110,7 +128,7 @@
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
@@ -131,7 +149,7 @@
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
@@ -152,7 +170,7 @@
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
@@ -173,7 +191,7 @@
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
@@ -194,7 +212,7 @@
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
@@ -207,23 +225,41 @@
                 }
             },
         "robotics": {
+            "sac_vanilla": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                   "buffer_size": 10000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": false,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_sac_explore",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 5000000
+                },
                 "apt_sac": {
                     "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                   "buffer_size": 10000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
                     
                     "make_gif": true,
-                    "total_timesteps": 500000
+                    "total_timesteps": 5000000
                     
                     
                 },
@@ -233,17 +269,17 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                   "buffer_size": 10000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
                     
                     "make_gif": true,
-                    "total_timesteps": 500000
+                    "total_timesteps": 5000000
                     
                     
                 },
@@ -253,17 +289,17 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                   "buffer_size": 10000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
                     
                     "make_gif": true,
-                    "total_timesteps": 500000
+                    "total_timesteps": 5000000
                     
                     
                 },
@@ -273,17 +309,17 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                   "buffer_size": 10000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
                     
                     "make_gif": true,
-                    "total_timesteps": 500000
+                    "total_timesteps": 5000000
                     
                     
                 },
@@ -293,17 +329,17 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                   "buffer_size": 10000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
                     
                     "make_gif": true,
-                    "total_timesteps": 500000
+                    "total_timesteps": 5000000
                     
                     
                 },
@@ -313,17 +349,17 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                   "buffer_size": 10000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
                     
                     "make_gif": true,
-                    "total_timesteps": 500000
+                    "total_timesteps": 5000000
                     
                     ,
                     "nb_skill": 4
@@ -334,17 +370,17 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                   "buffer_size": 10000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
                     
                     "make_gif": true,
-                    "total_timesteps": 500000
+                    "total_timesteps": 5000000
                     
                     ,
                     "nb_skill": 4
@@ -355,17 +391,17 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                   "buffer_size": 10000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
                     
                     "make_gif": true,
-                    "total_timesteps": 500000
+                    "total_timesteps": 5000000
                     
                     ,
                     "nb_skill": 4
@@ -376,17 +412,17 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                   "buffer_size": 10000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
                     
                     "make_gif": true,
-                    "total_timesteps": 500000
+                    "total_timesteps": 5000000
                     
                     ,
                     "nb_skill": 4
@@ -397,34 +433,52 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                   "buffer_size": 10000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
                     
                     "make_gif": true,
-                    "total_timesteps": 500000
+                    "total_timesteps": 5000000
                     
                     ,
                     "nb_skill": 4
                 }
             },
         "mujoco": {
+            "sac_vanilla": {
+                    "cuda": true,
+                    "track": true,
+                    
+                    "fig_frequency": 50000,
+                    "metric_freq": 1000,
+                   "buffer_size": 10000000,
+                    "learning_starts": 10000,
+                    "alpha": 0.05,
+                    "num_envs": 4,
+                    "keep_extrinsic_reward": false,
+                    "coef_extrinsic": 1.0,
+                    "coef_intrinsic": 1.0,
+                    "wandb_project_name": "run_away_sac_explore",
+                    
+                    "make_gif": true,
+                    "total_timesteps": 5000000
+                },
                 "apt_sac": {
                     "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                   "buffer_size": 10000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
@@ -440,11 +494,11 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                   "buffer_size": 10000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
@@ -460,11 +514,11 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                   "buffer_size": 10000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
@@ -480,11 +534,11 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                    "buffer_size": 10000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
@@ -500,11 +554,11 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                    "buffer_size": 10000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
@@ -520,11 +574,11 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                    "buffer_size": 10000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
@@ -541,11 +595,11 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                    "buffer_size": 10000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
@@ -562,11 +616,11 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                    "buffer_size": 10000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
@@ -583,11 +637,11 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                    "buffer_size": 10000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
@@ -604,11 +658,11 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                    "buffer_size": 10000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
-                    "keep_extrinsic_reward": true,
+                    "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",

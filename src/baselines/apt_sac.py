@@ -414,9 +414,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     encoder_loss.backward()
                     optimizer_encoder.step()
                     mean_encoder_loss += encoder_loss.item()
-            wandb.log({
-                "losses/encoder_loss" : encoder_loss.item(),
-                }, step = global_step) if args.track else None
+                    wandb.log({
+                        "losses/encoder_loss" : encoder_loss.item(),
+                        }, step = global_step) if args.track else None
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
             data = rb.sample(args.batch_size)
