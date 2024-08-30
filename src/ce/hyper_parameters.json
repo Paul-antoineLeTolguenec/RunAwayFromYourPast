@@ -367,7 +367,7 @@
                                         "lambda_wasserstein": 1.0,
                                         "nb_skill": 4,
                                         "lr_discriminator_metra": 0.0001,
-                                        "lambda_reward_metra": 1.0,
+                                        "lambda_reward_metra": 0.5,
                                         "epsilon_metra": 0.001,
                                         "lr_lambda_metra": 0.1,
                                         "lambda_metra_init": 30.0,
