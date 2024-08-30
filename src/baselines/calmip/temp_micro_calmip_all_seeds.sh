@@ -30,11 +30,10 @@ mkdir -p "$tmp_dir"
 cat <<EOT > $temp_slurm_script
 #!/bin/bash
 
-#SBATCH --nodes=1
+#SBATCH --nodes=5
 #SBATCH --ntasks=5
-#SBATCH --cpus-per-task=7
+#SBATCH --cpus-per-task=14
 #SBATCH --time=24:00:00
-#SBATCH --exclusive
 #SBATCH --job-name=$algo_id-$env_id
 #SBATCH --output=$path_file_err_out$algo_id-$env_id-%j.out
 #SBATCH --error=$path_file_err_out$algo_id-$env_id-%j.err
@@ -108,7 +107,7 @@ for seed in {0..4}; do
     cmd="poetry run python $algo --env_id $env_id \$hyperparams --seed \$seed"
     echo \$cmd 
     # \$cmd
-    \$cmd &
+    srun -N1 -n1 -c14 \$cmd &
 done
 
 wait 

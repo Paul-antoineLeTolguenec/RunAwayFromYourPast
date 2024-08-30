@@ -136,29 +136,29 @@ config = {
     'render_settings': {'x_lim': [-5, 5], 'y_lim': [-5, 5], 'z_lim': [0, 2]}
 },
 
-"HumanoidStandup-v4": {
-    'type_id': 'mujoco',
-    'kwargs': {'render_mode': 'rgb_array', 
-               'max_episode_steps': 1000},
-    'coverage_idx': np.array([0,1,2]),
-    'render_settings': {'x_lim': [-10, 10], 'y_lim': [-10, 10], 'z_lim': [0, 2]}
-},
-"Reacher-v4": {
-    'type_id': 'mujoco',
-    'kwargs': {'render_mode': 'rgb_array', 
-               'max_episode_steps': 50},
-    'coverage_idx': np.array([8,9]),
-    'render_settings': {'x_lim': [-0.5, 0.5], 'y_lim': [-0.5, 0.5]}
-},
-"Swimmer-v3": {
-    'type_id': 'mujoco',
-    'kwargs': {'render_mode': 'rgb_array', 
-               'reset_noise_scale': 0.0, 
-               'exclude_current_positions_from_observation': False, 
-               'max_episode_steps': 1000},
-    'coverage_idx': np.array([0,1]),
-    'render_settings': {'x_lim': [-5, 5], 'y_lim': [-5, 5]}
-},
+# "HumanoidStandup-v4": {
+#     'type_id': 'mujoco',
+#     'kwargs': {'render_mode': 'rgb_array', 
+#                'max_episode_steps': 1000},
+#     'coverage_idx': np.array([0,1,2]),
+#     'render_settings': {'x_lim': [-10, 10], 'y_lim': [-10, 10], 'z_lim': [0, 2]}
+# },
+# "Reacher-v4": {
+#     'type_id': 'mujoco',
+#     'kwargs': {'render_mode': 'rgb_array', 
+#                'max_episode_steps': 50},
+#     'coverage_idx': np.array([8,9]),
+#     'render_settings': {'x_lim': [-0.5, 0.5], 'y_lim': [-0.5, 0.5]}
+# },
+# "Swimmer-v3": {
+#     'type_id': 'mujoco',
+#     'kwargs': {'render_mode': 'rgb_array', 
+#                'reset_noise_scale': 0.0, 
+#                'exclude_current_positions_from_observation': False, 
+#                'max_episode_steps': 1000},
+#     'coverage_idx': np.array([0,1]),
+#     'render_settings': {'x_lim': [-5, 5], 'y_lim': [-5, 5]}
+# },
 
 
 ##########################       ATARI       ############################################
