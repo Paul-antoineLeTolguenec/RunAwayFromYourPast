@@ -40,7 +40,7 @@ class Args:
     """whether to capture videos of the agent performances (check out `videos` folder)"""
     use_hp_file : bool = False
     """if toggled, will load the hyperparameters from file"""
-    hp_file: str = "hyper_parameters.json"
+    hp_file: str = "hyper_parameters_sac.json"
     """the path to the hyperparameters json file"""
     sweep_mode: bool = False
     """if toggled, will log the sweep id to wandb"""
@@ -87,7 +87,10 @@ class Args:
     learning_frequency: int = 1
     """the frequency of training the SAC"""
      
-    
+    # METRA specific
+    beta_noise: float = 0.0
+    """the beta of the noise"""
+   
     # METRA specific
     nb_skill: int = 4
     """the number of skills"""
@@ -111,11 +114,13 @@ class Args:
     """ number of episode per epoch """
     lip_cte_metra: float = 1.0
     """ the constant of the lipschitz for metra """
-    metra_alone_epochs: int = 8
-    """ number of epochs for metra alone """
+    tau_update: float = 0.001
+    """ tau update for mean and std """
+    epsilon_metra: float = 1e-3 
+    """ epsilon for metra """
+    nb_rho_episodes: int = 4
+    """ number of episodes for rho """
    
-
-
 
     # rewards specific arguments
     keep_extrinsic_reward: bool = False
@@ -269,6 +274,10 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     args.num_envs = args.nb_skill
     z = -1/(args.nb_skill-1)*torch.ones((args.nb_skill, args.nb_skill)).to(device) + (1+1/(args.nb_skill-1))*torch.eye(args.nb_skill).to(device)
     z = z/z.norm(dim=0)
+    # z = torch.tensor(np.array([[0,1], 
+    #                             [0,-1], 
+    #                             [1, 0], 
+    #                             [-1,0]], dtype=np.float32))
     z_one_hot = torch.eye(args.nb_skill).to(device)
 
 
@@ -329,7 +338,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                                                 env_name = args.env_id,
                                                 device = device,
                                                 lip_cte = args.lip_cte_metra,
-                                                eps = args.epsilon,
+                                                eps = args.epsilon_metra,
                                                 lambda_init = args.lambda_metra_init).to(device)
     qf1_target.load_state_dict(qf1.state_dict())
     qf2_target.load_state_dict(qf2.state_dict())
@@ -359,33 +368,34 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     # add time 
     rb.times = np.zeros((args.buffer_size, args.num_envs), dtype=int)
     rb.zs = np.zeros((args.buffer_size, args.num_envs, args.nb_skill), dtype=np.float32)
-    # specific rho
+    # specific un 
     max_step = config[args.env_id]['kwargs']['max_episode_steps']
-    size_rho = max_step * args.nb_episodes_rho
-    nb_rho_episodes = 0
-    nb_rho_steps = 0
-    start_time = time.time()
+    # specific rho
+    size_rho = max_step * args.nb_rho_episodes
     # running episodic return
     running_episodic_return = 0 
     metra_max = args.metra_max_step
+    # obs : mean + std 
+    obs_mean = np.zeros(np.array(envs.single_observation_space.shape).prod(), dtype=np.float32)
+    obs_std = np.ones(np.array(envs.single_observation_space.shape).prod(), dtype=np.float32)
     # TRY NOT TO MODIFY: start the game
+    start_time = time.time()    
     obs, _ = envs.reset(seed=args.seed)
     for global_step in range(args.total_timesteps):
         # coverage assessment 
         env_check.update_coverage(obs)
-        # increment step
         # ALGO LOGIC: put action logic here
-        if global_step < args.learning_starts:
+        if global_step*args.num_envs < args.learning_starts:
             actions = np.array([np.random.uniform(-max_action, max_action, envs.single_action_space.shape) for _ in range(args.num_envs)])
         else:
             with torch.no_grad():
-                actions, _, _ = actor.get_action(torch.Tensor(obs).to(device), torch.tensor(z).to(device), eps=None)
+                normalized_obs = (obs - obs_mean) / obs_std
+                actions, _, _ = actor.get_action(torch.Tensor(normalized_obs).to(device), torch.tensor(z).to(device), eps=None)
                 actions = actions.detach().cpu().numpy()
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, terminations, truncations, infos = envs.step(actions)
-
-
+        
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if "final_info" in infos:
             for info in infos["final_info"]:
@@ -404,11 +414,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         for idx, trunc in enumerate(truncations):
             if trunc:
                 real_next_obs[idx] = infos["final_observation"][idx]
-            if trunc or terminations[idx]:
-                nb_rho_episodes += 1
-               
 
-        if (global_step)%100_000==0 :
+        if (global_step)%1_000_000==0 :
             envs.call("set_max_steps", metra_max)
             metra_max  = min(metra_max + 200, config[args.env_id]['kwargs']['max_episode_steps'])
 
@@ -419,16 +426,14 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
 
-        
-        #  Train metra 
-        if global_step*args.num_envs > args.learning_starts and  global_step*args.num_envs % args.metra_max_step * args.episode_per_epoch == 0:
+
+        if global_step*args.num_envs > args.learning_starts and  global_step % int((args.metra_max_step * args.episode_per_epoch)/args.num_envs) == 0:
             for _ in range(args.metra_discriminator_epochs):
                 # Metra training
-                # batch_inds = np.random.randint(rb.pos - size_rho ,rb.pos, int(args.metra_batch_size))
                 batch_inds = np.random.randint(0 ,rb.pos, int(args.metra_batch_size))                    
                 batch_inds_env = np.random.randint(0, args.num_envs, args.metra_batch_size)
-                batch_obs = torch.tensor(rb.observations[batch_inds, batch_inds_env], device=device)
-                batch_next_obs = torch.tensor(rb.next_observations[batch_inds, batch_inds_env], device=device)
+                batch_obs = torch.tensor((rb.observations[batch_inds, batch_inds_env] - obs_mean) / obs_std , device=device)
+                batch_next_obs = torch.tensor((rb.next_observations[batch_inds, batch_inds_env] -obs_mean) / obs_std , device=device)
                 batch_z = torch.tensor(rb.zs[batch_inds, batch_inds_env], device=device)
                 batch_dones = torch.tensor(rb.dones[batch_inds, batch_inds_env], device=device)
                 loss_metra, inner_product_loss = discriminator_metra.lipshitz_loss(batch_obs, batch_next_obs, batch_z, batch_dones) 
@@ -458,8 +463,13 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             # standard sampling
             b_inds = np.random.randint(0, rb.pos)
             b_inds_envs = np.random.randint(0, args.num_envs, args.batch_size)
-            b_observations =  torch.tensor(rb.observations[b_inds, b_inds_envs], device = device) 
-            b_next_observations =  torch.tensor(rb.next_observations[b_inds, b_inds_envs], device = device) 
+            # batch obs + next_obs
+            b_observations = rb.observations[b_inds, b_inds_envs] 
+            # update mean + std obs
+            obs_mean = obs_mean * (1-args.tau_update) + args.tau_update * b_observations.mean(axis=0)
+            obs_std = obs_std * (1-args.tau_update) + args.tau_update * b_observations.std(axis=0)
+            b_observations =   torch.tensor((b_observations - obs_mean) / obs_std, device = device)   
+            b_next_observations = torch.tensor((rb.next_observations[b_inds, b_inds_envs] - obs_mean) / obs_std, device = device)
             b_actions =  torch.tensor(rb.actions[b_inds, b_inds_envs], device = device) 
             b_rewards =  torch.tensor(rb.rewards[b_inds, b_inds_envs], device = device) 
             b_dones = torch.tensor(rb.dones[b_inds, b_inds_envs], device = device) 
@@ -471,8 +481,10 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
                 # rewards
                 metra_reward = ((discriminator_metra(b_next_observations) - discriminator_metra(b_observations)) * b_z).sum(dim = -1) 
-                intrinsic_reward = args.lambda_reward_metra * metra_reward 
+                # print('metra reward shape : ', metra_reward.shape)
+                intrinsic_reward = metra_reward 
                 intrinsic_reward = torch.clamp(intrinsic_reward, -5, 5)
+                # intrinsic_reward = discriminator(b_observations).detach()
                 if args.keep_extrinsic_reward:
                     b_rewards = intrinsic_reward.flatten() * args.coef_intrinsic  + b_rewards * args.coef_extrinsic
                 else:
@@ -538,7 +550,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 "metrics/rewards_mean": b_rewards.mean().item(), 
                 "metrics/metra_reward_mean": metra_reward.mean().item(), 
                 "metrics/metra_reward_max": metra_reward.max().item(), 
-                "metrics/metra_reward_min": metra_reward.min().item(), 
+                "metrics/metra_reward_min": metra_reward.min().item(),
                 # print("SPS:", int(global_step / (time.time() - start_time)))
                 "charts/SPS": int(global_step / (time.time() - start_time)), 
                 "losses/alpha_loss": alpha_loss.item() if args.autotune else 0.0, 
@@ -558,9 +570,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 # print('size rho', size_rho)
                 # print('max x rho', rb.observations[max(rb.pos-size_rho, 0):rb.pos][0][:,0].max())
                 image = env_plot.gif(obs_un = rb.observations[np.random.randint(0, rb.pos, 100_000)],
-                                        classifier = None,
-                                        device= device)
-                send_matrix(wandb, image, "gif", global_step)
+                                     obs = rb.observations[max(rb.pos-int(size_rho), 0):rb.pos], 
+                                    device= device)
+                send_matrix(wandb, image,  "gif", global_step) if args.track else None
             
     # FINAL LOGGING
     print(f"global_coverage={env_check.get_coverage()}, global_shannon_entropy={env_check.shannon_entropy()}, running_episodic_return={running_episodic_return}")

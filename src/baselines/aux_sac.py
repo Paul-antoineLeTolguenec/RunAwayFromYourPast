@@ -38,7 +38,7 @@ class Args:
     """whether to capture videos of the agent performances (check out `videos` folder)"""
     use_hp_file : bool = False
     """if toggled, will load the hyperparameters from file"""
-    hp_file: str = "hyper_parameters.json"
+    hp_file: str = "hyper_parameters_sac.json"
     """the path to the hyperparameters json file"""
     sweep_mode: bool = False
     """if toggled, will log the sweep id to wandb"""
