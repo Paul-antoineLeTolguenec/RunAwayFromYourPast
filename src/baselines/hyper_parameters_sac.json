@@ -45,7 +45,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 500000,
+                    "buffer_size": 5000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -65,7 +65,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 500000,
+                    "buffer_size": 5000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -85,7 +85,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 500000,
+                    "buffer_size": 5000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -104,7 +104,7 @@
                     "track": true,
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 500000,
+                    "buffer_size": 5000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -124,7 +124,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 500000,
+                    "buffer_size": 5000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -145,7 +145,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 500000,
+                    "buffer_size": 5000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -166,7 +166,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 500000,
+                    "buffer_size": 5000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -187,7 +187,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 500000,
+                    "buffer_size": 5000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -208,7 +208,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 500000,
+                    "buffer_size": 5000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -231,7 +231,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 10000000,
+                   "buffer_size": 50000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -249,7 +249,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 10000000,
+                   "buffer_size": 50000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -269,7 +269,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 10000000,
+                   "buffer_size": 50000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -289,7 +289,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 10000000,
+                   "buffer_size": 50000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -309,7 +309,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 10000000,
+                   "buffer_size": 50000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -329,7 +329,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 10000000,
+                   "buffer_size": 50000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -349,7 +349,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 10000000,
+                   "buffer_size": 50000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -370,7 +370,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 10000000,
+                   "buffer_size": 50000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -391,7 +391,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 10000000,
+                   "buffer_size": 50000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -412,7 +412,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 10000000,
+                   "buffer_size": 50000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -433,7 +433,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 10000000,
+                   "buffer_size": 50000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -456,7 +456,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 10000000,
+                   "buffer_size": 50000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -474,7 +474,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 10000000,
+                   "buffer_size": 50000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -494,7 +494,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 10000000,
+                   "buffer_size": 50000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -514,7 +514,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 10000000,
+                   "buffer_size": 50000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -534,7 +534,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 10000000,
+                    "buffer_size": 50000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -554,7 +554,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 10000000,
+                    "buffer_size": 50000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -574,7 +574,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 10000000,
+                    "buffer_size": 50000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -595,7 +595,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 10000000,
+                    "buffer_size": 50000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -616,7 +616,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 10000000,
+                    "buffer_size": 50000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -637,7 +637,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 10000000,
+                    "buffer_size": 50000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -658,7 +658,7 @@
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 10000000,
+                    "buffer_size": 50000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
