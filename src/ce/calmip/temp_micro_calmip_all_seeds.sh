@@ -87,13 +87,14 @@ elif [[ "\$HOSTNAME" == *"olympe"* ]]; then
     export WANDB_RUN_DIR="/tmpdir/\$USER/"
     export WANDB_DATA_DIR="/tmpdir/\$USER/"
 fi
-# create wandb directories  if they do not exist
-mkdir -p \$WANDB_DIR
-mkdir -p \$WANDB_CACHE_DIR
-mkdir -p \$WANDB_CONFIG_DIR
-mkdir -p \$WANDB_ARTIFACTS_DIR
-mkdir -p \$WANDB_RUN_DIR
-mkdir -p \$WANDB_DATA_DIR
+
+echo "WANDB_DIR: \$WANDB_DIR"
+echo "WANDB_CACHE_DIR: \$WANDB_CACHE_DIR"
+echo "WANDB_CONFIG_DIR: \$WANDB_CONFIG_DIR"
+echo "WANDB_ARTIFACTS_DIR: \$WANDB_ARTIFACTS_DIR"
+echo "WANDB_RUN_DIR: \$WANDB_RUN_DIR"
+echo "WANDB_DATA_DIR: \$WANDB_DATA_DIR"
+
 
 
 # COUNT
