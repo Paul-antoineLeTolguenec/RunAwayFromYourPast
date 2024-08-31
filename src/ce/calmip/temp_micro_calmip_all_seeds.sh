@@ -7,6 +7,32 @@ env_id=${2:-"Maze-Easy-v0"}
 WANDB_MODE_ARG=${3:-"offline"}
 
 
+# WANDB MODE
+if [ "$WANDB_MODE_ARG" == "offline" ]; then
+    export WANDB_MODE="dryrun"
+fi
+
+# CHECK IF WANDB MODE HAS BEEN SET
+echo "WANDB_MODE: $WANDB_MODE"
+
+# WANDB DIR 
+HOSTNAME=$(hostname)
+if [[ "$HOSTNAME" == *"pando"* ]]; then
+    export WANDB_DIR="/scratch/disc/p.le-tolguenec/"
+    export WANDB_CACHE_DIR="/scratch/disc/p.le-tolguenec/"
+    export WANDB_CONFIG_DIR="/scratch/disc/p.le-tolguenec/"
+    export WANDB_ARTIFACTS_DIR="/scratch/disc/p.le-tolguenec/"
+    export WANDB_RUN_DIR="/scratch/disc/p.le-tolguenec/"
+    export WANDB_DATA_DIR="/scratch/disc/p.le-tolguenec/"
+elif [[ "$HOSTNAME" == *"olympe"* ]]; then
+    export WANDB_DIR="/tmpdir/$USER/"
+    export WANDB_CACHE_DIR="/tmpdir/$USER/"
+    export WANDB_CONFIG_DIR="/tmpdir/$USER/"
+    export WANDB_ARTIFACTS_DIR="/tmpdir/$USER/"
+    export WANDB_RUN_DIR="/tmpdir/$USER/"
+    export WANDB_DATA_DIR="/tmpdir/$USER/"
+fi
+
 # create tempfile
 temp_slurm_script="temp_slurm_script_$$.slurm"
 
@@ -59,31 +85,7 @@ HYPERPARAMETERS_FILE="../hyper_parameters.json"
 EXTRACT_SCRIPT="extract_hyperparameters.py"
 
 
-# WANDB MODE
-if [ "$WANDB_MODE_ARG" == "offline" ]; then
-    export WANDB_MODE="dryrun"
-fi
 
-# CHECK IF WANDB MODE HAS BEEN SET
-echo "WANDB_MODE: \$WANDB_MODE"
-
-# WANDB DIR 
-HOSTNAME=\$(hostname)
-if [[ "\$HOSTNAME" == *"pando"* ]]; then
-    export WANDB_DIR="/scratch/disc/p.le-tolguenec/"
-    export WANDB_CACHE_DIR="/scratch/disc/p.le-tolguenec/"
-    export WANDB_CONFIG_DIR="/scratch/disc/p.le-tolguenec/"
-    export WANDB_ARTIFACTS_DIR="/scratch/disc/p.le-tolguenec/"
-    export WANDB_RUN_DIR="/scratch/disc/p.le-tolguenec/"
-    export WANDB_DATA_DIR="/scratch/disc/p.le-tolguenec/"
-elif [[ "\$HOSTNAME" == *"olympe"* ]]; then
-    export WANDB_DIR="/tmpdir/\$USER/"
-    export WANDB_CACHE_DIR="/tmpdir/\$USER/"
-    export WANDB_CONFIG_DIR="/tmpdir/\$USER/"
-    export WANDB_ARTIFACTS_DIR="/tmpdir/\$USER/"
-    export WANDB_RUN_DIR="/tmpdir/\$USER/"
-    export WANDB_DATA_DIR="/tmpdir/\$USER/"
-fi
 
 echo "WANDB_DIR: \$WANDB_DIR"
 echo "WANDB_CACHE_DIR: \$WANDB_CACHE_DIR"
