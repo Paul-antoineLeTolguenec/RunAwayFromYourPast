@@ -23,9 +23,6 @@ fi
 # create error output directory if it does not exist
 mkdir -p "$path_file_err_out"
 
-# create temporary directory if it does not exist
-tmp_dir="/tmpdir/$USER/tmp"
-mkdir -p "$tmp_dir"
 
 cat <<EOT > $temp_slurm_script
 #!/bin/bash
