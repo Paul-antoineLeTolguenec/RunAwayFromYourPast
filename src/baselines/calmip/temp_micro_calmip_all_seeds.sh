@@ -58,7 +58,7 @@ find_available_port() {
 # Get the path to the config file
 CONFIG_FILE="../../../envs/config_env.py"
 # Get the path to the config file
-HYPERPARAMETERS_FILE="../hyper_parameters_sac.json"
+HYPERPARAMETERS_FILE="../hyper_parameters.json"
 # FUNCTION: extract_hyperparameters
 EXTRACT_SCRIPT="extract_hyperparameters.py"
 
@@ -107,7 +107,7 @@ for seed in {0..4}; do
     cmd="poetry run python $algo --env_id $env_id \$hyperparams --seed \$seed"
     echo \$cmd 
     # \$cmd
-    srun -N1 -n1 -c14 \$cmd &
+    srun --exclusive -N1 -n1 -c14 \$cmd &
 done
 
 wait 

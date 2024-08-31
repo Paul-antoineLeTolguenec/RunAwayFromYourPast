@@ -107,7 +107,7 @@ for seed in {0..4}; do
     cmd="poetry run python $algo --env_id $env_id \$hyperparams --seed \$seed"
     echo \$cmd 
     # \$cmd
-    srun -N1 -n1 -c 14 \$cmd &
+    srun --exclusive -N1 -n1 -c14 \$cmd &
 done
 
 wait 
