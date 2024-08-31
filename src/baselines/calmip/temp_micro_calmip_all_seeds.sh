@@ -7,6 +7,32 @@ env_id=${2:-"Maze-Easy-v0"}
 WANDB_MODE_ARG=${3:-"offline"}
 
 
+# WANDB MODE
+if [ "$WANDB_MODE_ARG" == "offline" ]; then
+    export WANDB_MODE="dryrun"
+fi
+
+# CHECK IF WANDB MODE HAS BEEN SET
+echo "WANDB_MODE: $WANDB_MODE"
+
+# WANDB DIR 
+HOSTNAME=$(hostname)
+if [[ "$HOSTNAME" == *"pando"* ]]; then
+    export WANDB_DIR="/scratch/disc/p.le-tolguenec/"
+    export WANDB_CACHE_DIR="/scratch/disc/p.le-tolguenec/"
+    export WANDB_CONFIG_DIR="/scratch/disc/p.le-tolguenec/"
+    export WANDB_ARTIFACTS_DIR="/scratch/disc/p.le-tolguenec/"
+    export WANDB_RUN_DIR="/scratch/disc/p.le-tolguenec/"
+    export WANDB_DATA_DIR="/scratch/disc/p.le-tolguenec/"
+elif [[ "$HOSTNAME" == *"olympe"* ]]; then
+    export WANDB_DIR="/tmpdir/$USER/"
+    export WANDB_CACHE_DIR="/tmpdir/$USER/"
+    export WANDB_CONFIG_DIR="/tmpdir/$USER/"
+    export WANDB_ARTIFACTS_DIR="/tmpdir/$USER/"
+    export WANDB_RUN_DIR="/tmpdir/$USER/"
+    export WANDB_DATA_DIR="/tmpdir/$USER/"
+fi
+
 # create tempfile
 temp_slurm_script="temp_slurm_script_$$.slurm"
 
@@ -23,17 +49,13 @@ fi
 # create error output directory if it does not exist
 mkdir -p "$path_file_err_out"
 
-# create temporary directory if it does not exist
-tmp_dir="/tmpdir/$USER/tmp"
-mkdir -p "$tmp_dir"
 
 cat <<EOT > $temp_slurm_script
 #!/bin/bash
 
-#SBATCH --nodes=5
-#SBATCH --ntasks=5
-#SBATCH --cpus-per-task=14
-#SBATCH --time=24:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --time=48:00:00
 #SBATCH --job-name=$algo_id-$env_id
 #SBATCH --output=$path_file_err_out$algo_id-$env_id-%j.out
 #SBATCH --error=$path_file_err_out$algo_id-$env_id-%j.err
@@ -63,31 +85,15 @@ HYPERPARAMETERS_FILE="../hyper_parameters.json"
 EXTRACT_SCRIPT="extract_hyperparameters.py"
 
 
-# WANDB MODE
-if [ "$WANDB_MODE_ARG" == "offline" ]; then
-    export WANDB_MODE="dryrun"
-fi
 
-# CHECK IF WANDB MODE HAS BEEN SET
-echo "WANDB_MODE: \$WANDB_MODE"
 
-# WANDB DIR 
-HOSTNAME=\$(hostname)
-if [[ "\$HOSTNAME" == *"pando"* ]]; then
-    export WANDB_DIR="/scratch/disc/p.le-tolguenec/"
-    export WANDB_CACHE_DIR="/scratch/disc/p.le-tolguenec/"
-    export WANDB_CONFIG_DIR="/scratch/disc/p.le-tolguenec/"
-    export WANDB_ARTIFACTS_DIR="/scratch/disc/p.le-tolguenec/"
-    export WANDB_RUN_DIR="/scratch/disc/p.le-tolguenec/"
-    export WANDB_DATA_DIR="/scratch/disc/p.le-tolguenec/"
-elif [[ "\$HOSTNAME" == *"olympe"* ]]; then
-    export WANDB_DIR="/tmpdir/\$USER/"
-    export WANDB_CACHE_DIR="/tmpdir/\$USER/"
-    export WANDB_CONFIG_DIR="/tmpdir/\$USER/"
-    export WANDB_ARTIFACTS_DIR="/tmpdir/\$USER/"
-    export WANDB_RUN_DIR="/tmpdir/\$USER/"
-    export WANDB_DATA_DIR="/tmpdir/\$USER/"
-fi
+echo "WANDB_DIR: \$WANDB_DIR"
+echo "WANDB_CACHE_DIR: \$WANDB_CACHE_DIR"
+echo "WANDB_CONFIG_DIR: \$WANDB_CONFIG_DIR"
+echo "WANDB_ARTIFACTS_DIR: \$WANDB_ARTIFACTS_DIR"
+echo "WANDB_RUN_DIR: \$WANDB_RUN_DIR"
+echo "WANDB_DATA_DIR: \$WANDB_DATA_DIR"
+
 
 
 # COUNT
@@ -107,10 +113,9 @@ for seed in {0..4}; do
     cmd="poetry run python $algo --env_id $env_id \$hyperparams --seed \$seed"
     echo \$cmd 
     # \$cmd
-    srun --exclusive -N1 -n1 -c14 \$cmd &
+    srun --exclusive -N1 -n1 \$cmd 
 done
 
-wait 
 echo "Number of Python files executed: \$execution_count"
 EOT
 

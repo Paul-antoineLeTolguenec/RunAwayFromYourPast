@@ -94,7 +94,7 @@ class Args:
     """ nb epoch between each training """
     ngu_feature_dim: int = 64
     """the feature dimension of the ngu"""
-    k_nearest: int = 10
+    k_nearest: int = 8
     """the number of nearest neighbors"""
     clip_reward:float = 5.0
     """the clip reward"""

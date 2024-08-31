@@ -116,11 +116,11 @@ class Args:
     """the batch size of the encoder"""
     feature_extractor: bool = False
     """if toggled, the feature extractor will be used"""
-    latent_dim: int = 32
+    latent_dim: int = 16
     """the dimension of the latent space"""
     sigma: float = 0.1
     """the sigma for the data augmentation"""
-    knn: int = 16
+    knn: int = 8
 
 
     # to be filled in runtime
