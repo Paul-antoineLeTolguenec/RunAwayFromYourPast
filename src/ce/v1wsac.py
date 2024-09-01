@@ -378,15 +378,14 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if "final_info" in infos:
             for info in infos["final_info"]:
-                try : 
+                if info is not None:
                     print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                     wandb.log({
                         "charts/episodic_return" : info["episode"]["r"], 
                         "charts/episodic_length" : info["episode"]["l"], 
                         }, step = global_step) if args.track else None
                     running_episodic_return = running_episodic_return * 0.99 + info["episode"]["r"][0] * 0.01
-                except:
-                    pass
+            
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
         real_next_obs = next_obs.copy()
@@ -402,23 +401,23 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 nb_step_per_env[idx] = 0
 
         rb.add(obs, real_next_obs, actions, rewards, terminations, infos)
-        rb.times[rb.pos-1] = infos['l']
+        rb.times[rb.pos-1 if not rb.full else rb.buffer_size-1] = infos['l']
         # decide whether to add transition to the un
         if len(fixed_idx_un)<= size_un:
             if bernoulli.rvs(args.beta_ratio/args.num_envs) or args.min_un >= len(fixed_idx_un) :
-                fixed_idx_un = np.append(fixed_idx_un, rb.pos-1)
+                fixed_idx_un = np.append(fixed_idx_un, rb.pos-1 if not rb.full else rb.buffer_size-1)
         else : 
             if True in terminations :
                 # remove random element
                 fixed_idx_un = np.delete(fixed_idx_un, random.randint(0, len(fixed_idx_un)-1))
                 # add the last element
-                fixed_idx_un = np.append(fixed_idx_un, rb.pos-1)
+                fixed_idx_un = np.append(fixed_idx_un, rb.pos-1 if not rb.full else rb.buffer_size-1)
             else:
                 if bernoulli.rvs(args.beta_ratio/args.num_envs):
                     # remove random element
                     fixed_idx_un = np.delete(fixed_idx_un, random.randint(0, len(fixed_idx_un)-1))
                     # add the last element
-                    fixed_idx_un = np.append(fixed_idx_un, rb.pos-1)
+                    fixed_idx_un = np.append(fixed_idx_un, rb.pos-1 if not rb.full else rb.buffer_size-1)
         
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
@@ -438,7 +437,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 next_observations_un = (torch.Tensor(rb.next_observations[batch_inds_un, batch_inds_envs_un]).to(device)-obs_mean) / (obs_std + 1e-6) if args.normalize_obs else torch.Tensor(rb.next_observations[batch_inds_un, batch_inds_envs_un]).to(device)
                 dones_un = torch.Tensor(rb.dones[batch_inds_un, batch_inds_envs_un]).to(device)
                 # batch rho 
-                batch_inds_rho = np.random.randint(max(int(rb.pos-size_rho/args.num_envs), 0), rb.pos, args.discriminator_batch_size)
+                batch_inds_rho = np.random.randint(max(int(rb.pos-size_rho/args.num_envs if not rb.full else rb.buffer_size-size_rho/args.num_envs), 0), rb.pos if not rb.full else rb.buffer_size, args.discriminator_batch_size)
                 batch_inds_envs_rho = np.random.randint(0, args.num_envs, args.discriminator_batch_size)    
                 observations_rho = (torch.Tensor(rb.observations[batch_inds_rho, batch_inds_envs_rho]).to(device)-obs_mean) / (obs_std + 1e-6) if args.normalize_obs else torch.Tensor(rb.observations[batch_inds_rho, batch_inds_envs_rho]).to(device)
                 next_observations_rho = (torch.Tensor(rb.next_observations[batch_inds_rho, batch_inds_envs_rho]).to(device)-obs_mean) / (obs_std + 1e-6) if args.normalize_obs else torch.Tensor(rb.next_observations[batch_inds_rho, batch_inds_envs_rho]).to(device)
@@ -571,9 +570,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         if global_step % args.fig_frequency == 0  and global_step > args.learning_starts:
             if args.make_gif : 
                 # print('size rho', size_rho)
-                # print('max x rho', rb.observations[max(rb.pos-size_rho, 0):rb.pos][0][:,0].max())
+                # print('max x rho', rb.observations[max(rb.pos if not rb.full else rb.buffer_size-size_rho, 0):rb.pos if not rb.full else rb.buffer_size][0][:,0].max())
                 image = env_plot.gif(obs_un = rb.observations[fixed_idx_un],
-                                     obs = rb.observations[max(rb.pos-int(size_rho/args.num_envs), 0):rb.pos], 
+                                     obs = rb.observations[max(rb.pos-int(size_rho/args.num_envs) if not rb.full else rb.buffer_size-int(size_rho/args.num_envs), 0):rb.pos if not rb.full else rb.buffer_size], 
                                     classifier = discriminator,
                                     device= device)
                 send_matrix(wandb, image, "gif", global_step) if args.track else None

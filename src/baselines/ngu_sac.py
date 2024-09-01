@@ -421,11 +421,13 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if "final_info" in infos:
             for info in infos["final_info"]:
-                print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-                wandb.log({
-                "charts/episodic_return" : info["episode"]["r"],
-                "charts/episodic_length" : info["episode"]["l"],
-                }, step = global_step) if args.track else None
+                if info is not None:
+                    print(f"global_step={global_step}, episodic_return={info['episode']['r']}, episodic_length={info['episode']['l']}")
+                    wandb.log({
+                    "charts/episodic_return" : info["episode"]["r"],
+                    "charts/episodic_length" : info["episode"]["l"],
+                    }, step = global_step) if args.track else None
+                    
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
         real_next_obs = next_obs.copy()
@@ -536,8 +538,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         if global_step % args.fig_frequency == 0  and global_step > args.learning_starts:
             if args.make_gif : 
                 # print('size rho', size_rho)
-                # print('max x rho', rb.observations[max(rb.pos-size_rho, 0):rb.pos][0][:,0].max())
-                image = env_plot.gif(obs_un = rb.observations[np.random.randint(0, rb.pos, 100_000)],
+                # print('max x rho', rb.observations[max(rb.pos if not rb.full else rb.buffer_size-size_rho, 0):rb.pos if not rb.full else rb.buffer_size][0][:,0].max())
+                image = env_plot.gif(obs_un = rb.observations[np.random.randint(0, rb.pos if not rb.full else rb.buffer_size, 100_000)],
                                         classifier = None,
                                         device= device)
                 send_matrix(wandb, image, "gif", global_step)

@@ -2,12 +2,12 @@
 "hyperparameters": {
         "maze": {
                 "sac_vanilla": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                    "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -20,12 +20,12 @@
                     "total_timesteps": 500000
                 },
                 "apt_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                    "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -40,12 +40,12 @@
                     
                 },
                 "aux_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                    "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -60,12 +60,12 @@
                     
                 },
                 "icm_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                    "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -80,12 +80,12 @@
                     
                 },
                 "rnd_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                    "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -100,11 +100,11 @@
                     
                 },
                 "ngu_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                    "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -119,12 +119,12 @@
                     
                 },
                 "diayn_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                    "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -140,12 +140,12 @@
                     "nb_skill": 4
                 },
                 "smm_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                    "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -161,12 +161,12 @@
                     "nb_skill": 4
                 },
                 "lsd_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                    "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -182,12 +182,12 @@
                     "nb_skill": 4
                 },
                 "csd_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                    "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -203,12 +203,12 @@
                     "nb_skill": 4
                 },
                 "metra_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 5000000,
+                    "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -226,12 +226,12 @@
             },
         "robotics": {
             "sac_vanilla": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 50000000,
+                   "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -244,12 +244,12 @@
                     "total_timesteps": 5000000
                 },
                 "apt_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 50000000,
+                   "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -264,12 +264,12 @@
                     
                 },
                 "aux_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 50000000,
+                   "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -284,12 +284,12 @@
                     
                 },
                 "icm_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 50000000,
+                   "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -304,12 +304,12 @@
                     
                 },
                 "rnd_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 50000000,
+                   "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -324,12 +324,12 @@
                     
                 },
                 "ngu_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 50000000,
+                   "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -344,12 +344,12 @@
                     
                 },
                 "diayn_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 50000000,
+                   "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -365,12 +365,12 @@
                     "nb_skill": 4
                 },
                 "smm_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 50000000,
+                   "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -386,12 +386,12 @@
                     "nb_skill": 4
                 },
                 "lsd_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 50000000,
+                   "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -407,12 +407,12 @@
                     "nb_skill": 4
                 },
                 "csd_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 50000000,
+                   "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -428,12 +428,12 @@
                     "nb_skill": 4
                 },
                 "metra_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 50000000,
+                   "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -451,12 +451,12 @@
             },
         "mujoco": {
             "sac_vanilla": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 50000000,
+                   "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -469,12 +469,12 @@
                     "total_timesteps": 5000000
                 },
                 "apt_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 50000000,
+                   "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -489,12 +489,12 @@
                     
                 },
                 "aux_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 50000000,
+                   "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -509,12 +509,12 @@
                     
                 },
                 "icm_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                   "buffer_size": 50000000,
+                   "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -529,12 +529,12 @@
                     
                 },
                 "rnd_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 50000000,
+                    "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -549,12 +549,12 @@
                     
                 },
                 "ngu_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 50000000,
+                    "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -569,12 +569,12 @@
                     
                 },
                 "diayn_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 50000000,
+                    "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -590,12 +590,12 @@
                     "nb_skill": 4
                 },
                 "smm_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 50000000,
+                    "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -611,12 +611,12 @@
                     "nb_skill": 4
                 },
                 "lsd_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 50000000,
+                    "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -632,12 +632,12 @@
                     "nb_skill": 4
                 },
                 "csd_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 50000000,
+                    "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,
@@ -653,12 +653,12 @@
                     "nb_skill": 4
                 },
                 "metra_sac": {
-                    "cuda": false,
+                    "cuda": true,
                     "track": true,
                     
                     "fig_frequency": 50000,
                     "metric_freq": 1000,
-                    "buffer_size": 50000000,
+                    "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
                     "num_envs": 4,

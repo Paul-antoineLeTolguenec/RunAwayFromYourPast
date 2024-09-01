@@ -399,15 +399,13 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if "final_info" in infos:
             for info in infos["final_info"]:
-                try : 
+                if info is not None:
                     print(f"global_step={global_step}, episodic_return={info['episode']['r']}, episodic_length={info['episode']['l']}")
                     wandb.log({
-                        "charts/episodic_return": info["episode"]["r"], 
-                        "charts/episodic_length": info["episode"]["l"], 
-                        }, step = global_step) if args.track else None
-                    running_episodic_return = running_episodic_return * 0.99 + info["episode"]["r"][0] * 0.01
-                except:
-                    pass
+                    "charts/episodic_return" : info["episode"]["r"],
+                    "charts/episodic_length" : info["episode"]["l"],
+                    }, step = global_step) if args.track else None
+                    
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
         real_next_obs = next_obs.copy()
@@ -420,8 +418,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             metra_max  = min(metra_max + 200, config[args.env_id]['kwargs']['max_episode_steps'])
 
         rb.add(obs, real_next_obs, actions, rewards, terminations, infos)
-        rb.times[rb.pos-1] = infos['l']
-        rb.zs[rb.pos - 1] = z.detach().cpu().numpy()
+        rb.times[rb.pos-1 if not rb.full else rb.buffer_size-1] = infos['l']
+        rb.zs[rb.pos-1 if not rb.full else rb.buffer_size - 1] = z.detach().cpu().numpy()
         
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
@@ -430,7 +428,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         if global_step*args.num_envs > args.learning_starts and  global_step % int((args.metra_max_step * args.episode_per_epoch)/args.num_envs) == 0:
             for _ in range(args.metra_discriminator_epochs):
                 # Metra training
-                batch_inds = np.random.randint(0 ,rb.pos, int(args.metra_batch_size))                    
+                batch_inds = np.random.randint(0 ,rb.pos if not rb.full else rb.buffer_size, int(args.metra_batch_size))                    
                 batch_inds_env = np.random.randint(0, args.num_envs, args.metra_batch_size)
                 batch_obs = torch.tensor((rb.observations[batch_inds, batch_inds_env] - obs_mean) / obs_std , device=device)
                 batch_next_obs = torch.tensor((rb.next_observations[batch_inds, batch_inds_env] -obs_mean) / obs_std , device=device)
@@ -461,7 +459,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         # ALGO LOGIC: training.
         if global_step*args.num_envs > args.learning_starts and global_step % args.learning_frequency == 0:
             # standard sampling
-            b_inds = np.random.randint(0, rb.pos)
+            b_inds = np.random.randint(0, rb.pos if not rb.full else rb.buffer_size)
             b_inds_envs = np.random.randint(0, args.num_envs, args.batch_size)
             # batch obs + next_obs
             b_observations = rb.observations[b_inds, b_inds_envs] 
@@ -568,9 +566,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         if global_step % args.fig_frequency == 0  and global_step > args.learning_starts:
             if args.make_gif : 
                 # print('size rho', size_rho)
-                # print('max x rho', rb.observations[max(rb.pos-size_rho, 0):rb.pos][0][:,0].max())
-                image = env_plot.gif(obs_un = rb.observations[np.random.randint(0, rb.pos, 100_000)],
-                                     obs = rb.observations[max(rb.pos-int(size_rho), 0):rb.pos], 
+                # print('max x rho', rb.observations[max(rb.pos if not rb.full else rb.buffer_size-size_rho, 0):rb.pos if not rb.full else rb.buffer_size][0][:,0].max())
+                image = env_plot.gif(obs_un = rb.observations[np.random.randint(0, rb.pos if not rb.full else rb.buffer_size, 100_000)],
+                                     obs = rb.observations[max(rb.pos-int(size_rho) if not rb.full else rb.buffer_size-int(size_rho), 0):rb.pos if not rb.full else rb.buffer_size], 
                                     device= device)
                 send_matrix(wandb, image,  "gif", global_step) if args.track else None
             
