@@ -55,7 +55,7 @@ cat <<EOT > $temp_slurm_script
 
 #SBATCH --nodes=1
 #SBATCH --ntasks=5
-#SBATCH --time=24:00:00
+#SBATCH --time=96:00:00
 #SBATCH --job-name=$algo_id-$env_id
 #SBATCH --output=$path_file_err_out$algo_id-$env_id-%j.out
 #SBATCH --error=$path_file_err_out$algo_id-$env_id-%j.err
@@ -113,9 +113,8 @@ for seed in {0..4}; do
     cmd="poetry run python $algo --env_id $env_id \$hyperparams --seed \$seed"
     echo \$cmd 
     # \$cmd
-    srun -n1 -c4 \$cmd &
+    srun --exclusive -N1 -n1 \$cmd 
 done
-wait
 echo "Number of Python files executed: \$execution_count"
 EOT
 
