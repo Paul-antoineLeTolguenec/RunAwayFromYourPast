@@ -73,8 +73,10 @@ class Args:
     """the learning rate of the policy network optimizer"""
     q_lr: float = 1e-3
     """the learning rate of the Q network network optimizer"""
-    policy_frequency: int = 2
+    policy_frequency: int = 4
     """the frequency of training policy (delayed)"""
+    learning_frequency: int = 2
+    """the frequency of training the Q network"""
     target_network_frequency: int = 1  # Denis Yarats' implementation delays this by 2.
     """the frequency of updates for the target nerworks"""
     alpha: float = 0.1
@@ -383,7 +385,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 }, step = global_step) if args.track else None
 
         # ALGO LOGIC: training.
-        if global_step > args.learning_starts:
+        if global_step > args.learning_starts and global_step % args.learning_frequency == 0:
             with torch.no_grad():
                 b_inds = np.random.randint(0, rb.pos if not rb.full else rb.buffer_size, args.batch_size)
                 b_inds_envs = np.random.randint(0, args.num_envs, args.batch_size)

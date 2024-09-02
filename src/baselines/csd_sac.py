@@ -75,8 +75,10 @@ class Args:
     """the learning rate of the policy network optimizer"""
     q_lr: float = 1e-3
     """the learning rate of the Q network network optimizer"""
-    policy_frequency: int = 2
+    policy_frequency: int = 4
     """the frequency of training policy (delayed)"""
+    learning_frequency: int = 2
+    """the frequency of training the Q network"""
     target_network_frequency: int = 1  # Denis Yarats' implementation delays this by 2.
     """the frequency of updates for the target nerworks"""
     alpha: float = 0.05
@@ -85,9 +87,7 @@ class Args:
     """automatic tuning of the entropy coefficient"""
     num_envs: int = 4
     """the number of parallel environments"""
-    learning_frequency: int = 1
-    """the frequency of training the SAC"""
-     
+   
     # CSD specific
     beta_noise: float = 0.0
     """the beta of the noise"""
