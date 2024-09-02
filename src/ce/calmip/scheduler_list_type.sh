@@ -8,6 +8,7 @@ show_help() {
     echo "  --algo    Chemin vers le script d'algorithme (par défaut : ../v1_ppo_kl_adaptive_sampling.py)"
     echo "  --types   Liste des types d'environnements (par défaut : [ \"robotics\", \"mujoco\"])"
     echo "  --seeds   Liste des valeurs de graines aléatoires (par défaut : [4])"
+    echo "  --hp_file File containing hyperparameters (default: hyper_parameters.json)"
     echo ""
     echo "Exemple: $0 --algo ../v1klsac.py --types \"[robotics, mujoco]\" --seeds \"[3,4]\""
 }
@@ -16,6 +17,7 @@ show_help() {
 algo="../v1klsac.py"
 types=("robotics" "mujoco")
 seeds=(4)
+HYPER_PARAMETERS_FILE="hyper_parameters.json"
 CONFIG_FILE="../../../envs/config_env.py"
 
 # Analyse des arguments
@@ -35,6 +37,10 @@ while [[ $# -gt 0 ]]; do
             seeds=($(echo "$2" | tr -d '[]' | tr ',' ' '))
             shift 2
             ;;
+        --hp_file)
+            HYPER_PARAMETERS_FILE="$2"
+            shift 2
+            ;;  
         --help|-h)
             show_help
             exit 0
@@ -51,6 +57,7 @@ done
 echo "Algorithme: $algo"
 echo "Liste des types d'environnements : ${types[@]}"
 echo "Liste des valeurs de graines aléatoires : ${seeds[@]}"
+echo "Fichier d'hyperparamètres: $HYPER_PARAMETERS_FILE"
 echo "Fichier de configuration: $CONFIG_FILE"
 
 # Boucle sur chaque type pour récupérer les environnements associés
@@ -65,7 +72,7 @@ for type in "${types[@]}"; do
     for env in "${envs_list[@]}"; do
         # Boucle sur chaque seed
         for seed in "${seeds[@]}"; do
-            cmd="bash temp_micro_calmip_per_seed.sh --algo $algo --env $env --mode online --seed $seed"
+            cmd="bash temp_micro_calmip_per_seed.sh --algo $algo --env $env --mode online --seed $seed --hp_file $HYPER_PARAMETERS_FILE"
             # execute 
             eval $cmd
         done
