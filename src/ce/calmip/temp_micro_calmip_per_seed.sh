@@ -184,8 +184,8 @@ srun --exclusive -N1 -n1 \$cmd
 EOT
 
 # Soumettre le script temporaire
-# sbatch $temp_slurm_script
-cat $temp_slurm_script
+sbatch $temp_slurm_script
+# cat $temp_slurm_script
 
 # Supprimer le fichier temporaire après soumission
 rm $temp_slurm_script
