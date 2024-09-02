@@ -55,7 +55,7 @@ cat <<EOT > $temp_slurm_script
 
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --time=96:00:00
+#SBATCH --time=120:00:00
 #SBATCH --job-name=$algo_id-$env_id
 #SBATCH --output=$path_file_err_out$algo_id-$env_id-%j.out
 #SBATCH --error=$path_file_err_out$algo_id-$env_id-%j.err
