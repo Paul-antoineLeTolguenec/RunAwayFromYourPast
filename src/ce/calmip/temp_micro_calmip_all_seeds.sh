@@ -1,10 +1,57 @@
 #!/bin/bash
 
+show_help() {
+    echo "Usage: $0 --algo <script_algo> --types <type_list> --seeds <seed_list>"
+    echo ""
+    echo "Arguments:"
+    echo "  --algo    Chemin vers le script d'algorithme (par défaut : ../v1_ppo_kl_adaptive_sampling.py)"
+    echo "  --env_id  Identifiant de l'environnement (par défaut : Maze-Easy-v0)"
+    echo "  --hp_file File containing hyperparameters (default: hyper_parameters.json)"
+    echo "  --wandb_mode Wandb mode (default: offline)"
+    echo ""
+    echo "Exemple: $0 --algo ../v1klsac.py --types \"[robotics, mujoco]\" --seeds \"[3,4]\" --wandb_mode offline"
+}
+
 # Arguments passés au script
 algo=${1:-../v1_ppo_kl_adaptive_sampling.py}
 algo_id=$(basename "$algo" | sed 's/\.py//')
 env_id=${2:-"Maze-Easy-v0"}
 WANDB_MODE_ARG=${3:-"offline"}
+HYPER_PARAMETERS_FILE="../hyper_parameters.json"
+
+
+# Affichage des paramètres obtenus
+# Analyse des arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --algo)
+            algo="$2"
+            shift 2
+            ;;
+        --env_id)
+            env_id="$2"
+            shift 2
+            ;;
+        --hp_file)
+            HYPER_PARAMETERS_FILE="$2"
+            shift 2
+            ;;
+        --wandb_mode)
+            WANDB_MODE_ARG="$2"
+            shift 2
+            ;;
+        --help|-h)
+            show_help
+            exit 0
+            ;;
+        *)
+            echo "Argument inconnu : $1"
+            show_help
+            exit 1
+            ;;  
+    esac
+done
+
 
 
 # WANDB MODE
@@ -94,7 +141,7 @@ find_available_port() {
 # Get the path to the config file
 CONFIG_FILE="../../../envs/config_env.py"
 # Get the path to the config file
-HYPERPARAMETERS_FILE="../hyper_parameters.json"
+HYPERPARAMETERS_FILE="$HYPER_PARAMETERS_FILE"
 # FUNCTION: extract_hyperparameters
 EXTRACT_SCRIPT="extract_hyperparameters.py"
 
@@ -134,6 +181,7 @@ EOT
 
 # Soumettre le script temporaire
 sbatch $temp_slurm_script
+# cat $temp_slurm_script
 
 # Supprimer le fichier temporaire après soumission
 rm $temp_slurm_script

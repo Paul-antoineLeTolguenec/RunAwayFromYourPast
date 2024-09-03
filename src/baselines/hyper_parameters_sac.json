@@ -624,7 +624,7 @@
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
-                    
+                    "autotune": true,
                     "make_gif": true,
                     "total_timesteps": 2000000
                     
@@ -645,7 +645,7 @@
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
-                    
+                    "autotune": true,
                     "make_gif": true,
                     "total_timesteps": 2000000
                     
@@ -661,6 +661,7 @@
                     "buffer_size": 1000000,
                     "learning_starts": 10000,
                     "alpha": 0.05,
+                    "autotune": true,
                     "num_envs": 4,
                     "keep_extrinsic_reward": false,
                     "coef_extrinsic": 1.0,
