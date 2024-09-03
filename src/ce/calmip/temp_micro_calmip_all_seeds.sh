@@ -12,12 +12,6 @@ show_help() {
     echo "Exemple: $0 --algo ../v1klsac.py --types \"[robotics, mujoco]\" --seeds \"[3,4]\" --wandb_mode offline"
 }
 
-# Arguments passés au script
-algo=${1:-../v1_ppo_kl_adaptive_sampling.py}
-algo_id=$(basename "$algo" | sed 's/\.py//')
-env_id=${2:-"Maze-Easy-v0"}
-WANDB_MODE_ARG=${3:-"offline"}
-HYPER_PARAMETERS_FILE="../hyper_parameters.json"
 
 
 # Affichage des paramètres obtenus
@@ -52,7 +46,9 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Arguments passés au script
 
+algo_id=$(basename "$algo" | sed 's/\.py//')
 
 # WANDB MODE
 if [ "$WANDB_MODE_ARG" == "offline" ]; then
