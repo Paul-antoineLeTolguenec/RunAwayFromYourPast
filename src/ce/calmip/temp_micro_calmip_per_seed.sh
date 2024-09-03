@@ -80,6 +80,7 @@ echo "WANDB_MODE: $WANDB_MODE"
 
 # WANDB DIR 
 HOSTNAME=$(hostname)
+USERNAME=$(whoami)
 if [[ "$HOSTNAME" == *"pando"* ]]; then
     export WANDB_DIR="/scratch/disc/p.le-tolguenec/online_wandb"
     export WANDB_CACHE_DIR="/scratch/disc/p.le-tolguenec/online_wandb"
@@ -90,12 +91,21 @@ if [[ "$HOSTNAME" == *"pando"* ]]; then
     # create folder if it does not exist
     mkdir -p "$WANDB_DIR"
 elif [[ "$HOSTNAME" == *"olympe"* ]]; then
-    export WANDB_DIR="/tmpdir/$USER/"
-    export WANDB_CACHE_DIR="/tmpdir/$USER/"
-    export WANDB_CONFIG_DIR="/tmpdir/$USER/"
-    export WANDB_ARTIFACTS_DIR="/tmpdir/$USER/"
-    export WANDB_RUN_DIR="/tmpdir/$USER/"
-    export WANDB_DATA_DIR="/tmpdir/$USER/"
+    if [[ "$USER" != "p21049lp" && "$USER" != "letolgue" ]]; then
+        export WANDB_DIR="/tmpdir/$USER/P_A/"
+        export WANDB_CACHE_DIR="/tmpdir/$USER/P_A/"
+        export WANDB_CONFIG_DIR="/tmpdir/$USER/P_A/"
+        export WANDB_ARTIFACTS_DIR="/tmpdir/$USER/P_A/"
+        export WANDB_RUN_DIR="/tmpdir/$USER/P_A/"
+        export WANDB_DATA_DIR="/tmpdir/$USER/P_A/"
+    else
+        export WANDB_DIR="/tmpdir/$USER/"
+        export WANDB_CACHE_DIR="/tmpdir/$USER/"
+        export WANDB_CONFIG_DIR="/tmpdir/$USER/"
+        export WANDB_ARTIFACTS_DIR="/tmpdir/$USER/"
+        export WANDB_RUN_DIR="/tmpdir/$USER/"
+        export WANDB_DATA_DIR="/tmpdir/$USER/"
+    fi
 fi
 
 
@@ -108,11 +118,14 @@ HOSTNAME=$(hostname)
 if [[ "$HOSTNAME" == *"pando"* ]]; then
     path_file_err_out="/scratch/disc/p.le-tolguenec/error_out/"
 elif [[ "$HOSTNAME" == *"olympe"* ]]; then
-    path_file_err_out="/tmpdir/$USER/error_out/"
+    if [[ "$USER" != "p21049lp" && "$USER" != "letolgue" ]]; then
+        path_file_err_out="/tmpdir/$USER/P_A/error_out/"
+    else
+        path_file_err_out="/tmpdir/$USER/error_out/"
+    fi
 else 
     path_file_err_out="/tmp/error_out/"
 fi
-
 # create error output directory if it does not exist
 mkdir -p "$path_file_err_out"
 
