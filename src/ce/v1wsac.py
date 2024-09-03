@@ -89,6 +89,8 @@ class Args:
     """the frequency of training the SAC"""
     normalize_obs: bool = True
     """if toggled, the observation will be normalized"""
+    normalize_rwd: bool = False
+    """if toggled, the reward will be normalized"""
      
     # Wassesrstein distance specific arguments
     lr_lambda: float = 5e-1
@@ -341,6 +343,10 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     rb.times = np.zeros((args.buffer_size, args.num_envs), dtype=int)
     obs_mean = torch.zeros(np.array(envs.single_observation_space.shape).prod(), dtype=torch.float32).to(device)
     obs_std = torch.ones(np.array(envs.single_observation_space.shape).prod(), dtype=torch.float32).to(device)
+    rwd_mean = torch.zeros(1, dtype=torch.float32).to(device)
+    rwd_std = torch.ones(1, dtype=torch.float32).to(device)
+    rwd_intrinsic_mean = torch.zeros(1, dtype=torch.float32).to(device)
+    rwd_intrinsic_std = torch.ones(1, dtype=torch.float32).to(device)
     # specific un 
     max_step = config[args.env_id]['kwargs']['max_episode_steps']
     size_un = max_step *  args.nb_episodes_rho
@@ -479,6 +485,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             # normalize obs
             b_observations = (b_observations - obs_mean) / (obs_std + 1e-6) if args.normalize_obs else b_observations
             b_next_observations = (b_next_observations - obs_mean) / (obs_std + 1e-6)  if args.normalize_obs else b_next_observations 
+            # update mean + std rewards
+            rwd_mean = rwd_mean * (1-args.tau_update) + args.tau_update * b_rewards.mean(axis=0)
+            rwd_std = rwd_std * (1-args.tau_update) + args.tau_update * b_rewards.std(axis=0)
             with torch.no_grad():
                 next_state_actions, next_state_log_pi, _ = actor.get_action(b_next_observations)
                 qf1_next_target = qf1_target(b_next_observations, next_state_actions)
@@ -487,9 +496,17 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 # rewards
                 intrinsic_reward = discriminator(b_next_observations).detach() - discriminator(b_observations).detach()
                 intrinsic_reward = torch.clamp(intrinsic_reward, -5, 5)
+                # update mean + std intrinsic rewards
+                rwd_intrinsic_mean = rwd_intrinsic_mean * (1-args.tau_update) + args.tau_update * intrinsic_reward.mean(axis=0)
+                rwd_intrinsic_std = rwd_intrinsic_std * (1-args.tau_update) + args.tau_update * intrinsic_reward.std(axis=0)
+
                 # intrinsic_reward = discriminator(b_observations).detach()
                 if args.keep_extrinsic_reward:
-                    b_rewards = intrinsic_reward.flatten() * args.coef_intrinsic  + b_rewards * args.coef_extrinsic
+                    # normalize rewards
+                    b_rewards = (b_rewards - rwd_mean) / (rwd_std + 1e-6) if args.normalize_rwd else b_rewards
+                    intrinsic_reward = (intrinsic_reward - rwd_intrinsic_mean) / (rwd_intrinsic_std + 1e-6) 
+                    coef_intrinsic = max(0, args.coef_intrinsic - global_step / args.total_timesteps)
+                    b_rewards = intrinsic_reward.flatten() * coef_intrinsic  + b_rewards * args.coef_extrinsic
                 else:
                     b_rewards = intrinsic_reward.flatten() * args.coef_intrinsic  
                 # rewards = b_rewards.flatten() 
@@ -553,6 +570,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                         "metrics/intrinsic_reward_mean" :  intrinsic_reward.mean().item(),
                         "metrics/intrinsic_reward_max" :  intrinsic_reward.max().item(),
                         "metrics/intrinsic_reward_min" :  intrinsic_reward.min().item(),
+                        "coefficients/coef_intrinsic" :  coef_intrinsic,
                 # print("SPS:", int(global_step / (time.time() - start_time)))
                         "charts/SPS" :  int(global_step / (time.time() - start_time)),
                         "losses/alpha_loss" :  alpha_loss.item() if args.autotune else 0.0,

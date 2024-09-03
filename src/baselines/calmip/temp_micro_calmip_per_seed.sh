@@ -13,10 +13,15 @@ temp_slurm_script="temp_slurm_script_$$.slurm"
 
 # Check HOSTNAME
 HOSTNAME=$(hostname)
+USERNAME=$(whoami)
 if [[ "$HOSTNAME" == *"pando"* ]]; then
     path_file_err_out="/scratch/disc/p.le-tolguenec/error_out/"
 elif [[ "$HOSTNAME" == *"olympe"* ]]; then
-    path_file_err_out="/tmpdir/$USER/error_out/"
+    if [[ "$USER" != "p21049lp" && "$USER" != "letolgue" ]]; then
+        path_file_err_out="/tmpdir/$USER/P_A/error_out/"
+    else
+        path_file_err_out="/tmpdir/$USER/error_out/"
+    fi
 else 
     path_file_err_out="/tmp/error_out/"
 fi
@@ -24,9 +29,6 @@ fi
 # create error output directory if it does not exist
 mkdir -p "$path_file_err_out"
 
-# create temporary directory if it does not exist
-tmp_dir="/tmpdir/$USER/tmp"
-mkdir -p "$tmp_dir"
 
 cat <<EOT > $temp_slurm_script
 #!/bin/bash

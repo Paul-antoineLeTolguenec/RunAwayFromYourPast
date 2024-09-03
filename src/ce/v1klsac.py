@@ -110,7 +110,10 @@ class Args:
     """the minimum number of un"""
     tau_update: float = 0.001
     """the update rate for mean and std of the obersevation"""
-
+    normalize_obs: bool = True
+    """if toggled, the observation will be normalized"""
+    normalize_rwd: bool = True
+    """if toggled, the reward will be normalized"""
     # rewards specific arguments
     keep_extrinsic_reward: bool = False
     """if toggled, the extrinsic reward will be kept"""
@@ -306,7 +309,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     # Automatic entropy tuning
     if args.autotune:
         target_entropy = -torch.prod(torch.Tensor(envs.single_action_space.shape).to(device)).item()
-        log_alpha = torch.zeros(1, requires_grad=True, device=device)
+        log_alpha = torch.zeros(1, requires_grad=True, device=device) 
         alpha = log_alpha.exp().item()
         a_optimizer = optim.Adam([log_alpha], lr=args.q_lr)
     else:
@@ -326,6 +329,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     obs_std = torch.ones(np.array(envs.single_observation_space.shape).prod(), dtype=torch.float32).to(device)
     rwd_mean = torch.zeros(1, dtype=torch.float32).to(device)
     rwd_std = torch.ones(1, dtype=torch.float32).to(device)
+    rwd_intrinsic_mean = torch.zeros(1, dtype=torch.float32).to(device)
+    rwd_intrinsic_std = torch.ones(1, dtype=torch.float32).to(device)
     rb.times = np.zeros((args.buffer_size, args.num_envs), dtype=int)
     # specific un 
     max_step = config[args.env_id]['kwargs']['max_episode_steps']
@@ -354,9 +359,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         else:
             with torch.no_grad():
                 eps = eps_tm[np.arange(args.num_envs), nb_step_per_env]
-                # normalized_obs = (torch.Tensor(obs).to(device) - obs_mean) / obs_std
-                normalized_obs = torch.Tensor(obs).to(device)
-                actions, _, _ = actor.get_action(normalized_obs, eps=torch.Tensor(eps).to(device))
+                normalize_obs = (torch.Tensor(obs).to(device) - obs_mean) / obs_std if args.normalize_obs else torch.Tensor(obs).to(device)
+                # normalize_obs = torch.Tensor(obs).to(device)
+                actions, _, _ = actor.get_action(normalize_obs, eps=torch.Tensor(eps).to(device))
                 actions = actions.detach().cpu().numpy()
 
         # TRY NOT TO MODIFY: execute the game and log data.
@@ -421,14 +426,14 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 batch_inds_un = np.concatenate([fixed_idx_un[np.random.randint(0, max(args.min_un,len(fixed_idx_un)-args.pad_rho * max_step * args.beta_ratio), int((1-args.beta_ratio)*args.classifier_batch_size))],
                                                 np.random.randint(max(rb.pos-size_rho if not rb.full else rb.buffer_size-size_rho, 0), rb.pos if not rb.full else rb.buffer_size, int(args.beta_ratio*args.classifier_batch_size))])[:args.classifier_batch_size]
                 batch_inds_envs_un = np.random.randint(0, args.num_envs, args.classifier_batch_size)
-                observations_un = (torch.Tensor(rb.observations[batch_inds_un, batch_inds_envs_un]).to(device) - obs_mean) / obs_std
-                next_observations_un = (torch.Tensor(rb.next_observations[batch_inds_un, batch_inds_envs_un]).to(device) - obs_mean) / obs_std
+                observations_un = (torch.Tensor(rb.observations[batch_inds_un, batch_inds_envs_un]).to(device) - obs_mean) / obs_std if args.normalize_obs else torch.Tensor(rb.observations[batch_inds_un, batch_inds_envs_un]).to(device)
+                next_observations_un = (torch.Tensor(rb.next_observations[batch_inds_un, batch_inds_envs_un]).to(device) - obs_mean) / obs_std if args.normalize_obs else torch.Tensor(rb.next_observations[batch_inds_un, batch_inds_envs_un]).to(device)
                 dones_un = torch.Tensor(rb.dones[batch_inds_un, batch_inds_envs_un]).to(device)
                 # batch rho 
                 batch_inds_rho = np.random.randint(int(rb.pos - size_rho / args.num_envs if not rb.full else rb.buffer_size - size_rho / args.num_envs), rb.pos if not rb.full else rb.buffer_size, args.classifier_batch_size)
                 batch_inds_envs_rho = np.random.randint(0, args.num_envs, args.classifier_batch_size)
-                observations_rho = (torch.Tensor(rb.observations[batch_inds_rho, batch_inds_envs_rho]).to(device) - obs_mean) / obs_std
-                next_observations_rho = (torch.Tensor(rb.next_observations[batch_inds_rho, batch_inds_envs_rho]).to(device) - obs_mean) / obs_std
+                observations_rho = (torch.Tensor(rb.observations[batch_inds_rho, batch_inds_envs_rho]).to(device) - obs_mean) / obs_std if args.normalize_obs else torch.Tensor(rb.observations[batch_inds_rho, batch_inds_envs_rho]).to(device)
+                next_observations_rho = (torch.Tensor(rb.next_observations[batch_inds_rho, batch_inds_envs_rho]).to(device) - obs_mean) / obs_std if args.normalize_obs else torch.Tensor(rb.next_observations[batch_inds_rho, batch_inds_envs_rho]).to(device)
                 dones_rho = torch.Tensor(rb.dones[batch_inds_rho, batch_inds_envs_rho]).to(device)
                 # train the classifier
                 classifier_loss = classifier.loss(observations_rho, observations_un)
@@ -453,22 +458,28 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             # update reward mean and std
             rwd_mean = (1-args.tau_update) * rwd_mean + args.tau_update * b_rewards.mean(dim=0)
             rwd_std = (1-args.tau_update) * rwd_std + args.tau_update * b_rewards.std(dim=0)
-            b_rewards = (b_rewards - rwd_mean) / rwd_std
-            # normalize the observations
-            # b_observations = (b_observations - obs_mean) / obs_std
-            # b_next_observations = (b_next_observations - obs_mean) / obs_std  
-            b_rewards = (b_rewards - rwd_mean) / rwd_std
+            # normalize
+            b_observations = (b_observations - obs_mean) / obs_std if args.normalize_obs else b_observations   
+            b_next_observations = (b_next_observations - obs_mean) / obs_std   if args.normalize_obs else b_observations   
             with torch.no_grad():
                 next_state_actions, next_state_log_pi, _ = actor.get_action(b_next_observations)
                 qf1_next_target = qf1_target(b_next_observations, next_state_actions)
                 qf2_next_target = qf2_target(b_next_observations, next_state_actions)
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
                 # rewards
-                intrinsic_reward = classifier(b_observations).detach()
+                intrinsic_reward = (classifier(b_observations).detach() - rwd_intrinsic_mean) / rwd_intrinsic_std if args.normalize_rwd else classifier(b_observations).detach()
                 intrinsic_reward = torch.clamp(intrinsic_reward, -args.bound_classifier, args.bound_classifier)
-                # intrinsic_reward = classifier(b_observations).detach()
+                # update reward mean and std
+                rwd_intrinsic_mean = (1-args.tau_update) * rwd_intrinsic_mean + args.tau_update * intrinsic_reward.mean(dim=0)
+                rwd_intrinsic_std = (1-args.tau_update) * rwd_intrinsic_std + args.tau_update * intrinsic_reward.std(dim=0)
                 if args.keep_extrinsic_reward:
-                    b_rewards = b_rewards.flatten() * args.coef_extrinsic + intrinsic_reward.flatten() * args.coef_intrinsic
+                    b_rewards = (b_rewards - rwd_mean) / rwd_std if args.normalize_rwd else b_rewards
+
+                    # linear deacrease of coef_intrinsic
+                    coef_intrinsic = max(0, args.coef_intrinsic - global_step / args.total_timesteps)
+                    # exponential decrease of coef_intrinsic
+                    # coef_intrinsic = np.exp(-global_step / args.total_timesteps * 2.0)
+                    b_rewards = b_rewards.flatten() * args.coef_extrinsic + intrinsic_reward.flatten() * coef_intrinsic
                 else:
                     b_rewards = intrinsic_reward.flatten() * args.coef_intrinsic 
                     
@@ -533,7 +544,12 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 "metrics/rewards_mean": b_rewards.mean().item(), 
                 "metrics/intrinsic_reward_mean": intrinsic_reward.mean().item(), 
                 "metrics/intrinsic_reward_max": intrinsic_reward.max().item(), 
-                "metrics/intrinsic_reward_min": intrinsic_reward.min().item(), 
+                "metrics/intrinsic_reward_min": intrinsic_reward.min().item(),
+                "metrics/running_mean_reward_ext": rwd_mean.item(),
+                "metrics/running_std_reward_ext": rwd_std.item(),
+                "metrics/running_mean_reward_int": rwd_intrinsic_mean.item(),
+                "metrics/running_std_reward_int": rwd_intrinsic_std.item(),
+                "coefficients/coef_intrinsic": coef_intrinsic,
                 # print("SPS:", int(global_step / (time.time() - start_time)))
                 "charts/SPS": int(global_step / (time.time() - start_time)), 
                 "losses/alpha_loss": alpha_loss.item() if args.autotune else 0.0, 
