@@ -503,10 +503,10 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 # intrinsic_reward = discriminator(b_observations).detach()
                 if args.keep_extrinsic_reward:
                     # normalize rewards
-                    b_rewards = (b_rewards - rwd_mean) / (rwd_std + 1e-6) if args.normalize_rwd else b_rewards
-                    intrinsic_reward = (intrinsic_reward - rwd_intrinsic_mean) / (rwd_intrinsic_std + 1e-6) 
+                    b_rewards = (b_rewards- rwd_mean) / (rwd_std + 1e-6) if args.normalize_rwd else b_rewards
+                    intrinsic_reward = (intrinsic_reward - rwd_intrinsic_mean) / (rwd_intrinsic_std + 1e-6)  if args.normalize_rwd else intrinsic_reward
                     coef_intrinsic = max(0, args.coef_intrinsic - global_step / args.total_timesteps)
-                    b_rewards = intrinsic_reward.flatten() * coef_intrinsic  + b_rewards * args.coef_extrinsic
+                    b_rewards = intrinsic_reward.flatten() * coef_intrinsic  + b_rewards.flatten() * args.coef_extrinsic
                 else:
                     b_rewards = intrinsic_reward.flatten() * args.coef_intrinsic  
                 # rewards = b_rewards.flatten() 

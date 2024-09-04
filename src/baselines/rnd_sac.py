@@ -95,7 +95,10 @@ class Args:
     nb_epoch_before_training: int = 8
     """ nb epoch between each training """
 
-
+    normalize_rwd: bool = False
+    """if toggled, the reward will be normalized"""
+    tau_update: float = 0.001
+    """the update rate of the statistics"""
     keep_extrinsic_reward: bool = False
     """if toggled, the extrinsic reward will be kept"""
     coef_intrinsic : float = 1000.0
@@ -309,6 +312,10 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         handle_timeout_termination=False,
         n_envs= args.num_envs
     )
+    rwd_mean = torch.zeros(1, dtype=torch.float32).to(device)
+    rwd_std = torch.ones(1, dtype=torch.float32).to(device)
+    rwd_intrinsic_mean = torch.zeros(1, dtype=torch.float32).to(device)
+    rwd_intrinsic_std = torch.ones(1, dtype=torch.float32).to(device)
     start_time = time.time()
 
     # TRY NOT TO MODIFY: start the game
@@ -375,7 +382,17 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 intrinsic_reward = rnd.loss(data.observations, reduce = False)
                 extrinsic_reward = data.rewards.flatten()
                 if args.keep_extrinsic_reward:
-                    rewards = extrinsic_reward*args.coef_extrinsic + intrinsic_reward*args.coef_intrinsic
+                    # update statistics
+                    rwd_mean = rwd_mean * (1 - args.tau_update) + args.tau_update * extrinsic_reward.mean()
+                    rwd_std = rwd_std * (1 - args.tau_update) + args.tau_update * extrinsic_reward.std()
+                    rwd_intrinsic_mean = rwd_intrinsic_mean * (1 - args.tau_update) + args.tau_update * intrinsic_reward.mean()
+                    rwd_intrinsic_std = rwd_intrinsic_std * (1 - args.tau_update) + args.tau_update * intrinsic_reward.std()
+                    # normalize
+                    extrinsic_reward = (extrinsic_reward - rwd_mean) / (rwd_std + 1e-8) if args.normalize_rwd else extrinsic_reward
+                    intrinsic_reward = (intrinsic_reward - rwd_intrinsic_mean) / (rwd_intrinsic_std + 1e-8) if args.normalize_rwd else intrinsic_reward
+                    # coef decay
+                    coef_intrinsic = max(0, args.coef_intrinsic - global_step / args.total_timesteps)
+                    rewards = extrinsic_reward.flatten()*args.coef_extrinsic + intrinsic_reward.flatten()*coef_intrinsic
                 else:
                     rewards = intrinsic_reward*args.coef_intrinsic
                 next_q_value = rewards + (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)

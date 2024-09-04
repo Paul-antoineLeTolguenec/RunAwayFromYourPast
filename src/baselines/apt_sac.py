@@ -451,7 +451,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     intrinsic_reward = (intrinsic_reward - rwd_intrinsic_mean) / (rwd_intrinsic_std + 1e-8) if args.normalize_rwd else intrinsic_reward
                     # coef decay
                     coef_intrinsic = max(0, args.coef_intrinsic - global_step / args.total_timesteps)
-                    rewards = extrinsic_reward*args.coef_extrinsic + intrinsic_reward*coef_intrinsic
+                    rewards = extrinsic_reward.flatten()*args.coef_extrinsic + intrinsic_reward.flatten()*coef_intrinsic
                 else:
                     rewards = intrinsic_reward*args.coef_intrinsic
                 next_q_value = rewards + (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)

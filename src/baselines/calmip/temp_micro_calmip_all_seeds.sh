@@ -1,11 +1,59 @@
 #!/bin/bash
 
-# Arguments passés au script
-algo=${1:-../v1_ppo_kl_adaptive_sampling.py}
-algo_id=$(basename "$algo" | sed 's/\.py//')
-env_id=${2:-"Maze-Easy-v0"}
-WANDB_MODE_ARG=${3:-"offline"}
+show_help() {
+    echo "Usage: $0 --algo <script_algo> --types <type_list> --seeds <seed_list>"
+    echo ""
+    echo "Arguments:"
+    echo "  --algo    Chemin vers le script d'algorithme (par défaut : ../v1_ppo_kl_adaptive_sampling.py)"
+    echo "  --env_id  Identifiant de l'environnement (par défaut : Maze-Easy-v0)"
+    echo "  --hp_file File containing hyperparameters (default: hyper_parameters.json)"
+    echo "  --wandb_mode Wandb mode (default: offline)"
+    echo ""
+    echo "Exemple: $0 --algo ../v1klsac.py --types \"[robotics, mujoco]\" --seeds \"[3,4]\" --wandb_mode offline"
+}
 
+algo="..apt_sac.py"
+env_id="Maze-Easy-v0"
+HYPER_PARAMETERS_FILE="hyper_parameters_sac.json"
+WANDB_MODE_ARG="offline"
+
+
+
+# Affichage des paramètres obtenus
+# Analyse des arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --algo)
+            algo="$2"
+            shift 2
+            ;;
+        --env_id)
+            env_id="$2"
+            shift 2
+            ;;
+        --hp_file)
+            HYPER_PARAMETERS_FILE="$2"
+            shift 2
+            ;;
+        --wandb_mode)
+            WANDB_MODE_ARG="$2"
+            shift 2
+            ;;
+        --help|-h)
+            show_help
+            exit 0
+            ;;
+        *)
+            echo "Argument inconnu : $1"
+            show_help
+            exit 1
+            ;;  
+    esac
+done
+
+# Arguments passés au script
+
+algo_id=$(basename "$algo" | sed 's/\.py//')
 
 # WANDB MODE
 if [ "$WANDB_MODE_ARG" == "offline" ]; then
@@ -68,7 +116,7 @@ cat <<EOT > $temp_slurm_script
 #!/bin/bash
 
 #SBATCH --nodes=1
-#SBATCH --ntasks=1
+#SBATCH --ntasks=5
 #SBATCH --time=120:00:00
 #SBATCH --job-name=$algo_id-$env_id
 #SBATCH --output=$path_file_err_out$algo_id-$env_id-%j.out
@@ -81,6 +129,8 @@ cat <<EOT > $temp_slurm_script
 #SBATCH --export=ALL
 
 # module load cuda/9.1.85.3
+module load misc-libs/libOSMesa 
+module load gcc
 
 # find port 
 find_available_port() {
@@ -94,7 +144,7 @@ find_available_port() {
 # Get the path to the config file
 CONFIG_FILE="../../../envs/config_env.py"
 # Get the path to the config file
-HYPERPARAMETERS_FILE="../hyper_parameters_sac.json"
+HYPERPARAMETERS_FILE="$HYPER_PARAMETERS_FILE"
 # FUNCTION: extract_hyperparameters
 EXTRACT_SCRIPT="extract_hyperparameters.py"
 
@@ -129,12 +179,12 @@ for seed in {0..4}; do
     # \$cmd
     srun --exclusive -N1 -n1 \$cmd 
 done
-
 echo "Number of Python files executed: \$execution_count"
 EOT
 
 # Soumettre le script temporaire
 sbatch $temp_slurm_script
+# cat $temp_slurm_script
 
 # Supprimer le fichier temporaire après soumission
 rm $temp_slurm_script

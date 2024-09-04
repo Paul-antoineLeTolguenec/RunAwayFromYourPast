@@ -125,6 +125,9 @@ cat <<EOT > $temp_slurm_script
 
 # module load cuda/9.1.85.3
 
+module load misc-libs/libOSMesa 
+module load gcc
+
 # find port 
 find_available_port() {
     local port=\$1
