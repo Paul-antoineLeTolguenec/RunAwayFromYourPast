@@ -21,7 +21,7 @@ algo="../v1_ppo_kl_adaptive_sampling.py"
 env_id="Maze-Easy-v0"
 WANDB_MODE_ARG="offline"
 seed="0" # Seed par défaut vide
-HYPERPARAMETERS_FILE="hyper_parameters_exploit.json"
+HYPERPARAMETERS_FILE="../hyper_parameters_exploit.json"
 
 # Analyse des arguments
 while [[ $# -gt 0 ]]; do
@@ -160,7 +160,7 @@ find_available_port() {
 # Get the path to the config file
 CONFIG_FILE="../../../envs/config_env.py"
 # Get the path to the config file
-HYPERPARAMETERS_FILE="../$HYPERPARAMETERS_FILE"
+HYPERPARAMETERS_FILE=$HYPERPARAMETERS_FILE
 # FUNCTION: extract_hyperparameters
 EXTRACT_SCRIPT="extract_hyperparameters.py"
 
