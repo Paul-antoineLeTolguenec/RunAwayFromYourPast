@@ -336,6 +336,7 @@
                                         "pad_rho": 8,
                                         "beta_noise": 1.0,
                                         "tau_update": 0.001,
+                                        "normalize_obs": false,
                                         "keep_extrinsic_reward": false,
                                         "coef_extrinsic": 1.0,
                                         "coef_intrinsic": 1.0
@@ -377,6 +378,7 @@
                                         "tau_update" : 0.001,
                                         "metra_max_step" : 1000,
                                         "metra_alone_epochs" : 4, 
+                                        "normalize_obs": true,
                                         "keep_extrinsic_reward": false,
                                         "coef_extrinsic": 1.0,
                                         "coef_intrinsic": 1.0
