@@ -14,6 +14,13 @@ show_help() {
 
 
 
+# Variables par défaut
+algo="../v1wsac.py"
+env_id="Maze-Easy-v0"
+WANDB_MODE_ARG="online"
+HYPER_PARAMETERS_FILE="../hyper_parameters.json"
+
+
 # Affichage des paramètres obtenus
 # Analyse des arguments
 while [[ $# -gt 0 ]]; do
@@ -45,6 +52,9 @@ while [[ $# -gt 0 ]]; do
             ;;  
     esac
 done
+
+
+
 
 # Arguments passés au script
 
