@@ -460,7 +460,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             rwd_std = (1-args.tau_update) * rwd_std + args.tau_update * b_rewards.std(dim=0)
             # normalize
             b_observations = (b_observations - obs_mean) / obs_std if args.normalize_obs else b_observations   
-            b_next_observations = (b_next_observations - obs_mean) / obs_std   if args.normalize_obs else b_observations   
+            b_next_observations = (b_next_observations - obs_mean) / obs_std   if args.normalize_obs else b_next_observations   
             with torch.no_grad():
                 next_state_actions, next_state_log_pi, _ = actor.get_action(b_next_observations)
                 qf1_next_target = qf1_target(b_next_observations, next_state_actions)

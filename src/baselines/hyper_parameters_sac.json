@@ -399,7 +399,7 @@
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
-                    
+                    "autotune": true,
                     "make_gif": true,
                     "total_timesteps": 1000000
                     
@@ -420,7 +420,7 @@
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
-                    
+                    "autotune": true,
                     "make_gif": true,
                     "total_timesteps": 1000000
                     
@@ -441,7 +441,7 @@
                     "coef_extrinsic": 1.0,
                     "coef_intrinsic": 1.0,
                     "wandb_project_name": "run_away_sac_explore",
-                    
+                    "autotune": true,
                     "make_gif": true,
                     "total_timesteps": 1000000
                     
