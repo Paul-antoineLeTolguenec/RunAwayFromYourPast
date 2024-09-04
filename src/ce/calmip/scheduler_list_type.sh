@@ -17,7 +17,7 @@ show_help() {
 algo="../v1klsac.py"
 types=("robotics" "mujoco")
 seeds=(4)
-HYPER_PARAMETERS_FILE="hyper_parameters.json"
+HYPER_PARAMETERS_FILE="../hyper_parameters.json"
 CONFIG_FILE="../../../envs/config_env.py"
 
 # Analyse des arguments

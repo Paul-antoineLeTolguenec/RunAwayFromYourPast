@@ -160,7 +160,7 @@ find_available_port() {
 # Get the path to the config file
 CONFIG_FILE="../../../envs/config_env.py"
 # Get the path to the config file
-HYPERPARAMETERS_FILE="../$HYPERPARAMETERS_FILE"
+HYPERPARAMETERS_FILE="$HYPERPARAMETERS_FILE"
 # FUNCTION: extract_hyperparameters
 EXTRACT_SCRIPT="extract_hyperparameters.py"
 
