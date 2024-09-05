@@ -460,7 +460,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         # ALGO LOGIC: training.
         if global_step*args.num_envs > args.learning_starts and global_step % args.learning_frequency == 0:
             # standard sampling
-            b_inds = np.random.randint(0, rb.pos if not rb.full else rb.buffer_size)
+            b_inds = np.random.randint(0, rb.pos if not rb.full else rb.buffer_size, args.batch_size)
             b_inds_envs = np.random.randint(0, args.num_envs, args.batch_size)
             # batch obs + next_obs
             b_observations = rb.observations[b_inds, b_inds_envs] 
