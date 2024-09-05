@@ -46,7 +46,7 @@ type_id=$(awk -v env_id="$env_id" '
 ' "$CONFIG_FILE")
 
 if [ "$type_id" != "'atari'" ]; then
-    cmd="bash temp_micro_calmip_all_seeds.sh $algo $env_id offline"
+    cmd="bash temp_micro_calmip_all_seeds.sh --algo $algo --env_id $env_id --hp_file ../hyper_parameters_sac.json --wandb_mode offline"
     echo "Running: $cmd"
     eval $cmd
 else

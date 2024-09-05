@@ -14,7 +14,7 @@ show_help() {
 
 algo="..apt_sac.py"
 env_id="Maze-Easy-v0"
-HYPER_PARAMETERS_FILE="hyper_parameters_sac.json"
+HYPER_PARAMETERS_FILE="../hyper_parameters_sac.json"
 WANDB_MODE_ARG="offline"
 
 
