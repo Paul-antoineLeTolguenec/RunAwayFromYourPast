@@ -15,7 +15,7 @@ show_help() {
 # Valeurs par défaut
 algo="../v1klsac.py"
 types=("robotics" "mujoco")
-HYPER_PARAMETERS_FILE="hyper_parameters.json"
+HYPER_PARAMETERS_FILE="../hyper_parameters.json"
 CONFIG_FILE="../../../envs/config_env.py"
 
 # Analyse des arguments

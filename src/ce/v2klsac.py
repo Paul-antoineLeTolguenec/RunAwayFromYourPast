@@ -108,7 +108,7 @@ class Args:
     """the beta of the noise"""
     lambda_kl: float = 1.0 
     """weight for the reward maximizing KL"""
-    min_un: int = 16
+    min_un: int = 4
     """the minimum number of un"""
 
     # DIAYN specific arguments
@@ -122,7 +122,10 @@ class Args:
     """the number of epochs of the classifier"""
     tau_update: float = 0.001
     """the update rate for mean and std of the obersevation"""
-
+    normalize_obs: bool = False
+    """if toggled, the observation will be normalized"""
+    normalize_rwd: bool = False
+    """if toggled, the reward will be normalized"""
 
     # rewards specific arguments
     keep_extrinsic_reward: bool = False
@@ -387,8 +390,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         else:
             with torch.no_grad():
                 eps = eps_tm[np.arange(args.num_envs), nb_step_per_env]
-                # normalized_obs = (torch.Tensor(obs).to(device) - obs_mean) / obs_std
-                normalized_obs = torch.Tensor(obs).to(device)   
+                normalized_obs = (torch.Tensor(obs).to(device) - obs_mean) / obs_std if args.normalize_obs else torch.Tensor(obs).to(device)
                 actions, _, _ = actor.get_action(normalized_obs, torch.tensor(z).to(device), eps=torch.Tensor(eps).to(device))
                 actions = actions.detach().cpu().numpy()
 
@@ -420,24 +422,25 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 nb_step_per_env[idx] = 0
 
         rb.add(obs, real_next_obs, actions, rewards, terminations, infos)
-        rb.times[rb.pos-1 if not rb.full else rb.buffer_size-1] = infos['l']
-        rb.zs[rb.pos-1 if not rb.full else rb.buffer_size-1] = z
+        rb_pos = rb.pos if not rb.full else rb.buffer_size
+        rb.times[rb_pos - 1] = infos['l']
+        rb.zs[rb_pos - 1] = z
         # decide whether to add transition to the un
         if len(fixed_idx_un)<= size_un:
             if bernoulli.rvs(args.beta_ratio/args.num_envs) or args.min_un >= len(fixed_idx_un):
-                fixed_idx_un = np.append(fixed_idx_un, rb.pos-1 if not rb.full else rb.buffer_size-1)
+                fixed_idx_un = np.append(fixed_idx_un, rb_pos - 1)
         else : 
             if True in terminations :
                 # remove random element
                 fixed_idx_un = np.delete(fixed_idx_un, random.randint(0, len(fixed_idx_un)-1))
                 # add the last element
-                fixed_idx_un = np.append(fixed_idx_un, rb.pos-1 if not rb.full else rb.buffer_size-1)
+                fixed_idx_un = np.append(fixed_idx_un, rb_pos - 1)
             else:
                 if bernoulli.rvs(args.beta_ratio/args.num_envs):
                     # remove random element
                     fixed_idx_un = np.delete(fixed_idx_un, random.randint(0, len(fixed_idx_un)-1))
                     # add the last element
-                    fixed_idx_un = np.append(fixed_idx_un, rb.pos-1 if not rb.full else rb.buffer_size-1)
+                    fixed_idx_un = np.append(fixed_idx_un, rb_pos - 1)
         
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
@@ -446,36 +449,35 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         if global_step*args.num_envs > args.learning_starts and  global_step % size_rho == 0:
             print('size rho', size_rho)
             print('nb_classifier_step', int(size_rho/args.classifier_batch_size * args.classifier_epochs))
+            batch_obs_rho = rb.observations[max(int(rb_pos-size_rho), 0):rb_pos].transpose(1,0,2).reshape(-1, rb.observations.shape[-1])
+            batch_next_obs_rho = rb.next_observations[max(int(rb_pos-size_rho), 0):rb_pos].transpose(1,0,2).reshape(-1, rb.next_observations.shape[-1])
+            batch_dones_rho = rb.dones[max(int(rb_pos-size_rho), 0):rb_pos].transpose(1,0).reshape(-1)           
             for classifier_step in range(int(size_rho/args.classifier_batch_size * args.classifier_epochs)):
                 # classifier training 
                 # batch un
-                batch_inds_un = np.concatenate([fixed_idx_un[np.random.randint(0, max(args.min_un,len(fixed_idx_un)-args.pad_rho * max_step * args.beta_ratio), int((1-args.beta_ratio)*args.classifier_batch_size))],
-                                                np.random.randint(max(rb.pos-size_rho if not rb.full else rb.buffer_size-size_rho, 0), rb.pos if not rb.full else rb.buffer_size, int(args.beta_ratio*args.classifier_batch_size)+1)])[:args.classifier_batch_size]
-                # batch_inds_un = fixed_idx_un[np.random.randint(0, len(fixed_idx_un), args.classifier_batch_size)]
-
+                batch_inds_un = fixed_idx_un[np.random.randint(0, max(args.min_un,len(fixed_idx_un)-args.pad_rho * max_step * args.beta_ratio), args.classifier_batch_size)]
                 batch_inds_envs_un = np.random.randint(0, args.num_envs, args.classifier_batch_size)
-                batch_inds_envs_un = np.random.randint(0, args.num_envs, args.classifier_batch_size)
-                observations_un = torch.Tensor(rb.observations[batch_inds_un, batch_inds_envs_un]).to(device)
+                observations_un = (torch.Tensor(rb.observations[batch_inds_un, batch_inds_envs_un]).to(device) - obs_mean) / obs_std if args.normalize_obs else torch.Tensor(rb.observations[batch_inds_un, batch_inds_envs_un]).to(device)
+                next_observations_un = (torch.Tensor(rb.next_observations[batch_inds_un, batch_inds_envs_un]).to(device) - obs_mean) / obs_std if args.normalize_obs else torch.Tensor(rb.next_observations[batch_inds_un, batch_inds_envs_un]).to(device)
                 dones_un = torch.Tensor(rb.dones[batch_inds_un, batch_inds_envs_un]).to(device)
                 # batch rho 
-                batch_inds_rho = np.random.randint(rb.pos-size_rho if not rb.full else rb.buffer_size-size_rho, rb.pos if not rb.full else rb.buffer_size, args.classifier_batch_size)
-                batch_inds_envs_rho = np.random.randint(0, args.num_envs, args.classifier_batch_size)
-                observations_rho = torch.Tensor(rb.observations[batch_inds_rho, batch_inds_envs_rho]).to(device) 
-                dones_rho = torch.Tensor(rb.dones[batch_inds_rho, batch_inds_envs_rho]).to(device)
+                batch_inds_rho = np.random.randint(0, batch_obs_rho.shape[0], args.classifier_batch_size)
+                observations_rho = (torch.Tensor(batch_obs_rho[batch_inds_rho]).to(device) - obs_mean) / obs_std if args.normalize_obs else torch.Tensor(batch_obs_rho[batch_inds_rho]).to(device)
+                next_observations_rho = (torch.Tensor(batch_next_obs_rho[batch_inds_rho]).to(device) - obs_mean) / obs_std if args.normalize_obs else torch.Tensor(batch_next_obs_rho[batch_inds_rho]).to(device)
+                dones_rho = torch.Tensor(batch_dones_rho[batch_inds_rho]).to(device)
                 # train the classifier
                 classifier_loss = classifier.loss(observations_rho, observations_un)
                 classifier_optimizer.zero_grad()
                 classifier_loss.backward()
                 classifier_optimizer.step()
-
                 # diayn training 
                 beta_diayn = args.beta_ratio
                 # batch_inds = np.concatenate([fixed_idx_un[np.random.randint(0,len(fixed_idx_un), int(args.classifier_batch_size*(1-beta_diayn)))], 
                 #                              np.random.randint(rb.pos if not rb.full else rb.buffer_size - size_rho , rb.pos if not rb.full else rb.buffer_size, int(args.beta_ratio*args.classifier_batch_size))], axis = 0)[:args.classifier_batch_size]
-                # batch_inds = np.random.randint(rb.pos if not rb.full else rb.buffer_size - size_rho , rb.pos if not rb.full else rb.buffer_size, int(args.classifier_batch_size))
-                batch_inds = np.random.randint(0, rb.pos if not rb.full else rb.buffer_size, int(args.classifier_batch_size))
+                # batch_inds = np.random.randint(rb_pos - size_rho , rb_pos , int(args.classifier_batch_size))
+                batch_inds = np.random.randint(0, rb_pos , int(args.classifier_batch_size))
                 batch_inds_env = np.random.randint(0, args.num_envs, args.classifier_batch_size)
-                batch_obs = torch.tensor(rb.observations[batch_inds, batch_inds_env], device=device) 
+                batch_obs = (torch.tensor(rb.observations[batch_inds, batch_inds_env], device=device) - obs_mean) / obs_std if args.normalize_obs else torch.tensor(rb.observations[batch_inds, batch_inds_env], device=device)
                 batch_z = torch.tensor(rb.zs[batch_inds, batch_inds_env], device=device)
                 classifier_diayn_loss = classifier_diayn.loss(batch_obs, batch_z)
                 classifier_diayn_optimizer.zero_grad()
@@ -494,22 +496,22 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         # ALGO LOGIC: training.
         if global_step*args.num_envs > args.learning_starts and global_step % args.learning_frequency == 0:
             # standard sampling
-            b_inds = np.random.randint(0, rb.pos if not rb.full else rb.buffer_size, args.batch_size)
+            b_inds = np.random.randint(0, rb_pos, args.batch_size)
             b_inds_envs = np.random.randint(0, args.num_envs, args.batch_size)
             b_observations =  torch.tensor(rb.observations[b_inds, b_inds_envs], device = device) 
             b_next_observations =  torch.tensor(rb.next_observations[b_inds, b_inds_envs], device = device) 
             # update obs mean and std
             obs_mean = (1-args.tau_update) * obs_mean + args.tau_update * b_observations.mean(dim=0)
             obs_std = (1-args.tau_update) * obs_mean + args.tau_update * b_observations.mean(dim=0)
-            # # normalize
-            # b_observations = (b_observations - obs_mean) / obs_std
-            # b_next_observations = (b_next_observations - obs_mean) / obs_std
+            # normalize
+            b_observations = (b_observations - obs_mean) / obs_std if args.normalize_obs else b_observations
+            b_next_observations = (b_next_observations - obs_mean) / obs_std if args.normalize_obs else b_observations
             b_actions =  torch.tensor(rb.actions[b_inds, b_inds_envs], device = device) 
             b_rewards =  torch.tensor(rb.rewards[b_inds, b_inds_envs], device = device) 
-            # # update stats rewards
-            # rwd_mean = (1-args.tau_update) * rwd_mean + args.tau_update * b_rewards.mean()
-            # rwd_std = (1-args.tau_update) * rwd_std + args.tau_update * b_rewards.std()
-            # b_rewards = (b_rewards - rwd_mean) / rwd_std
+            # update stats rewards
+            rwd_mean = (1-args.tau_update) * rwd_mean + args.tau_update * b_rewards.mean()
+            rwd_std = (1-args.tau_update) * rwd_std + args.tau_update * b_rewards.std()
+            b_rewards = (b_rewards - rwd_mean) / rwd_std if args.normalize_rwd else b_rewards
 
             b_dones = torch.tensor(rb.dones[b_inds, b_inds_envs], device = device) 
             b_z = torch.tensor(rb.zs[b_inds, b_inds_envs], device = device) 
@@ -523,13 +525,13 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 # update stats rewards
                 rwd_diayn_mean = (1-args.tau_update) * rwd_diayn_mean + args.tau_update * diayn_reward.mean()
                 rwd_diayn_std = (1-args.tau_update) * rwd_diayn_std + args.tau_update * diayn_reward.std()
-                diayn_reward = (diayn_reward - rwd_diayn_mean) / rwd_diayn_std
+                diayn_reward = (diayn_reward - rwd_diayn_mean) / rwd_diayn_std if args.normalize_rwd else diayn_reward
 
                 kl_reward = classifier(b_observations).flatten() if global_step > args.diayn_alone_epochs * max_step else torch.zeros(args.batch_size).flatten().to(device)
                 # update stats rewards
                 rwd_kl_mean = (1-args.tau_update) * rwd_kl_mean + args.tau_update * kl_reward.mean()
                 rwd_kl_std = (1-args.tau_update) * rwd_kl_std + args.tau_update * kl_reward.std()
-                kl_reward = (kl_reward - rwd_kl_mean) / rwd_kl_std
+                kl_reward = (kl_reward - rwd_kl_mean) / rwd_kl_std if args.normalize_rwd else kl_reward
 
                 intrinsic_reward = args.lambda_diayn*diayn_reward + args.lambda_kl*kl_reward
                 intrinsic_reward = torch.clamp(intrinsic_reward, -args.bound_classifier, args.bound_classifier)
@@ -621,7 +623,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 # print('size rho', size_rho)
                 # print('max x rho', rb.observations[max(rb.pos if not rb.full else rb.buffer_size-size_rho, 0):rb.pos if not rb.full else rb.buffer_size][0][:,0].max())
                 image = env_plot.gif(obs_un = rb.observations[fixed_idx_un],
-                                     obs = rb.observations[max(rb.pos-int(size_rho) if not rb.full else rb.buffer_size-int(size_rho), 0):rb.pos if not rb.full else rb.buffer_size], 
+                                     obs = rb.observations[max(rb_pos-int(size_rho) , 0):rb_pos ], 
                                     classifier = classifier,
                                     device= device)
                 send_matrix(wandb, image, "gif", global_step) if args.track else None
