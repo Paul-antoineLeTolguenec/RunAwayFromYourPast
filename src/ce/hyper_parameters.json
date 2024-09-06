@@ -358,7 +358,7 @@
                                         "autotune": false,
                                         "num_envs": 4,
                                         "lr_lambda": 0.5,
-                                        "lr_discriminator": 0.001,
+                                        "lr_discriminator": 0.0005,
                                         "discriminator_epochs": 1,
                                         "discriminator_batch_size": 256,
                                         "epsilon": 0.001,
