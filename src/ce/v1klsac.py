@@ -475,12 +475,14 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     b_rewards = (b_rewards - rwd_mean) / rwd_std if args.normalize_rwd else b_rewards
                     # linear deacrease of coef_intrinsic
                     coef_intrinsic = max(0, args.coef_intrinsic - global_step / args.total_timesteps)
+                    coef_extrinsic = args.coef_extrinsic
                     # exponential decrease of coef_intrinsic
                     # coef_intrinsic = np.exp(-global_step / args.total_timesteps * 2.0)
-                    b_rewards = b_rewards.flatten() * args.coef_extrinsic + intrinsic_reward.flatten() * coef_intrinsic
+                    b_rewards = b_rewards.flatten() * coef_extrinsic + intrinsic_reward.flatten() * coef_intrinsic
                 else:
                     b_rewards = intrinsic_reward.flatten() * args.coef_intrinsic 
                     coef_intrinsic = args.coef_intrinsic
+                    coef_extrinsic = args.coef_extrinsic
 
                 # rewards = b_rewards.flatten() 
                 next_q_value = b_rewards + (1 - b_dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
@@ -548,6 +550,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 "metrics/running_mean_reward_int": rwd_intrinsic_mean.item(),
                 "metrics/running_std_reward_int": rwd_intrinsic_std.item(),
                 "coefficients/coef_intrinsic": coef_intrinsic,
+                "coefficients/coef_extrinsic": args.coef_extrinsic,
                 # print("SPS:", int(global_step / (time.time() - start_time)))
                 "charts/SPS": int(global_step / (time.time() - start_time)), 
                 "losses/alpha_loss": alpha_loss.item() if args.autotune else 0.0, 
