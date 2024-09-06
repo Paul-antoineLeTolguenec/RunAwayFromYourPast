@@ -10,7 +10,7 @@ show_help() {
     echo "  --seeds   Liste des valeurs de graines aléatoires (par défaut : [4])"
     echo "  --hp_file File containing hyperparameters (default: hyper_parameters.json)"
     echo ""
-    echo "Exemple: $0 --algo ../v1klsac.py --types \"[robotics, mujoco]\" --seeds \"[3,4]\""
+    echo "Exemple: $0 --algo ../v1klsac.py --types \"[robotics, mujoco]\" --seeds \"[3,4]\" --hp_file hyper_parameters.json"
 }
 
 # Valeurs par défaut
