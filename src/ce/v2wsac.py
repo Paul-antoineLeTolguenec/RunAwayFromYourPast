@@ -606,11 +606,11 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 obs_mean = obs_mean * (1-args.tau_update) + b_observations.mean(0) * args.tau_update
                 obs_std = obs_std * (1-args.tau_update) + b_observations.std(0) * args.tau_update
                 # normalization
-                b_observations_normalized = (b_observations - obs_mean) / (obs_std + 1e-8)
-                b_next_observations_normalized = (b_next_observations - obs_mean) / (obs_std + 1e-8)
+                b_observations_normalized = torch.tensor((b_observations - obs_mean) / (obs_std + 1e-8), device = device)
+                b_next_observations_normalized = torch.tensor((b_next_observations - obs_mean) / (obs_std + 1e-8), device = device)
             else:
-                b_observations_normalized = b_observations
-                b_next_observations_normalized = b_next_observations
+                b_observations_normalized = torch.tensor(b_observations, device = device)
+                b_next_observations_normalized = torch.tensor(b_next_observations, device = device)
             
             b_actions =  torch.tensor(rb.actions[b_inds, b_inds_envs], device = device) 
             b_rewards =  torch.tensor(rb.rewards[b_inds, b_inds_envs], device = device) 
