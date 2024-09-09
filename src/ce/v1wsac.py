@@ -505,7 +505,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     # normalization
                     b_rewards = (b_rewards - rwd_mean) / (rwd_std + 1e-8)
                     intrinsic_reward = (intrinsic_reward - rwd_intrinsic_mean) / (rwd_intrinsic_std + 1e-8)
-                    coef_intrinsic = max(0, args.coef_intrinsic - global_step / args.total_timesteps)
+                    coef_intrinsic = max(0, args.coef_intrinsic - 2.0*(global_step / args.total_timesteps))
                     coef_extrinsic = args.coef_extrinsic
                     b_rewards = intrinsic_reward.flatten() * coef_intrinsic  + b_rewards.flatten() * coef_extrinsic
                 else:

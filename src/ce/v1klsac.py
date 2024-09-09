@@ -474,7 +474,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 if args.keep_extrinsic_reward:
                     b_rewards = (b_rewards - rwd_mean) / rwd_std if args.normalize_rwd else b_rewards
                     # linear deacrease of coef_intrinsic
-                    coef_intrinsic = max(0, args.coef_intrinsic - global_step / args.total_timesteps)
+                    coef_intrinsic = max(0, args.coef_intrinsic - 2.0*(global_step / args.total_timesteps))
                     coef_extrinsic = args.coef_extrinsic
                     # exponential decrease of coef_intrinsic
                     # coef_intrinsic = np.exp(-global_step / args.total_timesteps * 2.0)
