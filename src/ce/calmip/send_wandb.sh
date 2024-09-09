@@ -37,7 +37,7 @@ get_run_status() {
     run_status=$(grep -oP '"state":\s*"\K[^"]+' "$json_file")
     echo $run_status
 }
-
+nb_run=0
 # Vérifier si le chemin défini par path_offline existe
 if [ -d "$path_offline" ]; then
     echo "Recherche des dossiers contenant 'offline' dans $path_offline..."
@@ -49,9 +49,14 @@ if [ -d "$path_offline" ]; then
             tmp_path="${dir}files/wandb-metadata.json"
             RUN_STATUS=$(get_run_status "$tmp_path")
             echo "Statut du run : $RUN_STATUS"
-            # if [ "$RUN_STATUS" == "finished" ]; then
+            if [ "$RUN_STATUS" == "finished" ]; then
+            wandb sync $dir
+                ((nb_run++))
+            fi
         fi
     done
 else
     echo "Le chemin $path_offline n'existe pas."
 fi
+
+echo "Nombre de script synchronisés : $nb_run"
