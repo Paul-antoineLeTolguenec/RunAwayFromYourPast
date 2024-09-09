@@ -63,6 +63,13 @@ contains_algo() {
     return 1
 }
 
+get_run_status() {
+    local json_file=$1
+    echo "Extraction du statut du run depuis $json_file"
+    local status=$(grep -oP '"state":\s*"\K[^"]+' "$json_file")
+    echo "$status"
+}
+
 count=0
 
 # Parcourir les dossiers commençant par "offline" dans le répertoire défini
@@ -75,8 +82,8 @@ for DIR in "$path_offline"offline*; do
         
         # Vérifier si le fichier existe et n'a pas déjà été synchronisé
         if [ -f "$METADATA_FILE" ]; then
-            # Vérifier si le fichier contient au moins un des algorithmes
-            if contains_algo "$METADATA_FILE"; then
+            # Vérifier si le state est "finished"
+            if [ "$(get_run_status "$METADATA_FILE")" == "finished" ]; then
                 # Extraire l'env_id
                 ENV_ID=$(extract_arg_value "$METADATA_FILE" "env_id")
                 count=$((count + 1))
