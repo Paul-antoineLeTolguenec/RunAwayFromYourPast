@@ -73,8 +73,9 @@ contains_algo() {
 # Fonction pour extraire le statut du run depuis wandb-metadata.json
 get_run_status() {
     local json_file=$1
-    echo "Extraction du statut du run depuis $json_file"
-    grep '"_wandb"' "$json_file" | grep -oP '"status":\s*"\K\w+'
+    # echo "Extraction du statut du run depuis $json_file"
+    run_status=$(grep -oP '"state":\s*"\K[^"]+' "$json_file")
+    echo $run_status
 }
 
 count=0
@@ -106,7 +107,7 @@ for DIR in "$path_offline"offline*; do
                     fi
                 else
                     RUN_NAME=$(extract_arg_value "$METADATA_FILE" "run_name")
-                    echo "Le run $RUN_NAME n'est pas terminé (statut: $RUN_STATUS)."
+                    # echo "Le run $RUN_NAME n'est pas terminé (statut: $RUN_STATUS)."
                 fi
             fi
         else
