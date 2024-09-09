@@ -37,6 +37,38 @@ get_run_status() {
     run_status=$(grep -oP '"state":\s*"\K[^"]+' "$json_file")
     echo $run_status
 }
+# get algo 
+extract_algo() {
+    # Prend le chemin du fichier JSON en argument
+    local json_file_path="$1"
+    
+    # Extrait le champ "program" du fichier JSON
+    local program_path=$(grep '"program":' "$json_file_path" | awk -F'"' '{print $4}')
+    
+    # Vérifie si program_path n'est pas vide
+    if [[ -n "$program_path" ]]; then
+        # Extrait le nom du fichier sans le chemin et sans l'extension .py
+        local algo_name=$(basename "$program_path" .py)
+        echo "$algo_name"
+    else
+        echo "Aucun fichier Python trouvé."
+    fi
+}
+extract_env_id() {
+    # Prend le chemin du fichier JSON en argument
+    local json_file_path="$1"
+    
+    # Extrait la valeur de "--env_id" dans le champ "args" du fichier JSON
+    local env_id=$(grep -A1 '"--env_id"' "$json_file_path" | tail -n1 | awk -F'"' '{print $2}')
+    
+    # Vérifie si env_id n'est pas vide
+    if [[ -n "$env_id" ]]; then
+        echo "$env_id"
+    else
+        echo "Aucun env_id trouvé."
+    fi
+}
+
 nb_run=0
 # Vérifier si le chemin défini par path_offline existe
 if [ -d "$path_offline" ]; then
@@ -48,9 +80,11 @@ if [ -d "$path_offline" ]; then
         if [[ "$dir" == *offline* ]]; then
             tmp_path="${dir}files/wandb-metadata.json"
             RUN_STATUS=$(get_run_status "$tmp_path")
-            echo "Statut du run : $RUN_STATUS"
+            ALGO_NAME=$(extract_algo "$tmp_path")
+            ENV_ID=$(extract_env_id "$tmp_path")
+            echo "Algo name : $ALGO_NAME, env_id : $ENV_ID, run status : $RUN_STATUS"
             if [ "$RUN_STATUS" == "finished" ]; then
-            wandb sync $dir
+                wandb sync $dir
                 ((nb_run++))
             fi
         fi
