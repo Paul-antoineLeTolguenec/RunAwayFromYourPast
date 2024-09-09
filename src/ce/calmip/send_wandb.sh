@@ -84,7 +84,7 @@ if [ -d "$path_offline" ]; then
             ENV_ID=$(extract_env_id "$tmp_path")
             echo "Algo name : $ALGO_NAME, env_id : $ENV_ID, run status : $RUN_STATUS"
             if [ "$RUN_STATUS" == "finished" ]; then
-                wandb sync $dir
+                # wandb sync $dir
                 ((nb_run++))
             fi
         fi
