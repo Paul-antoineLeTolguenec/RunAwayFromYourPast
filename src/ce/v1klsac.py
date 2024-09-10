@@ -86,7 +86,8 @@ class Args:
     """the number of parallel environments"""
     learning_frequency: int = 1
     """the frequency of training the SAC"""
-     
+    tau_update : float = 0.005
+    """the update rate of the target network"""
     # KL specific arguments
     lr_classifier: float = 1e-4
     """the learning rate of the classifier"""

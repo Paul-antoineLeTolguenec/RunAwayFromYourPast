@@ -598,7 +598,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             # standard sampling
             b_inds = np.random.randint(0, rb_pos, args.batch_size)
             b_inds_envs = np.random.randint(0, args.num_envs, args.batch_size)
-            b_next_observations = torch.tensor(rb.next_observations[b_inds, b_inds_envs], device = device)
+            b_next_observations = rb.next_observations[b_inds, b_inds_envs]
             # batch obs + next_obs
             b_observations = rb.observations[b_inds, b_inds_envs] 
             if args.normalize_obs:
@@ -611,7 +611,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             else:
                 b_observations_normalized = torch.tensor(b_observations, device = device)
                 b_next_observations_normalized = torch.tensor(b_next_observations, device = device)
-            
+            b_observations = torch.tensor(b_observations, device = device)
+            b_next_observations = torch.tensor(b_next_observations, device = device)
             b_actions =  torch.tensor(rb.actions[b_inds, b_inds_envs], device = device) 
             b_rewards =  torch.tensor(rb.rewards[b_inds, b_inds_envs], device = device) 
             b_dones = torch.tensor(rb.dones[b_inds, b_inds_envs], device = device) 
