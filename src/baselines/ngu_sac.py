@@ -65,7 +65,7 @@ class Args:
     """the discount factor gamma"""
     tau: float = 0.005
     """target smoothing coefficient (default: 0.005)"""
-    batch_size: int = 256
+    batch_size: int = 32
     """the batch size of sample from the reply memory"""
     learning_starts: int = 5e3
     """timestep to start learning"""
@@ -73,9 +73,9 @@ class Args:
     """the learning rate of the policy network optimizer"""
     q_lr: float = 1e-3
     """the learning rate of the Q network network optimizer"""
-    policy_frequency: int = 4
+    policy_frequency: int = 32
     """the frequency of training policy (delayed)"""
-    learning_frequency: int = 2
+    learning_frequency: int = 16
     """the frequency of training the Q network"""
     target_network_frequency: int = 1  # Denis Yarats' implementation delays this by 2.
     """the frequency of updates for the target nerworks"""
@@ -90,11 +90,11 @@ class Args:
     # NGU SPECIFIC
     ngu_lr: float = 1e-4
     """the learning rate of the ngu"""
-    ngu_epochs: int = 1
+    ngu_epochs: int = 16
     """the number of epochs for the ngu"""
     nb_epoch_before_training: int = 8
     """ nb epoch between each training """
-    ngu_feature_dim: int = 64
+    ngu_feature_dim: int = 16
     """the feature dimension of the ngu"""
     k_nearest: int = 8
     """the number of nearest neighbors"""
@@ -393,6 +393,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         handle_timeout_termination=False,
         n_envs= args.num_envs
     )
+    # add time 
+    rb.times = np.zeros((args.buffer_size, args.num_envs), dtype=int)
     rwd_mean = torch.zeros(1, dtype=torch.float32).to(device)
     rwd_std = torch.ones(1, dtype=torch.float32).to(device)
     rwd_intrinsic_mean = torch.zeros(1, dtype=torch.float32).to(device)
@@ -415,26 +417,26 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         next_obs, rewards, terminations, truncations, infos = envs.step(actions)
 
         # COMPUTE REWARD
-        intrinsic_reward = torch.zeros(args.num_envs)
-        for idx in range(args.num_envs):
-            with torch.no_grad():
-                # rewards NGU 
-                intrinsic_reward[idx] = ngu.reward_episode(torch.tensor(obs[idx]).unsqueeze(0).to(device), torch.tensor(np.array(episodes[idx])).to(device)) if len(episodes[idx]) > args.k_nearest else 0.0
-        extrinsic_reward = rewards  
-        if args.keep_extrinsic_reward:
-            # update statistics
-            rwd_mean = rwd_mean * (1 - args.tau_update) + args.tau_update * extrinsic_reward.mean()
-            rwd_std = rwd_std * (1 - args.tau_update) + args.tau_update * extrinsic_reward.std()
-            rwd_intrinsic_mean = rwd_intrinsic_mean * (1 - args.tau_update) + args.tau_update * intrinsic_reward.mean()
-            rwd_intrinsic_std = rwd_intrinsic_std * (1 - args.tau_update) + args.tau_update * intrinsic_reward.std()
-            # normalize
-            extrinsic_reward = (extrinsic_reward - rwd_mean) / (rwd_std + 1e-8) if args.normalize_rwd else extrinsic_reward
-            intrinsic_reward = (intrinsic_reward - rwd_intrinsic_mean) / (rwd_intrinsic_std + 1e-8) if args.normalize_rwd else intrinsic_reward
-            # coef decay
-            coef_intrinsic = max(0, args.coef_intrinsic - global_step / args.total_timesteps)
-            rewards = extrinsic_reward.flatten()*args.coef_extrinsic + intrinsic_reward.flatten()*coef_intrinsic
-        else:
-            rewards = intrinsic_reward*args.coef_intrinsic
+        # intrinsic_reward = torch.zeros(args.num_envs)
+        # for idx in range(args.num_envs):
+        #     with torch.no_grad():
+        #         # rewards NGU 
+        #         intrinsic_reward[idx] = ngu.reward_episode(torch.tensor(obs[idx]).unsqueeze(0).to(device), torch.tensor(np.array(episodes[idx])).to(device)) if len(episodes[idx]) > args.k_nearest else 0.0
+        # extrinsic_reward = rewards  
+        # if args.keep_extrinsic_reward:
+        #     # update statistics
+        #     rwd_mean = rwd_mean * (1 - args.tau_update) + args.tau_update * extrinsic_reward.mean()
+        #     rwd_std = rwd_std * (1 - args.tau_update) + args.tau_update * extrinsic_reward.std()
+        #     rwd_intrinsic_mean = rwd_intrinsic_mean * (1 - args.tau_update) + args.tau_update * intrinsic_reward.mean()
+        #     rwd_intrinsic_std = rwd_intrinsic_std * (1 - args.tau_update) + args.tau_update * intrinsic_reward.std()
+        #     # normalize
+        #     extrinsic_reward = (extrinsic_reward - rwd_mean) / (rwd_std + 1e-8) if args.normalize_rwd else extrinsic_reward
+        #     intrinsic_reward = (intrinsic_reward - rwd_intrinsic_mean) / (rwd_intrinsic_std + 1e-8) if args.normalize_rwd else intrinsic_reward
+        #     # coef decay
+        #     coef_intrinsic = max(0, args.coef_intrinsic - global_step / args.total_timesteps)
+        #     rewards = extrinsic_reward.flatten()*args.coef_extrinsic + intrinsic_reward.flatten()*coef_intrinsic
+        # else:
+        #     rewards = intrinsic_reward*args.coef_intrinsic
 
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
@@ -455,6 +457,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 real_next_obs[idx] = infos["final_observation"][idx]
                 episodes[idx] = []
         rb.add(obs, real_next_obs, actions, rewards, terminations, infos)
+        rb_pos = rb.pos if not rb.full else rb.buffer_size
+        rb.times[rb_pos-1] = infos['l']
         for idx, (ob, ac, rew, next_ob) in enumerate(zip(obs, actions, rewards, real_next_obs)): episodes[idx].append(ob)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
@@ -481,16 +485,40 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
         # ALGO LOGIC: training.
         if global_step > args.learning_starts and global_step % args.learning_frequency == 0:
-            data = rb.sample(args.batch_size)
-            with torch.no_grad():
-                next_state_actions, next_state_log_pi, _ = actor.get_action(data.next_observations)
-                qf1_next_target = qf1_target(data.next_observations, next_state_actions)
-                qf2_next_target = qf2_target(data.next_observations, next_state_actions)
-                min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
-                next_q_value = data.rewards.flatten() + (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
+            batch_inds = np.random.randint(0 ,rb_pos, int(args.batch_size))                    
+            batch_inds_env = np.random.randint(0, args.num_envs, args.batch_size)
+            observations = torch.tensor(rb.observations[batch_inds, batch_inds_env], dtype=torch.float32).to(device)
+            times = torch.tensor(rb.times[batch_inds, batch_inds_env], dtype=torch.float32).to(device)
+            # NGU reward 
+            for b_i, ti in enumerate(times):
+                b_indice = batch_inds[b_i]
+                b_indice_env = batch_inds_env[b_i]
+                episode = rb.observations[b_indice-ti.long():b_indice, b_indice_env]
+                if episode.shape[0] < args.k_nearest:
+                    intrinsic_reward = 0.0
+                else: 
+                    intrinsic_reward = ngu.reward_episode(torch.tensor(observations[b_i].unsqueeze(0), device=device), torch.tensor(episode, device = device))
+                # compute reward
+                if not args.keep_extrinsic_reward:
+                    rb.rewards[b_indice, b_indice_env] = intrinsic_reward
+                else: 
+                    coef_extrinsic = args.coef_extrinsic
+                    coef_intrinsic = max(0, args.coef_intrinsic - 2.0*global_step / args.total_timesteps)
+                    rb.rewards[b_indice, b_indice_env] = intrinsic_reward*coef_intrinsic + rewards[b_i]*coef_extrinsic
 
-            qf1_a_values = qf1(data.observations, data.actions).view(-1)
-            qf2_a_values = qf2(data.observations, data.actions).view(-1)
+            next_observations = torch.tensor(rb.next_observations[batch_inds, batch_inds_env], dtype=torch.float32).to(device)
+            actions = torch.tensor(rb.actions[batch_inds, batch_inds_env], dtype=torch.float32).to(device)
+            rewards = torch.tensor(rb.rewards[batch_inds, batch_inds_env], dtype=torch.float32).to(device)
+            dones = torch.tensor(rb.dones[batch_inds, batch_inds_env], dtype=torch.float32).to(device)
+            with torch.no_grad():
+                next_state_actions, next_state_log_pi, _ = actor.get_action(next_observations)
+                qf1_next_target = qf1_target(next_observations, next_state_actions)
+                qf2_next_target = qf2_target(next_observations, next_state_actions)
+                min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
+                next_q_value = rewards.flatten() + (1 - dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
+
+            qf1_a_values = qf1(observations, actions).view(-1)
+            qf2_a_values = qf2(observations, actions).view(-1)
             qf1_loss = F.mse_loss(qf1_a_values, next_q_value)
             qf2_loss = F.mse_loss(qf2_a_values, next_q_value)
             qf_loss = qf1_loss + qf2_loss
@@ -504,9 +532,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 for _ in range(
                     args.policy_frequency
                 ):  # compensate for the delay by doing 'actor_update_interval' instead of 1
-                    pi, log_pi, _ = actor.get_action(data.observations)
-                    qf1_pi = qf1(data.observations, pi)
-                    qf2_pi = qf2(data.observations, pi)
+                    pi, log_pi, _ = actor.get_action(observations)
+                    qf1_pi = qf1(observations, pi)
+                    qf2_pi = qf2(observations, pi)
                     min_qf_pi = torch.min(qf1_pi, qf2_pi)
                     actor_loss = ((alpha * log_pi) - min_qf_pi).mean()
 
@@ -516,7 +544,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
                     if args.autotune:
                         with torch.no_grad():
-                            _, log_pi, _ = actor.get_action(data.observations)
+                            _, log_pi, _ = actor.get_action(observations)
                         alpha_loss = (-log_alpha.exp() * (log_pi + target_entropy)).mean()
 
                         a_optimizer.zero_grad()
