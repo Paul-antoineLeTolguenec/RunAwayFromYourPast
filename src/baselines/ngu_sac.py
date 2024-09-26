@@ -489,6 +489,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             batch_inds_env = np.random.randint(0, args.num_envs, args.batch_size)
             observations = torch.tensor(rb.observations[batch_inds, batch_inds_env], dtype=torch.float32).to(device)
             times = torch.tensor(rb.times[batch_inds, batch_inds_env], dtype=torch.float32).to(device)
+            b_rewards = torch.tensor(rb.rewards[batch_inds, batch_inds_env], dtype=torch.float32).to(device)
             # NGU reward 
             for b_i, ti in enumerate(times):
                 b_indice = batch_inds[b_i]
@@ -500,22 +501,21 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     intrinsic_reward = ngu.reward_episode(torch.tensor(observations[b_i].unsqueeze(0), device=device), torch.tensor(episode, device = device))
                 # compute reward
                 if not args.keep_extrinsic_reward:
-                    rb.rewards[b_indice, b_indice_env] = intrinsic_reward
+                    b_rewards[b_i] = intrinsic_reward
                 else: 
                     coef_extrinsic = args.coef_extrinsic
                     coef_intrinsic = max(0, args.coef_intrinsic - 2.0*global_step / args.total_timesteps)
-                    rb.rewards[b_indice, b_indice_env] = intrinsic_reward*coef_intrinsic + rewards[b_i]*coef_extrinsic
+                    b_rewards[b_i] = intrinsic_reward*coef_intrinsic + b_rewards[b_i]*coef_extrinsic
 
             next_observations = torch.tensor(rb.next_observations[batch_inds, batch_inds_env], dtype=torch.float32).to(device)
             actions = torch.tensor(rb.actions[batch_inds, batch_inds_env], dtype=torch.float32).to(device)
-            rewards = torch.tensor(rb.rewards[batch_inds, batch_inds_env], dtype=torch.float32).to(device)
             dones = torch.tensor(rb.dones[batch_inds, batch_inds_env], dtype=torch.float32).to(device)
             with torch.no_grad():
                 next_state_actions, next_state_log_pi, _ = actor.get_action(next_observations)
                 qf1_next_target = qf1_target(next_observations, next_state_actions)
                 qf2_next_target = qf2_target(next_observations, next_state_actions)
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
-                next_q_value = rewards.flatten() + (1 - dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
+                next_q_value = b_rewards.flatten() + (1 - dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
 
             qf1_a_values = qf1(observations, actions).view(-1)
             qf2_a_values = qf2(observations, actions).view(-1)
