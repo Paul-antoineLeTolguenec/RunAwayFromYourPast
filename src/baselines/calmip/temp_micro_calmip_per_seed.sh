@@ -192,11 +192,7 @@ hyperparams=\$(eval \$cmd_hyperparams)
 cmd="poetry run python $algo --env_id $env_id \$hyperparams --seed $seed"
 echo \$cmd 
 # \$cmd
-if [[ "\$HOSTNAME" == *"pando"* ]]; then
 srun --exclusive -N1 -n1 \$cmd 
-elif [[ "\$HOSTNAME" == *"olympe"* ]]; then
-proxychains4 srun --exclusive -N1 -n1 \$cmd 
-fi
 
 EOT
 
