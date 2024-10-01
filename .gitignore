@@ -15,6 +15,6 @@
 **/*.pyc
 **/*.log
 **/*.csv
-**/scripts/*.tex
+# **/scripts/*.tex
 **/scripts/*.md
 **/scripts/*.pdf
